@@ -10,7 +10,7 @@ for (let ti = 0; ti < RR.TRACK_COUNT; ti++) for (const d of RR.BIKES) {
     const out = { lean: 0, brake: false, gas: true }; let cur = 0, brk = false; const mode = r % 3;
     for (let i = 0; i < 120 * 90; i++) {
       if (i % 10 === 0) { RR.botInput(s, {}, out); const q = rnd(); cur = mode === 0 ? out.lean : q < 0.5 ? out.lean : q < 0.75 ? -1 : 1; if (mode === 2 && q < 0.3) cur = q < 0.15 ? -1 : 1; brk = rnd() < 0.05; }
-      RR.tick(s, { lean: cur, brake: brk, gas: true }); s.events.length = 0;
+      RR.tick(s, { lean: cur, brake: brk, gas: mode === 0 ? out.gas : rnd() < 0.9 }); s.events.length = 0;
       const v = Math.hypot(s.vx, s.vy); if (v > maxV) maxV = v; if (Math.abs(s.w) > maxW) maxW = Math.abs(s.w);
       if (s.glitch) { glitches++; where.push([ti, d.id, Math.round(s.x)]); break; }
       if (s.finished || s.sinceCrash > 2.5) break;

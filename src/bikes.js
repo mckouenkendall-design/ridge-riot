@@ -54,9 +54,9 @@ RR.BIKES = [
   {
     id: 'goat', name: 'Billy Goat', kind: 'trials', tag: 'Climbs anything, slowly',
     blurb: 'Trials bike. Glue for tyres, huge low-down pull and it turns on a coin. Runs out of puff early.',
-    mass: 148, kgyr: 0.42, wb: 1.32, rr: 0.34, rf: 0.35, com: [0.57, 0.72], wheelMass: [9, 8], rake: 24, swing: 9,
+    mass: 148, kgyr: 0.42, wb: 1.32, rr: 0.34, rf: 0.35, com: [0.61, 0.72], wheelMass: [9, 8], rake: 24, swing: 9,
     sus: [{ travel: 0.19, freq: 2.2, sag: 0.3, zc: 0.4, zr: 0.9 }, { travel: 0.20, freq: 2.2, sag: 0.3, zc: 0.4, zr: 0.9 }],
-    accel: 0.88, vp: 5.5, vmax: 12.8, grip: 1.38, brake: 1.0, leanAcc: 21, spin: 7.6, cda: 0.5,
+    accel: 0.86, vp: 5.5, vmax: 12.8, grip: 1.38, brake: 1.0, leanAcc: 21, spin: 7.6, cda: 0.5,
     rider: { seat: [0.36, 0.86], peg: [0.50, 0.36], grip: [0.92, 1.12], scale: 1, torso: 0.34, stand: 0.5 },
     col: ['#3fb56b', '#f5f1e6', '#20242e'], suit: ['#20242e', '#3fb56b', '#f5f1e6'],
     snd: { type: 'trial', pitch: 0.9, gears: 4 },
@@ -98,7 +98,7 @@ RR.BIKES = [
   {
     id: 'volt', name: 'Volt Wraith', kind: 'electric', tag: 'Silent, instant shove',
     blurb: 'Electric. No gears, no noise, all the pull from a standstill, and it slows itself when you brake.',
-    mass: 215, kgyr: 0.44, wb: 1.40, rr: 0.33, rf: 0.33, com: [0.68, 0.70], wheelMass: [11, 9], rake: 26, swing: 9,
+    mass: 215, kgyr: 0.44, wb: 1.40, rr: 0.33, rf: 0.33, com: [0.73, 0.70], wheelMass: [11, 9], rake: 26, swing: 9,
     sus: [{ travel: 0.23, freq: 2.1, sag: 0.3, zc: 0.45, zr: 1.0 }, { travel: 0.24, freq: 2.05, sag: 0.3, zc: 0.42, zr: 0.95 }],
     accel: 0.98, vp: 11, vmax: 19.2, grip: 1.08, brake: 1.0, leanAcc: 15.5, spin: 6.3, cda: 0.48, ebrake: 0.2,
     rider: { seat: [0.42, 0.90], peg: [0.52, 0.40], grip: [0.98, 1.12], scale: 1, torso: 0.42 },

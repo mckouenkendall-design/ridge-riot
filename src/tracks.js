@@ -34,17 +34,17 @@ function hop(b, deg, w, o) { o = o || {}; b.kicker(deg, o.R || 8, o.lip == null 
 /* [name, tip shown before the start, recipe] */
 var T = [
 /* ----------------------------- DUSTBOWL ----------------------------- */
-['First Gear', 'Hold both sides to brake. The throttle looks after itself.', function (b) {
+['First Gear', 'Right thumb: gas and brake. Left thumb: lean back and lean forward.', function (b) {
   b.flat(18).hill(1.2, 18).flat(12).hill(1.8, 22).flat(10).ease(26, -3).flat(14)
    .hill(1.5, 16).flat(8).bumps(4, 5, 0.3).flat(12).ease(20, 2.5).flat(12)
    .table(11, 1.3, 6, 9).flat(16);
 }],
-['Rolling Dunes', 'Rollers throw the bike about. Short taps keep it level.', function (b) {
+['Rolling Dunes', 'Front wheel coming up on a climb? Lean forward, or ease off the gas.', function (b) {
   b.flat(14).waves(3, 24, 1.15).flat(8).ease(34, -6).flat(8).surface('sand').flat(14).surface()
    .waves(2, 18, 0.95).flat(8).up(15, 12, 13).flat(8, 16).down(13, 14, 13).flat(12)
    .hill(2.0, 22).flat(14);
 }],
-['Hop Skip', 'In the air: right side drops the nose, left side lifts it.', function (b) {
+['Hop Skip', 'In the air, lean forward drops the nose and lean back lifts it.', function (b) {
   b.flat(24).sign('jump');
   jump(b, 11, 3.5, 9, 7, { rise: -0.4, lip: 1.6 });
   b.flat(18).table(14, 1.4, 6, 9).flat(16);
@@ -53,7 +53,7 @@ var T = [
   jump(b, 15, 5.5, 13, 9, { rise: -0.8, lip: 1.4 });
   b.flat(14);
 }],
-['Washboard', 'Bumps unsettle the bike. Let it move and keep your hands quiet.', function (b) {
+['Washboard', 'Bumps unsettle the bike. Stay on the gas and keep your lean thumb quiet.', function (b) {
   b.flat(14).bumps(8, 3.4, 0.26).flat(8).ease(18, -2.5).flat(6).bumps(5, 5.2, 0.34).flat(8)
    .steps(4, 6, 0.7).flat(10).hill(-1.6, 14).flat(8).bumps(9, 2.8, 0.22).flat(10)
    .table(17, 1.8, 4, 8).flat(8).logs(3, 6, 0.2).flat(14);
@@ -75,7 +75,7 @@ var T = [
   jump(b, 20, 10, 18, 11, { rise: -1.6, lip: 1.5 });
   b.flat(14).bumps(4, 4.6, 0.28).flat(12).table(17, 1.9, 5, 8).flat(14);
 }],
-['Loop de Dust', 'Loops need speed. Stay off the brake and keep your hands still.', function (b) {
+['Loop de Dust', 'Loops need speed. Hold the gas all the way round and do not lean.', function (b) {
   b.flat(34).sign('loop').loop(3.6).flat(20).table(17, 1.9, 6, 8).flat(10).ease(24, -4).flat(14)
    .loop(3.9).flat(22);
   kick(b, 18, 7, 16, 9, { rise: -1, R: 6.5 });
@@ -94,8 +94,8 @@ var T = [
 
 /* ----------------------------- PINEWOOD ----------------------------- */
 ['Log Jam', 'Logs kick the bike up. Hit them straight and stay loose.', function (b) {
-  b.flat(16).logs(3, 6, 0.24).flat(8).hill(2, 18).flat(6).logs(4, 4.5, 0.24).flat(8).ease(20, -3)
-   .flat(6).logs(5, 4, 0.22).flat(10).table(17, 1.8, 5, 8).flat(6).logs(3, 5, 0.25).flat(8);
+  b.flat(16).logs(3, 6, 0.22).flat(10).hill(2, 18).flat(8).logs(3, 6, 0.22).flat(10).ease(20, -3)
+   .flat(8).logs(3, 6.5, 0.2).flat(12).table(17, 1.8, 5, 8).flat(8).logs(2, 6, 0.22).flat(10);
   kick(b, 17, 6, 15, 8, { rise: -0.8, R: 6.5 });
   b.flat(14);
 }],
@@ -131,10 +131,10 @@ var T = [
    .table(20, 2.4, 5, 8).flat(14);
 }],
 ['Sawmill', '', function (b) {
-  b.flat(14).steps(5, 5.5, 0.85).flat(10).up(27, 14, 9).flat(10, 11).drop(2.4).flat(18)
+  b.flat(14).steps(5, 5.5, 0.85).flat(16).up(24, 14, 10).flat(10, 12).drop(2.4).flat(18)
    .surface('wood').flat(12);
   b.kicker(19, 7, 0.6).gap(7, { rise: -0.6 }).surface().land(16, 8);
-  b.flat(8).steps(3, 6, 1.1).flat(8).logs(4, 4.5, 0.24).flat(8).up(25, 12, 9).flat(10, 13)
+  b.flat(8).steps(3, 6, 1.1).flat(8).logs(3, 5.5, 0.22).flat(14).up(24, 12, 10).flat(10, 13)
    .drop(3).flat(18);
 }],
 ['Beaver Dam', '', function (b) {
@@ -193,8 +193,8 @@ var T = [
   b.flat(8).ease(24, -4.5).surface('ice').flat(10).surface();
   jump(b, 21, 12, 19, 11, { rise: -1.6 });
   b.flat(10).bumps(4, 3.8, 0.32).flat(10);
-  hop(b, 18, 6, { rise: -0.4 }).flat(9);
-  b.kicker(20, 8).gap(4.5, { rise: 1.0 }).flat(12).drop(1.8).flat(14);
+  hop(b, 18, 6, { rise: -0.4 }).flat(14);
+  b.kicker(20, 8).gap(4.5, { rise: 0.9 }).flat(12).drop(1.8).flat(14);
 }],
 ['Glacier Loop', '', function (b) {
   b.flat(36).loop(4).surface('ice').flat(16).surface().flat(10);
@@ -239,22 +239,22 @@ var T = [
 /* ---------------------------- CINDER PEAK --------------------------- */
 ['Hot Start', 'Lava ends the run. Jump too short and that is where you land.', function (b) {
   b.flat(22);
-  kick(b, 17, 6.5, 15, 8, { rise: -0.8, R: 6.5 });
-  b.flat(8).hill(2.2, 16).flat(8);
+  kick(b, 17, 6.5, 15, 8, { rise: -0.8, R: 7 });
+  b.flat(10).hill(2.0, 18).flat(10);
   jump(b, 19, 8, 17, 9, { rise: -1 });
-  b.flat(6).waves(2, 15, 1.1).flat(8);
-  kick(b, 20, 9.5, 18, 10, { rise: -1.4, R: 6 });
-  b.flat(8).table(20, 2.4, 5, 8).flat(14);
+  b.flat(8).waves(2, 16, 1.0).flat(12);
+  jump(b, 20, 9.5, 18, 10, { rise: -1.4 });
+  b.flat(10).table(20, 2.4, 5, 8).flat(14);
 }],
 ['Ember Steps', '', function (b) {
   b.flat(20);
   b.kicker(20, 8).gap(4, { rise: 0.8 }).flat(12);
   b.kicker(21, 8).gap(4.5, { rise: 1.0 }).flat(12);
   b.kicker(22, 8).gap(4.5, { rise: 1.2 }).flat(14);
-  b.steps(4, 6, 1.1).flat(8).bumps(5, 3.2, 0.3).flat(8).up(24, 12, 9).flat(8, 9).drop(3.2).flat(12);
-  kick(b, 20, 9, 18, 10, { rise: -1.4, R: 5.5 });
-  b.flat(8);
-  kick(b, 20, 8, 18, 9, { rise: -1.2, R: 5.5 });
+  b.steps(4, 6, 1.1).flat(10).bumps(5, 3.2, 0.26).flat(16).up(22, 12, 11).flat(10, 15).drop(3).flat(22);
+  kick(b, 20, 9, 18, 10, { rise: -1.4, R: 6 });
+  b.flat(14);
+  kick(b, 20, 8, 18, 9, { rise: -1.2, R: 6 });
   b.flat(14);
 }],
 ['Magma Hop', '', function (b) {
@@ -381,9 +381,9 @@ var T = [
 var ORDER = [
   ['First Gear', 'Washboard', 'Rolling Dunes', 'Hop Skip', 'Loop de Dust', 'Mesa Drop', 'Gulch Gap', 'Canyon Run'],
   ['Log Jam', 'Mossy Loop', 'Timber Table', 'Sawmill', 'Root Rage', 'Creek Hop', 'Beaver Dam', 'Old Growth'],
-  ['Black Ice', 'Whiteout', 'Powder Keg', 'Glacier Loop', 'Slip Road', 'Avalanche', 'Crevasse', 'Aurora'],
-  ['Hot Start', 'The Chimney', 'Ember Steps', 'Caldera', 'Magma Hop', 'Fire Walk', 'Ash Loop', 'Eruption'],
-  ['One Small Hop', 'Double Loop', 'Crater Maker', 'Slow Float', 'Dark Side', 'Regolith', 'Escape Velocity', 'Riot Run']
+  ['Black Ice', 'Whiteout', 'Glacier Loop', 'Slip Road', 'Powder Keg', 'Avalanche', 'Crevasse', 'Aurora'],
+  ['Hot Start', 'The Chimney', 'Ash Loop', 'Caldera', 'Magma Hop', 'Fire Walk', 'Ember Steps', 'Eruption'],
+  ['One Small Hop', 'Double Loop', 'Crater Maker', 'Slow Float', 'Dark Side', 'Escape Velocity', 'Regolith', 'Riot Run']
 ];
 (function () {
   var by = {}, out = [];

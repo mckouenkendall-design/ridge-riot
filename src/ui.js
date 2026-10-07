@@ -18,6 +18,8 @@ var IC = {
   redo: '<svg viewBox="0 0 24 24" fill="none" stroke="#f6f2e7" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5V8h-4.5"/></svg>',
   full: '<svg viewBox="0 0 24 24" fill="none" stroke="#f6f2e7" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
   lock: '<svg viewBox="0 0 24 24" fill="#171a22"><rect x="4" y="10" width="16" height="11" rx="2.4"/><path d="M7.5 10V7.5a4.5 4.5 0 0 1 9 0V10" fill="none" stroke="#171a22" stroke-width="2.6"/></svg>',
+  gas: '<svg viewBox="0 0 24 24" fill="#f6f2e7"><path d="M5 4.5v15a1 1 0 0 0 1.5.9l13-7.5a1 1 0 0 0 0-1.8l-13-7.5A1 1 0 0 0 5 4.5z"/></svg>',
+  brake: '<svg viewBox="0 0 24 24" fill="#f6f2e7"><rect x="4.5" y="4.5" width="15" height="15" rx="2.6"/></svg>',
   leanB: '<svg viewBox="0 0 24 24" fill="none" stroke="#f6f2e7" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 17a8 8 0 1 0-11.5.3"/><path d="M3.5 13.5 6.4 17.4 10.6 15"/></svg>',
   leanF: '<svg viewBox="0 0 24 24" fill="none" stroke="#f6f2e7" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 17a8 8 0 1 1 11.5.3"/><path d="M20.5 13.5 17.6 17.4 13.4 15"/></svg>'
 };
@@ -48,10 +50,9 @@ UI.init = function () {
       '<div class="head"><h2>Settings</h2></div><div class="cols" id="setcols"></div>' +
     '</section>' +
     '<section id="s-hud" class="screen"><div id="touch"></div>' +
-      '<div class="howto" id="howto"><div class="divide"></div>' +
-        '<div class="half l">Left side<small>lean back</small></div><div class="half r">Right side<small>lean forward</small></div>' +
-        '<div class="mid plate" id="howmid">Touch to start<small>Hold both sides to brake. The throttle looks after itself.</small></div></div>' +
-      '<div class="pads" id="pads"><div class="pad l" id="padL">' + IC.leanB + '</div><div class="pad r" id="padR">' + IC.leanF + '</div></div>' +
+      '<div class="howto" id="howto"><div class="mid plate" id="howmid"></div></div>' +
+      '<div class="pads" id="pads"><div class="pad b" id="padB">' + IC.leanB + '<span>Lean back</span></div><div class="pad f" id="padF">' + IC.leanF + '<span>Lean fwd</span></div>' +
+        '<div class="pad k" id="padK">' + IC.brake + '<span>Brake</span></div><div class="pad g" id="padG">' + IC.gas + '<span>Gas</span></div></div>' +
       '<div class="tl"><button class="round" data-act="pause" aria-label="Pause">' + IC.pause + '</button><button class="round" data-act="retry" aria-label="Restart">' + IC.redo + '</button></div>' +
       '<div class="clock plate"><div class="t" id="clk">0.00</div><div class="goal" id="goal"></div></div>' +
       '<div class="boost" id="boost"><i id="boostI"></i></div>' +
@@ -112,12 +113,13 @@ function afterUnlock() {
   // phones only hand out tilt readings after a touch, so ask again here
   if (Store.data.settings.tilt) G.enableTilt(function (ok) { if (!ok) { Store.data.settings.tilt = false; } });
 }
-function clearInput() { var i = G.input; i.kL = i.kR = i.kB = false; for (var k in i.touch) delete i.touch[k]; }
+function clearInput() { var i = G.input; i.kL = i.kR = i.kB = i.kG = false; for (var k in i.touch) delete i.touch[k]; }
 function key(code, down) {
   var i = G.input;
   if (code === 'KeyA' || code === 'ArrowLeft') i.kL = down;
   else if (code === 'KeyD' || code === 'ArrowRight') i.kR = down;
-  else if (code === 'KeyS' || code === 'ArrowDown' || code === 'Space') i.kB = down;
+  else if (code === 'KeyS' || code === 'ArrowDown') i.kB = down;
+  else if (code === 'KeyW' || code === 'ArrowUp') i.kG = down;
   else return false;
   return true;
 }
@@ -126,7 +128,7 @@ function onKey(e) {
   Au.unlock(); afterUnlock();
   var c = e.code;
   if (UI.cur === 'hud') {
-    if (G.state === 'crash') { if (G.endT > 0.4 && (c === 'Enter' || c === 'Space' || c === 'KeyR' || key(c, false) || c === 'KeyW' || c === 'ArrowUp')) G.retry(); e.preventDefault(); return; }
+    if (G.state === 'crash') { if (G.endT > 0.4 && (c === 'Enter' || c === 'Space' || c === 'KeyR' || key(c, false))) G.retry(); e.preventDefault(); return; }
     if (key(c, true)) { e.preventDefault(); return; }
     if (c === 'KeyR') G.retry();
     else if (c === 'Escape' || c === 'KeyP') G.pause(true);
@@ -156,6 +158,14 @@ UI.resize = function () {
   $('rotate').className = portrait ? 'on' : '';
   if (portrait && (G.state === 'run' || G.state === 'ready')) G.pause(true);
   if (UI.cur === 'garage') UI.garageDraw();
+  UI.measurePads();
+};
+/* work out where the touch zones divide from where the buttons actually sit */
+UI.measurePads = function () {
+  var w = root.innerWidth, f = $('padF'), k = $('padK'), b = $('padB'), g = $('padG');
+  G.split.l = w * 0.16; G.split.r = w * 0.84;
+  if (f && b && f.offsetWidth) { var rb = b.getBoundingClientRect(), rf = f.getBoundingClientRect(), rk = k.getBoundingClientRect(), rg = g.getBoundingClientRect();
+    if (rf.left > rb.left) G.split.l = (rb.right + rf.left) / 2; if (rg.left > rk.left) G.split.r = (rk.right + rg.left) / 2; }
 };
 
 /* ------------------------------------------------------------------ */
@@ -305,14 +315,15 @@ UI.settings = function () {
   function sl(k, label) { return '<div class="row"><label for="r-' + k + '">' + label + '</label><input id="r-' + k + '" type="range" min="0" max="100" value="' + Math.round(s[k] * 100) + '" data-k="' + k + '"></div>'; }
   function seg(v, label) { return '<button data-act="seg" data-v="' + v + '" class="' + (s.quality === v ? 'on' : '') + '">' + label + '</button>'; }
   $('setcols').innerHTML =
-    sl('engine', 'Engine volume') + sw('tilt', 'Tilt to lean', 'Lean by tilting the phone like a steering wheel. Any touch brakes.') +
+    sl('engine', 'Engine volume') + sw('tilt', 'Tilt to lean', 'Lean by tilting the phone like a steering wheel. The lean buttons still work.') +
     (s.tilt ? '<div class="row"></div>' + sw('tiltFlip', 'Tilt leans the wrong way round', 'Switch this on if tilting right leans the bike back.') : '') +
-    sl('sfx', 'Effects volume') + sw('hints', 'Show the lean buttons') +
+    sl('sfx', 'Effects volume') + sw('hints', 'Show the on-screen buttons', 'Hidden or not, the four touch areas stay where they are.') +
     sl('music', 'Menu music') + sw('ghost', 'Race the ghost of your best run') +
     '<div class="row"><label>Picture quality</label><span class="seg">' + seg('auto', 'Auto') + seg('high', 'Sharp') + seg('low', 'Fast') + '</span></div>' + sw('buzz', 'Vibrate on hard landings', 'Android phones only.') +
     sw('unlockAll', 'Unlock everything', 'All tracks and bikes, no questions. Your real progress is kept.') +
     '<div class="row"><label>Start over<small>' + st.finishes + ' finishes, ' + st.crashes + ' crashes, ' + st.flips + ' flips landed</small></label><button class="btn small red" data-act="wipeAll">Wipe progress</button></div>' +
-    '<div class="how">Touch the right side of the screen to lean forward and the left side to lean back. Hold both to brake. On a keyboard use D or the right arrow, A or the left arrow, and S or the down arrow to brake. R restarts, P pauses. ' +
+    '<div class="how">On a phone the right thumb has gas (outer button) and brake, and the left thumb has lean back (outer button) and lean forward. You can hold gas and lean at the same time, and slide a thumb from one button to the other without lifting. ' +
+    'On a keyboard: W or up arrow is gas, S or down arrow is brake, A or left arrow leans back, D or right arrow leans forward. R restarts, P pauses. ' +
     'Land a flip and you get a short boost, which is how the fastest times are set. Your helmet touching anything ends the run. No sound on an iPhone? Flip the ring switch off silent.</div>';
   var rs = $('setcols').querySelectorAll('input[type=range]');
   for (var i = 0; i < rs.length; i++) rs[i].oninput = function () {
@@ -330,15 +341,16 @@ UI.onReset = function () {
   $('hname').textContent = info.name;
   $('hbest').textContent = best ? 'Best ' + fmt(best) : 'No time yet';
   $('wipe').className = 'wipe plate';
-  var first = Store.data.stats.runs <= 3, tilt = Store.data.settings.tilt;
-  $('howto').className = 'howto on' + (first && !tilt ? '' : ' brief');
-  var hv = $('howto').querySelectorAll('.half, .divide');
-  for (var k = 0; k < hv.length; k++) hv[k].style.display = first && !tilt ? '' : 'none';
-  var go = 'ontouchstart' in root ? 'Touch to start' : 'Press a key to start';
-  var tip = tilt ? 'Tilt to lean. Any touch brakes.' : (info.tip || (first ? 'Hold both sides to brake. The throttle looks after itself.' : ''));
+  var touchy = 'ontouchstart' in root, tilt = Store.data.settings.tilt;
+  $('howto').className = 'howto on';
+  var go = touchy ? 'Hold gas to start' : 'Press W or the up arrow to start';
+  var tip = info.tip || '';
+  if (i === 0 && !touchy) tip = 'W or up: gas. S or down: brake. A and D, or left and right: lean back and forward.';
+  if (tilt && i === 0) tip = 'Tilt the phone to lean. The lean buttons still work.';
   $('howmid').innerHTML = go + (tip ? '<small>' + esc(tip) + '</small>' : '');
-  $('pads').className = 'pads' + (Store.data.settings.hints && !tilt ? '' : ' off');
-  lastGoal = -1; lastClk = '';
+  $('pads').className = 'pads' + (Store.data.settings.hints ? '' : ' off');
+  UI.measurePads();
+  lastGoal = -1; lastClk = ''; lastPads = '';
 };
 UI.onStart = function () { $('howto').className = 'howto'; };
 UI.onCrash = function (cause) {
@@ -355,8 +367,8 @@ UI.hud = function (g, In) {
   if (txt !== lastClk) { $('clk').textContent = txt; lastClk = txt; }
   var tier = s.time <= st[0] ? 3 : s.time <= st[1] ? 2 : 1;
   if (tier !== lastGoal) { lastGoal = tier; $('goal').innerHTML = stars(tier) + '<span>' + (tier === 3 ? 'under ' + fmt(st[0]) : tier === 2 ? 'under ' + fmt(st[1]) : 'just finish') + '</span>'; }
-  var pads = (In.L ? 'L' : '') + (In.R ? 'R' : '');
-  if (pads !== lastPads) { lastPads = pads; $('padL').className = 'pad l' + (In.L ? ' on' : ''); $('padR').className = 'pad r' + (In.R ? ' on' : ''); $('pads').className = 'pads' + (Store.data.settings.hints && !Store.data.settings.tilt ? '' : ' off') + (In.L && In.R ? ' brake' : ''); }
+  var pads = (In.L ? 'L' : '') + (In.R ? 'R' : '') + (In.G ? 'G' : '') + (In.B ? 'B' : '');
+  if (pads !== lastPads) { lastPads = pads; $('padB').className = 'pad b' + (In.L ? ' on' : ''); $('padF').className = 'pad f' + (In.R ? ' on' : ''); $('padG').className = 'pad g' + (In.G && !In.B ? ' on' : ''); $('padK').className = 'pad k' + (In.B ? ' on' : ''); }
   var bo = $('boost');
   if (s.boost > 0) { bo.style.opacity = 1; $('boostI').style.width = Math.min(100, s.boost / 3.2 * 100) + '%'; } else if (bo.style.opacity !== '0') bo.style.opacity = 0;
 };

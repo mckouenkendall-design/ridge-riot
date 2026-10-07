@@ -145,20 +145,19 @@ input[type=range]::-moz-range-thumb { width: 1.3rem; height: 1.3rem; background:
 .boost { position: absolute; left: 50%; top: calc(3.7rem + var(--safe-t)); width: 7rem; height: 0.5rem; transform: translateX(-50%) skewX(-8deg); border: 0.12rem solid var(--ink); border-radius: 0.3rem; background: rgba(23, 26, 34, 0.5); overflow: hidden; opacity: 0; pointer-events: none; }
 .boost i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff7a1f, var(--yellow)); }
 .pads { position: absolute; inset: 0; pointer-events: none; }
-.pad { position: absolute; bottom: calc(0.9rem + var(--safe-b)); width: 5.6rem; height: 5.6rem; border-radius: 50%; border: 0.16rem solid rgba(246, 242, 231, 0.34); display: flex; align-items: center; justify-content: center; opacity: 0.5; transition: opacity 0.08s, background 0.08s; }
-.pad svg { width: 2.8rem; height: 2.8rem; }
-.pad.l { left: calc(1.2rem + var(--safe-l)); } .pad.r { right: calc(1.2rem + var(--safe-r)); }
-.pad.on { opacity: 1; background: rgba(242, 194, 48, 0.4); border-color: var(--yellow); }
-.pads.brake .pad.on { background: rgba(226, 64, 47, 0.5); border-color: var(--red); }
+.pad { position: absolute; bottom: calc(0.8rem + var(--safe-b)); width: 5.9rem; height: 5.9rem; border-radius: 1.3rem; border: 0.16rem solid rgba(246, 242, 231, 0.45); background: rgba(23, 26, 34, 0.3);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.1rem; opacity: 0.66; transition: opacity 0.06s, background 0.06s;
+  font-weight: 900; font-style: italic; font-size: 0.86rem; color: var(--plate); text-shadow: 0.06rem 0.06rem 0 var(--ink); }
+.pad svg { width: 2.5rem; height: 2.5rem; filter: drop-shadow(0.06rem 0.06rem 0 var(--ink)); }
+.pad.b { left: calc(0.9rem + var(--safe-l)); } .pad.f { left: calc(7.4rem + var(--safe-l)); }
+.pad.g { right: calc(0.9rem + var(--safe-r)); } .pad.k { right: calc(7.4rem + var(--safe-r)); }
+.pad.on { opacity: 1; background: rgba(242, 194, 48, 0.55); border-color: var(--yellow); }
+.pad.k.on { background: rgba(226, 64, 47, 0.6); border-color: var(--red); }
 .pads.off { display: none; }
 .howto { position: absolute; inset: 0; display: none; pointer-events: none; }
 .howto.on { display: block; }
-.howto .half { position: absolute; top: 28%; width: 34%; text-align: center; font-size: 1.5rem; font-weight: 900; font-style: italic; text-shadow: 0.12rem 0.12rem 0 var(--ink); line-height: 1.05; }
-.howto .half small { display: block; font-size: 0.9rem; font-weight: 700; margin-top: 0.25rem; }
-.howto .half.l { left: calc(1rem + var(--safe-l)); } .howto .half.r { right: calc(1rem + var(--safe-r)); }
-.howto .mid { position: absolute; left: 50%; bottom: calc(1.6rem + var(--safe-b)); transform: translateX(-50%) skewX(-8deg); padding: 0.3rem 1.1rem; font-size: 1.15rem; font-weight: 900; font-style: italic; white-space: nowrap; text-align: center; line-height: 1.1; }
-.howto .mid small { display: block; font-size: 0.78rem; font-weight: 700; }
-.howto .divide { position: absolute; left: 50%; top: 22%; bottom: 30%; border-left: 0.14rem dashed rgba(246, 242, 231, 0.5); }
+.howto .mid { position: absolute; left: 50%; top: calc(4.1rem + var(--safe-t)); transform: translateX(-50%) skewX(-8deg); padding: 0.25rem 1.2rem 0.3rem; font-size: 1.25rem; font-weight: 900; font-style: italic; text-align: center; line-height: 1.1; max-width: 32rem; width: max-content; }
+.howto .mid small { display: block; font-size: 0.8rem; font-weight: 700; margin-top: 0.15rem; line-height: 1.2; }
 .wipe { position: absolute; left: 50%; top: 34%; transform: translateX(-50%) rotate(-4deg) skewX(-8deg); padding: 0.4rem 1.6rem 0.3rem; text-align: center; display: none; pointer-events: none; background: var(--red); color: var(--plate); }
 .wipe.on { display: block; animation: pop 0.18s ease-out; }
 .wipe b { display: block; font-size: 2.4rem; font-weight: 900; font-style: italic; line-height: 1; }
@@ -471,7 +470,7 @@ RR.createSim = function (bike, track) {
   };
   // In low gravity full power would just flip the bike on the spot, so the push is
   // capped a little above what lifts the front wheel on flat ground.
-  s.thrust = Math.min(bike.thrust, 1.15 * s.g * bike.com[0] / bike.com[1] * bike.Mtot);
+  s.thrust = Math.min(bike.thrust, (s.g < 8 ? 0.92 : 1.15) * s.g * bike.com[0] / bike.com[1] * bike.Mtot);
   s.pred = 0.25 * Math.sqrt(G0 / s.g);
   RR.resetSim(s);
   return s;
@@ -569,13 +568,6 @@ function substep(s, inp, dt) {
         if (boost) Fd = Math.max(Fd, s.thrust * 0.7);
         var lm = (vmax - wv) / (0.07 * vmax);
         Fd *= lm < 0 ? 0 : lm > 1 ? 1 : lm;
-        if (Nsum > 0 && s.airW[1] > 0.05) {
-          // front wheel is up: the rider rolls off the gas as the bike nears the tip-over point
-          var pr = s.a - Math.atan2(-s.nrmX[0], s.nrmY[0]);
-          pr -= TAU * Math.round(pr / TAU);
-          var cut = (b.tip - (inp.lean < -0.3 ? 0.2 : 0.38) - (pr + s.pred * s.w)) / 0.4;
-          Fd *= cut < 0 ? 0 : cut > 1 ? 1 : cut;
-        }
         wt -= Fd * W.r;
         tq += Fd * W.r * b.reaction;
       } else if (!braking && Nsum > 0 && wv > 0.5) {
@@ -587,7 +579,7 @@ function substep(s, inp, dt) {
     if (braking) {
       var tb = -s.ww[i] * W.I / dt * 0.5, tbm = b.brake[i];
       if (tb > tbm) tb = tbm; else if (tb < -tbm) tb = -tbm;
-      wt += tb; tq -= tb * (Nsum > 0 ? 1 : 0.35);
+      wt += tb; tq -= tb * (Nsum > 0 ? 1 : 0.12);      // braking in the air only nudges the nose down
     }
     s.wvx[i] += wfx / W.m * dt; s.wvy[i] += wfy / W.m * dt; s.ww[i] += wt / W.I * dt;
   }
@@ -638,7 +630,8 @@ function substep(s, inp, dt) {
     var L = inp.lean;
     var grounded = s.airW[0] < 0.03 || s.airW[1] < 0.03;
     if (L !== 0) {
-      var wtgt = -L * (grounded ? Math.min(b.spin, b.groundSpin) : b.spin), dw = wtgt - s.w, tl = 0;
+      // on the ground the rider can throw their weight forward faster than they can haul the front up
+      var wtgt = -L * (grounded ? Math.min(b.spin, L > 0 ? b.groundSpin * 1.8 : b.groundSpin) : b.spin), dw = wtgt - s.w, tl = 0;
       if (dw * wtgt > 0) {
         tl = dw * b.Isys * 14;
         // the rider has to shift their weight first, so a quick tap is a nudge and a hold is a full heave
@@ -646,7 +639,9 @@ function substep(s, inp, dt) {
         var tm = b.leanTq * (L < 0 ? -L : L) * (0.3 + 0.7 * ramp);
         if (tl > tm) tl = tm; else if (tl < -tm) tl = -tm;
       }
-      if (grounded) tl *= b.leanGround;
+      // Leaning forward pulls a wheelie back down at full strength, but once the front tyre is on
+      // the ground the rider cannot lever the bike over its own front wheel, so it does much less.
+      if (grounded) tl *= L > 0 ? (s.airW[1] > 0.03 ? Math.max(1, b.leanGround) : 0.3) : b.leanGround;
       tq += tl;
     } else if (!grounded) tq -= s.w * b.airDamp * b.Isys;
     if (b.rocket && gas) {
@@ -1084,9 +1079,9 @@ RR.BIKES = [
   {
     id: 'goat', name: 'Billy Goat', kind: 'trials', tag: 'Climbs anything, slowly',
     blurb: 'Trials bike. Glue for tyres, huge low-down pull and it turns on a coin. Runs out of puff early.',
-    mass: 148, kgyr: 0.42, wb: 1.32, rr: 0.34, rf: 0.35, com: [0.57, 0.72], wheelMass: [9, 8], rake: 24, swing: 9,
+    mass: 148, kgyr: 0.42, wb: 1.32, rr: 0.34, rf: 0.35, com: [0.61, 0.72], wheelMass: [9, 8], rake: 24, swing: 9,
     sus: [{ travel: 0.19, freq: 2.2, sag: 0.3, zc: 0.4, zr: 0.9 }, { travel: 0.20, freq: 2.2, sag: 0.3, zc: 0.4, zr: 0.9 }],
-    accel: 0.88, vp: 5.5, vmax: 12.8, grip: 1.38, brake: 1.0, leanAcc: 21, spin: 7.6, cda: 0.5,
+    accel: 0.86, vp: 5.5, vmax: 12.8, grip: 1.38, brake: 1.0, leanAcc: 21, spin: 7.6, cda: 0.5,
     rider: { seat: [0.36, 0.86], peg: [0.50, 0.36], grip: [0.92, 1.12], scale: 1, torso: 0.34, stand: 0.5 },
     col: ['#3fb56b', '#f5f1e6', '#20242e'], suit: ['#20242e', '#3fb56b', '#f5f1e6'],
     snd: { type: 'trial', pitch: 0.9, gears: 4 },
@@ -1128,7 +1123,7 @@ RR.BIKES = [
   {
     id: 'volt', name: 'Volt Wraith', kind: 'electric', tag: 'Silent, instant shove',
     blurb: 'Electric. No gears, no noise, all the pull from a standstill, and it slows itself when you brake.',
-    mass: 215, kgyr: 0.44, wb: 1.40, rr: 0.33, rf: 0.33, com: [0.68, 0.70], wheelMass: [11, 9], rake: 26, swing: 9,
+    mass: 215, kgyr: 0.44, wb: 1.40, rr: 0.33, rf: 0.33, com: [0.73, 0.70], wheelMass: [11, 9], rake: 26, swing: 9,
     sus: [{ travel: 0.23, freq: 2.1, sag: 0.3, zc: 0.45, zr: 1.0 }, { travel: 0.24, freq: 2.05, sag: 0.3, zc: 0.42, zr: 0.95 }],
     accel: 0.98, vp: 11, vmax: 19.2, grip: 1.08, brake: 1.0, leanAcc: 15.5, spin: 6.3, cda: 0.48, ebrake: 0.2,
     rider: { seat: [0.42, 0.90], peg: [0.52, 0.40], grip: [0.98, 1.12], scale: 1, torso: 0.42 },
@@ -1243,17 +1238,17 @@ function hop(b, deg, w, o) { o = o || {}; b.kicker(deg, o.R || 8, o.lip == null 
 /* [name, tip shown before the start, recipe] */
 var T = [
 /* ----------------------------- DUSTBOWL ----------------------------- */
-['First Gear', 'Hold both sides to brake. The throttle looks after itself.', function (b) {
+['First Gear', 'Right thumb: gas and brake. Left thumb: lean back and lean forward.', function (b) {
   b.flat(18).hill(1.2, 18).flat(12).hill(1.8, 22).flat(10).ease(26, -3).flat(14)
    .hill(1.5, 16).flat(8).bumps(4, 5, 0.3).flat(12).ease(20, 2.5).flat(12)
    .table(11, 1.3, 6, 9).flat(16);
 }],
-['Rolling Dunes', 'Rollers throw the bike about. Short taps keep it level.', function (b) {
+['Rolling Dunes', 'Front wheel coming up on a climb? Lean forward, or ease off the gas.', function (b) {
   b.flat(14).waves(3, 24, 1.15).flat(8).ease(34, -6).flat(8).surface('sand').flat(14).surface()
    .waves(2, 18, 0.95).flat(8).up(15, 12, 13).flat(8, 16).down(13, 14, 13).flat(12)
    .hill(2.0, 22).flat(14);
 }],
-['Hop Skip', 'In the air: right side drops the nose, left side lifts it.', function (b) {
+['Hop Skip', 'In the air, lean forward drops the nose and lean back lifts it.', function (b) {
   b.flat(24).sign('jump');
   jump(b, 11, 3.5, 9, 7, { rise: -0.4, lip: 1.6 });
   b.flat(18).table(14, 1.4, 6, 9).flat(16);
@@ -1262,7 +1257,7 @@ var T = [
   jump(b, 15, 5.5, 13, 9, { rise: -0.8, lip: 1.4 });
   b.flat(14);
 }],
-['Washboard', 'Bumps unsettle the bike. Let it move and keep your hands quiet.', function (b) {
+['Washboard', 'Bumps unsettle the bike. Stay on the gas and keep your lean thumb quiet.', function (b) {
   b.flat(14).bumps(8, 3.4, 0.26).flat(8).ease(18, -2.5).flat(6).bumps(5, 5.2, 0.34).flat(8)
    .steps(4, 6, 0.7).flat(10).hill(-1.6, 14).flat(8).bumps(9, 2.8, 0.22).flat(10)
    .table(17, 1.8, 4, 8).flat(8).logs(3, 6, 0.2).flat(14);
@@ -1284,7 +1279,7 @@ var T = [
   jump(b, 20, 10, 18, 11, { rise: -1.6, lip: 1.5 });
   b.flat(14).bumps(4, 4.6, 0.28).flat(12).table(17, 1.9, 5, 8).flat(14);
 }],
-['Loop de Dust', 'Loops need speed. Stay off the brake and keep your hands still.', function (b) {
+['Loop de Dust', 'Loops need speed. Hold the gas all the way round and do not lean.', function (b) {
   b.flat(34).sign('loop').loop(3.6).flat(20).table(17, 1.9, 6, 8).flat(10).ease(24, -4).flat(14)
    .loop(3.9).flat(22);
   kick(b, 18, 7, 16, 9, { rise: -1, R: 6.5 });
@@ -1303,8 +1298,8 @@ var T = [
 
 /* ----------------------------- PINEWOOD ----------------------------- */
 ['Log Jam', 'Logs kick the bike up. Hit them straight and stay loose.', function (b) {
-  b.flat(16).logs(3, 6, 0.24).flat(8).hill(2, 18).flat(6).logs(4, 4.5, 0.24).flat(8).ease(20, -3)
-   .flat(6).logs(5, 4, 0.22).flat(10).table(17, 1.8, 5, 8).flat(6).logs(3, 5, 0.25).flat(8);
+  b.flat(16).logs(3, 6, 0.22).flat(10).hill(2, 18).flat(8).logs(3, 6, 0.22).flat(10).ease(20, -3)
+   .flat(8).logs(3, 6.5, 0.2).flat(12).table(17, 1.8, 5, 8).flat(8).logs(2, 6, 0.22).flat(10);
   kick(b, 17, 6, 15, 8, { rise: -0.8, R: 6.5 });
   b.flat(14);
 }],
@@ -1340,10 +1335,10 @@ var T = [
    .table(20, 2.4, 5, 8).flat(14);
 }],
 ['Sawmill', '', function (b) {
-  b.flat(14).steps(5, 5.5, 0.85).flat(10).up(27, 14, 9).flat(10, 11).drop(2.4).flat(18)
+  b.flat(14).steps(5, 5.5, 0.85).flat(16).up(24, 14, 10).flat(10, 12).drop(2.4).flat(18)
    .surface('wood').flat(12);
   b.kicker(19, 7, 0.6).gap(7, { rise: -0.6 }).surface().land(16, 8);
-  b.flat(8).steps(3, 6, 1.1).flat(8).logs(4, 4.5, 0.24).flat(8).up(25, 12, 9).flat(10, 13)
+  b.flat(8).steps(3, 6, 1.1).flat(8).logs(3, 5.5, 0.22).flat(14).up(24, 12, 10).flat(10, 13)
    .drop(3).flat(18);
 }],
 ['Beaver Dam', '', function (b) {
@@ -1402,8 +1397,8 @@ var T = [
   b.flat(8).ease(24, -4.5).surface('ice').flat(10).surface();
   jump(b, 21, 12, 19, 11, { rise: -1.6 });
   b.flat(10).bumps(4, 3.8, 0.32).flat(10);
-  hop(b, 18, 6, { rise: -0.4 }).flat(9);
-  b.kicker(20, 8).gap(4.5, { rise: 1.0 }).flat(12).drop(1.8).flat(14);
+  hop(b, 18, 6, { rise: -0.4 }).flat(14);
+  b.kicker(20, 8).gap(4.5, { rise: 0.9 }).flat(12).drop(1.8).flat(14);
 }],
 ['Glacier Loop', '', function (b) {
   b.flat(36).loop(4).surface('ice').flat(16).surface().flat(10);
@@ -1448,22 +1443,22 @@ var T = [
 /* ---------------------------- CINDER PEAK --------------------------- */
 ['Hot Start', 'Lava ends the run. Jump too short and that is where you land.', function (b) {
   b.flat(22);
-  kick(b, 17, 6.5, 15, 8, { rise: -0.8, R: 6.5 });
-  b.flat(8).hill(2.2, 16).flat(8);
+  kick(b, 17, 6.5, 15, 8, { rise: -0.8, R: 7 });
+  b.flat(10).hill(2.0, 18).flat(10);
   jump(b, 19, 8, 17, 9, { rise: -1 });
-  b.flat(6).waves(2, 15, 1.1).flat(8);
-  kick(b, 20, 9.5, 18, 10, { rise: -1.4, R: 6 });
-  b.flat(8).table(20, 2.4, 5, 8).flat(14);
+  b.flat(8).waves(2, 16, 1.0).flat(12);
+  jump(b, 20, 9.5, 18, 10, { rise: -1.4 });
+  b.flat(10).table(20, 2.4, 5, 8).flat(14);
 }],
 ['Ember Steps', '', function (b) {
   b.flat(20);
   b.kicker(20, 8).gap(4, { rise: 0.8 }).flat(12);
   b.kicker(21, 8).gap(4.5, { rise: 1.0 }).flat(12);
   b.kicker(22, 8).gap(4.5, { rise: 1.2 }).flat(14);
-  b.steps(4, 6, 1.1).flat(8).bumps(5, 3.2, 0.3).flat(8).up(24, 12, 9).flat(8, 9).drop(3.2).flat(12);
-  kick(b, 20, 9, 18, 10, { rise: -1.4, R: 5.5 });
-  b.flat(8);
-  kick(b, 20, 8, 18, 9, { rise: -1.2, R: 5.5 });
+  b.steps(4, 6, 1.1).flat(10).bumps(5, 3.2, 0.26).flat(16).up(22, 12, 11).flat(10, 15).drop(3).flat(22);
+  kick(b, 20, 9, 18, 10, { rise: -1.4, R: 6 });
+  b.flat(14);
+  kick(b, 20, 8, 18, 9, { rise: -1.2, R: 6 });
   b.flat(14);
 }],
 ['Magma Hop', '', function (b) {
@@ -1590,9 +1585,9 @@ var T = [
 var ORDER = [
   ['First Gear', 'Washboard', 'Rolling Dunes', 'Hop Skip', 'Loop de Dust', 'Mesa Drop', 'Gulch Gap', 'Canyon Run'],
   ['Log Jam', 'Mossy Loop', 'Timber Table', 'Sawmill', 'Root Rage', 'Creek Hop', 'Beaver Dam', 'Old Growth'],
-  ['Black Ice', 'Whiteout', 'Powder Keg', 'Glacier Loop', 'Slip Road', 'Avalanche', 'Crevasse', 'Aurora'],
-  ['Hot Start', 'The Chimney', 'Ember Steps', 'Caldera', 'Magma Hop', 'Fire Walk', 'Ash Loop', 'Eruption'],
-  ['One Small Hop', 'Double Loop', 'Crater Maker', 'Slow Float', 'Dark Side', 'Regolith', 'Escape Velocity', 'Riot Run']
+  ['Black Ice', 'Whiteout', 'Glacier Loop', 'Slip Road', 'Powder Keg', 'Avalanche', 'Crevasse', 'Aurora'],
+  ['Hot Start', 'The Chimney', 'Ash Loop', 'Caldera', 'Magma Hop', 'Fire Walk', 'Ember Steps', 'Eruption'],
+  ['One Small Hop', 'Double Loop', 'Crater Maker', 'Slow Float', 'Dark Side', 'Escape Velocity', 'Regolith', 'Riot Run']
 ];
 (function () {
   var by = {}, out = [];
@@ -1627,45 +1622,45 @@ if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 var RR = root.RR || (root.RR = {});
 RR.STAR_TIMES = [
   [20.2, 25.5],   //  1 First Gear: robot on starter 18.9s, 10 of 12 bikes beat three stars without a single flip
-  [22.7, 28.6],   //  2 Washboard: robot on starter 21.2s, 9 of 12 bikes beat three stars without a single flip
+  [22.7, 28.7],   //  2 Washboard: robot on starter 21.2s, 9 of 12 bikes beat three stars without a single flip
   [23.6, 29.8],   //  3 Rolling Dunes: robot on starter 22.1s, 10 of 12 bikes beat three stars without a single flip
   [16.6, 21.0],   //  4 Hop Skip: robot on starter 15.6s, 9 of 12 bikes beat three stars without a single flip
-  [18.7, 23.6],   //  5 Loop de Dust: robot on starter 17.5s, 9 of 12 bikes beat three stars without a single flip
+  [18.7, 23.5],   //  5 Loop de Dust: robot on starter 17.4s, 9 of 12 bikes beat three stars without a single flip
   [21.1, 26.6],   //  6 Mesa Drop: robot on starter 19.7s, 9 of 12 bikes beat three stars without a single flip
   [21.5, 27.1],   //  7 Gulch Gap: robot on starter 20.1s, 9 of 12 bikes beat three stars without a single flip
-  [32.6, 41.2],   //  8 Canyon Run: robot on starter 30.5s, 9 of 12 bikes beat three stars without a single flip
-  [20.8, 26.3],   //  9 Log Jam: robot on starter 20.2s, 9 of 12 bikes beat three stars without a single flip
-  [20.3, 25.6],   // 10 Mossy Loop: robot on starter 19.7s, 9 of 12 bikes beat three stars without a single flip
-  [18.0, 22.7],   // 11 Timber Table: robot on starter 17.4s, 9 of 12 bikes beat three stars without a single flip
-  [20.8, 26.3],   // 12 Sawmill: robot on starter 20.2s, 9 of 12 bikes beat three stars without a single flip
-  [25.8, 32.6],   // 13 Root Rage: robot on starter 25.1s, 9 of 12 bikes beat three stars without a single flip
-  [19.2, 24.2],   // 14 Creek Hop: robot on starter 18.6s, 9 of 12 bikes beat three stars without a single flip
-  [24.9, 31.5],   // 15 Beaver Dam: robot on starter 24.2s, 9 of 12 bikes beat three stars without a single flip
-  [34.1, 43.0],   // 16 Old Growth: robot on starter 33.1s, 9 of 12 bikes beat three stars without a single flip
+  [32.6, 41.1],   //  8 Canyon Run: robot on starter 30.5s, 9 of 12 bikes beat three stars without a single flip
+  [20.6, 26.0],   //  9 Log Jam: robot on starter 20.0s, 9 of 12 bikes beat three stars without a single flip
+  [20.1, 25.4],   // 10 Mossy Loop: robot on starter 19.6s, 9 of 12 bikes beat three stars without a single flip
+  [18.0, 22.7],   // 11 Timber Table: robot on starter 17.4s, 8 of 12 bikes beat three stars without a single flip
+  [21.2, 26.8],   // 12 Sawmill: robot on starter 20.6s, 9 of 12 bikes beat three stars without a single flip
+  [25.9, 32.7],   // 13 Root Rage: robot on starter 25.1s, 9 of 12 bikes beat three stars without a single flip
+  [19.2, 24.3],   // 14 Creek Hop: robot on starter 18.7s, 8 of 12 bikes beat three stars without a single flip
+  [25.1, 31.7],   // 15 Beaver Dam: robot on starter 24.4s, 9 of 12 bikes beat three stars without a single flip
+  [34.1, 43.1],   // 16 Old Growth: robot on starter 33.1s, 9 of 12 bikes beat three stars without a single flip
   [19.7, 24.7],   // 17 Black Ice: robot on starter 19.7s, 8 of 12 bikes beat three stars without a single flip
-  [22.6, 28.2],   // 18 Whiteout: robot on starter 22.6s, 9 of 12 bikes beat three stars without a single flip
-  [24.3, 30.4],   // 19 Powder Keg: robot on starter 24.3s, 8 of 12 bikes beat three stars without a single flip
-  [22.4, 28.0],   // 20 Glacier Loop: robot on starter 22.4s, 9 of 12 bikes beat three stars without a single flip
-  [19.3, 24.2],   // 21 Slip Road: robot on starter 19.3s, 8 of 12 bikes beat three stars without a single flip
+  [22.5, 28.2],   // 18 Whiteout: robot on starter 22.5s, 8 of 12 bikes beat three stars without a single flip
+  [22.3, 27.9],   // 19 Glacier Loop: robot on starter 22.3s, 7 of 12 bikes beat three stars without a single flip
+  [19.3, 24.2],   // 20 Slip Road: robot on starter 19.3s, 8 of 12 bikes beat three stars without a single flip
+  [24.4, 30.5],   // 21 Powder Keg: robot on starter 24.4s, 8 of 12 bikes beat three stars without a single flip
   [20.1, 25.2],   // 22 Avalanche: robot on starter 20.1s, 8 of 12 bikes beat three stars without a single flip
-  [20.4, 25.5],   // 23 Crevasse: robot on starter 20.4s, 9 of 12 bikes beat three stars without a single flip
-  [30.5, 38.2],   // 24 Aurora: robot on starter 30.5s, 8 of 12 bikes beat three stars without a single flip
-  [18.0, 22.6],   // 25 Hot Start: robot on starter 18.5s, 7 of 12 bikes beat three stars without a single flip
-  [28.5, 35.9],   // 26 The Chimney: robot on starter 29.4s, 5 of 12 bikes beat three stars without a single flip
-  [19.4, 24.4],   // 27 Ember Steps: robot on starter 20.0s, 8 of 12 bikes beat three stars without a single flip
-  [24.2, 30.5],   // 28 Caldera: robot on starter 25.0s, 7 of 12 bikes beat three stars without a single flip
+  [20.5, 25.7],   // 23 Crevasse: robot on starter 20.5s, 8 of 12 bikes beat three stars without a single flip
+  [30.5, 38.1],   // 24 Aurora: robot on starter 30.5s, 8 of 12 bikes beat three stars without a single flip
+  [18.8, 23.6],   // 25 Hot Start: robot on starter 19.4s, 8 of 12 bikes beat three stars without a single flip
+  [28.6, 36.0],   // 26 The Chimney: robot on starter 29.5s, 5 of 12 bikes beat three stars without a single flip
+  [21.9, 27.5],   // 27 Ash Loop: robot on starter 22.6s, 8 of 12 bikes beat three stars without a single flip
+  [24.2, 30.5],   // 28 Caldera: robot on starter 25.0s, 8 of 12 bikes beat three stars without a single flip
   [15.5, 19.5],   // 29 Magma Hop: robot on starter 16.0s, 3 of 12 bikes beat three stars without a single flip
-  [19.9, 25.1],   // 30 Fire Walk: robot on starter 20.5s, 8 of 12 bikes beat three stars without a single flip
-  [22.0, 27.7],   // 31 Ash Loop: robot on starter 22.7s, 8 of 12 bikes beat three stars without a single flip
-  [29.1, 36.6],   // 32 Eruption: robot on starter 30.0s, 8 of 12 bikes beat three stars without a single flip
-  [22.0, 27.8],   // 33 One Small Hop: robot on starter 23.2s, 6 of 12 bikes beat three stars without a single flip
-  [23.0, 29.1],   // 34 Double Loop: robot on starter 24.2s, 4 of 12 bikes beat three stars without a single flip
-  [23.8, 30.0],   // 35 Crater Maker: robot on starter 25.0s, 7 of 12 bikes beat three stars without a single flip
-  [26.3, 33.2],   // 36 Slow Float: robot on starter 27.7s, 6 of 12 bikes beat three stars without a single flip
-  [30.6, 38.7],   // 37 Dark Side: robot on starter 32.3s, 8 of 12 bikes beat three stars without a single flip
-  [26.9, 34.0],   // 38 Regolith: robot on starter 28.4s, 7 of 12 bikes beat three stars without a single flip
-  [26.4, 33.4],   // 39 Escape Velocity: robot on starter 27.8s, 6 of 12 bikes beat three stars without a single flip
-  [44.1, 55.6]    // 40 Riot Run: robot on starter 46.4s, 7 of 12 bikes beat three stars without a single flip
+  [20.0, 25.1],   // 30 Fire Walk: robot on starter 20.6s, 6 of 12 bikes beat three stars without a single flip
+  [21.1, 26.5],   // 31 Ember Steps: robot on starter 21.7s, 8 of 12 bikes beat three stars without a single flip
+  [28.9, 36.4],   // 32 Eruption: robot on starter 29.8s, 8 of 12 bikes beat three stars without a single flip
+  [21.2, 26.7],   // 33 One Small Hop: robot on starter 22.3s, 6 of 12 bikes beat three stars without a single flip
+  [22.2, 28.1],   // 34 Double Loop: robot on starter 23.4s, 5 of 12 bikes beat three stars without a single flip
+  [23.2, 29.3],   // 35 Crater Maker: robot on starter 24.4s, 7 of 12 bikes beat three stars without a single flip
+  [26.5, 33.5],   // 36 Slow Float: robot on starter 27.9s, 6 of 12 bikes beat three stars without a single flip
+  [29.5, 37.2],   // 37 Dark Side: robot on starter 31.0s, 7 of 12 bikes beat three stars without a single flip
+  [26.2, 33.1],   // 38 Escape Velocity: robot on starter 27.6s, 7 of 12 bikes beat three stars without a single flip
+  [27.0, 34.2],   // 39 Regolith: robot on starter 28.5s, 6 of 12 bikes beat three stars without a single flip
+  [44.1, 55.7]    // 40 Riot Run: robot on starter 46.4s, 7 of 12 bikes beat three stars without a single flip
 ];
 if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -1674,7 +1669,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 /* Ridge Riot: a simple robot rider.
    Used by tools/bot.js to prove every track can be finished and to set the
    star times, and by the title screen to show a bike riding in the background.
-   It only has the same three controls a player has: lean back, lean forward, brake.
+   It only has the same four controls a player has: gas, brake, lean back, lean forward.
    It rides the way a person does: in the air it looks at where it is going to
    come down and nudges the bike until it will land flat on that slope. */
 (function (root) {
@@ -1705,8 +1700,10 @@ RR.botInput = function (s, P, out) {
     var d = b.airDamp, coast = d > 0.01 ? (1 - Math.exp(-d * T)) / d : T;
     err = wrap(s.a + s.w * coast - target);
     var cur = out.lean || 0;
-    if (err > th || (cur > 0 && err > th * 0.3)) lean = 1;
-    else if (err < -th || (cur < 0 && err < -th * 0.3)) lean = -1;
+    // tiny hops are over before a correction could help, so leave them alone unless things are badly wrong
+    var big = T > (P.minAir == null ? 0.3 : P.minAir) ? 1 : 2.5;
+    if (err > th * big || (cur > 0 && err > th * 0.3)) lean = 1;
+    else if (err < -th * big || (cur < 0 && err < -th * 0.3)) lean = -1;
   }
   out.lean = lean;
   var sp = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
@@ -1715,7 +1712,13 @@ RR.botInput = function (s, P, out) {
   if (tr.roofs === undefined) tr.roofs = tr.feats.filter(function (f) { return f.t === 'roof'; });
   for (var r = 0; r < tr.roofs.length; r++) if (s.x > tr.roofs[r].x0 - 16 && s.x < tr.roofs[r].x1 - 3) cap = Math.min(cap, P.roofV || 9.5);
   out.brake = sp > cap && !air;
-  out.gas = true;
+  // throttle: held open, but eased off when the front wheel climbs too high, the way a rider would
+  var gas = !out.brake;
+  if (gas && s.gnd[0] && !s.gnd[1]) {
+    var pr = wrap(s.a - Math.atan2(-s.nrmX[0], s.nrmY[0])) + s.w * (P.wlook == null ? 0.22 : P.wlook);
+    if (pr > (P.wth || 0.4)) gas = false;
+  }
+  out.gas = gas;
   return out;
 };
 
@@ -3132,9 +3135,9 @@ R.camFollow = function (cam, s, tr, dt, aspect, snap, lead) {
   var vh = clamp(8.2 + sp * 0.2 + hgt * 0.5, 8.2, 19);
   if (aspect < 1.5) vh *= 1.15;
   var vw = vh * aspect;
-  var tx = s.x + vw * (lead == null ? 0.2 : lead) + clamp(s.vx * 0.16, -2, 4);
+  var tx = s.x + vw * (lead == null ? 0.16 : lead) + clamp(s.vx * 0.16, -2, 4);
   // keep both the bike and the ground under it on screen
-  var ty = s.y + vh * 0.06 + clamp(s.vy * 0.1, -1.6, 1.6);
+  var ty = s.y - vh * 0.035 + clamp(s.vy * 0.1, -1.6, 1.6);
   var gAhead = RR.groundY(tr, s.x + vw * 0.3);
   if (gAhead > tr.minY - 5) ty = lerp(ty, (ty + gAhead + vh * 0.16) * 0.5, 0.35);
   if (snap) { cam.x = tx; cam.y = ty; cam.vh = vh; cam.px = cam.x; cam.py = cam.y; return; }
@@ -3586,7 +3589,7 @@ S.engineUpdate = function (st) {
     if (r > 0.97 && e.gear < e.gears - 1 && thr > 0.5 && !st.air) { e.gear++; e.shiftT = 0.09; r = x / top(e.gear); }
     else if (r < 0.56 && e.gear > 0) { e.gear--; r = x / top(e.gear); }
     target = Math.min(1.1, r);
-    if (st.air) target = Math.min(1.1, target * 1.05);
+    if (st.air && thr > 0.5) target = Math.min(1.12, target * 1.16);       // wheel off the ground with the gas open: the revs flare
   } else {
     target = 0.22 + 0.42 * thr + 0.36 * Math.min(1.1, x);     // twist-and-go: revs follow the throttle
   }
@@ -3895,25 +3898,27 @@ RR.Ghost = Ghost;
 /* ------------------------------------------------------------------ */
 /* Controls                                                             */
 /* ------------------------------------------------------------------ */
-var In = G.input = { kL: false, kR: false, kB: false, touch: {}, tilt: 0, tiltOK: false, tiltZero: 0, tiltRaw: 0, any: false, pressed: false };
+var In = G.input = { kL: false, kR: false, kB: false, kG: false, touch: {}, tilt: 0, tiltOK: false, tiltZero: 0, tiltRaw: 0, any: false, L: false, R: false, G: false, B: false };
 var inp = { lean: 0, brake: false, gas: false };
+/* Where the on-screen buttons divide. Left of split.l is "lean back", between that and the
+   middle is "lean forward", then "brake" up to split.r, and "gas" beyond it. Set by the UI. */
+G.split = { l: 0, r: 0 };
 function readInput() {
-  var L = In.kL, Rt = In.kR, anyT = false, k, mid = R.size().w * 0.5;
-  for (k in In.touch) { anyT = true; if (In.touch[k] < mid) L = true; else Rt = true; }
-  var set = Store.data.settings;
-  if (set.tilt && In.tiltOK) {
+  var L = In.kL, Rt = In.kR, gas = In.kG, brk = In.kB, k, mid = R.size().w * 0.5;
+  // every finger is looked at on its own, so one thumb can hold gas while the other leans
+  for (k in In.touch) {
+    var x = In.touch[k];
+    if (x < mid) { if (x < G.split.l) L = true; else Rt = true; }
+    else if (x >= G.split.r) gas = true; else brk = true;
+  }
+  var set = Store.data.settings, lean = L && Rt ? 0 : Rt ? 1 : L ? -1 : 0;
+  if (set.tilt && In.tiltOK && !L && !Rt) {
     var a = (In.tiltRaw - In.tiltZero) * set.tiltSens / 0.33 * (set.tiltFlip ? -1 : 1);
     if (a > -0.16 && a < 0.16) a = 0;
-    inp.lean = clamp(a, -1, 1);
-    if (In.kL) inp.lean = -1; else if (In.kR) inp.lean = 1;
-    inp.brake = anyT || In.kB;
-    In.any = anyT || In.kB || In.kL || In.kR;
-  } else {
-    inp.brake = In.kB || (L && Rt);
-    inp.lean = inp.brake ? 0 : Rt ? 1 : L ? -1 : 0;
-    In.any = L || Rt || In.kB;
+    lean = clamp(a, -1, 1);
   }
-  In.L = L; In.R = Rt;
+  inp.lean = lean; inp.brake = brk; inp.gas = gas && !brk;
+  In.L = L; In.R = Rt; In.G = gas; In.B = brk; In.any = gas;
   return inp;
 }
 G.readInput = readInput;
@@ -4110,7 +4115,7 @@ function trailFx() {
     var lx = ex[0] - b.com[0], ly = ex[1] - b.com[1], wx = s.x + ca * lx - sa * ly, wy = s.y + sa * lx + ca * ly;
     if (def.rocket) {
       var pw = clamp(s.rocketF / b.rocket, 0, 1.3);
-      if (pw > 0.05 && inp.gas !== false) for (k = 0; k < 2; k++) R.emit(3, wx, wy, s.vx - ca * rnd(5, 9) + rnd(-0.6, 0.6), s.vy - sa * rnd(5, 9) + rnd(-0.6, 0.6), rnd(0.1, 0.22), rnd(0.1, 0.2) * (0.6 + pw * 0.5), k ? '#ff7a1f' : '#ffe07a', { a: 0.9 });
+      if (pw > 0.05 && (G.attract || inp.gas)) for (k = 0; k < 2; k++) R.emit(3, wx, wy, s.vx - ca * rnd(5, 9) + rnd(-0.6, 0.6), s.vy - sa * rnd(5, 9) + rnd(-0.6, 0.6), rnd(0.1, 0.22), rnd(0.1, 0.2) * (0.6 + pw * 0.5), k ? '#ff7a1f' : '#ffe07a', { a: 0.9 });
     } else if (s.boost > 0) {
       for (k = 0; k < 2; k++) R.emit(3, wx, wy, s.vx - ca * rnd(3, 6) + rnd(-0.5, 0.5), s.vy - sa * rnd(3, 6) + rnd(-0.5, 0.5), rnd(0.12, 0.26), rnd(0.09, 0.17), k ? '#ff7a1f' : '#ffe07a', { a: 0.9 });
     } else if (exT > (s.driveF > 0 ? 0.05 : 0.14) && s.started) {
@@ -4139,19 +4144,18 @@ function tickOnce() {
   }
   input = readInput();
   if (G.state === 'ready') {
-    if (In.any && !G.blockStart) {
+    if (input.gas) {
       s.started = true; G.state = 'run'; Au.go();
       if (Store.data.settings.tilt) G.zeroTilt();
       if (RR.UI) RR.UI.onStart();
     }
-    input = { lean: 0, brake: false, gas: false };
-  } else if (G.state === 'run') { input.gas = true; }
-  else input = { lean: 0, brake: G.state === 'finish', gas: false };
+    if (G.state === 'ready') input = { lean: 0, brake: false, gas: false };
+  } else if (G.state !== 'run') input = { lean: 0, brake: G.state === 'finish', gas: false };
   RR.tick(s, input);
   if (G.state === 'run' && tickN % 8 === 0) Ghost.sample(s);
   if (G.state === 'run') {
     // sitting still for a while (wedged against a wall, flat on its back wheel): point at the restart button
-    if (Math.abs(s.vx) + Math.abs(s.vy) < 0.6 && s.time > 2) G.stuckT += DT; else G.stuckT = 0;
+    if (input.gas && Math.abs(s.vx) + Math.abs(s.vy) < 0.6 && s.time > 2) G.stuckT += DT; else G.stuckT = 0;
     if (G.stuckT > 3.5 && !G.stuckSaid) { G.stuckSaid = true; if (RR.UI) RR.UI.toast('Stuck? The round arrow at the top left restarts.'); }
   }
   tickN++;
@@ -4206,12 +4210,12 @@ G.frame = function (ts) {
   // sound that follows the bike
   if (!G.attract && G.state !== 'pause') {
     var sp = Math.sqrt(s.vx * s.vx + s.vy * s.vy), run = G.state === 'run';
-    Au.engineUpdate({ v: -s.ww[0] * b.wh[0].r, vmax: G.bikeDef.vmax, gas: run && !inp.brake ? (s.airW[0] > 0.12 ? 0.35 : 1) : 0, air: s.airW[0] > 0.12, boost: s.boost > 0, dt: dt });
+    Au.engineUpdate({ v: -s.ww[0] * b.wh[0].r, vmax: G.bikeDef.vmax, gas: run && inp.gas ? 1 : 0, air: s.airW[0] > 0.12, boost: s.boost > 0, dt: dt });
     var sl = Math.abs(s.slip[0]) * (s.gnd[0] ? 1 : 0), sf = Math.abs(s.slip[1]) * (s.gnd[1] ? 1 : 0);
     var hard = s.mat[0] === 1 || s.mat[0] === 5 || s.mat[0] === 2 || s.mat[0] === 4;
     Au.layersUpdate({
       skid: clamp(((hard ? sl : sl * 0.3) + sf * 0.6 - 0.6) / 6, 0, 1), dirt: clamp((hard ? 0 : sl - 0.3) / 4, 0, 1) + (s.gnd[0] && !hard ? clamp(sp / 60, 0, 0.25) : 0),
-      wind: G.track.airless ? 0 : clamp((sp - 4) / 26, 0, 1) * (s.air ? 1 : 0.55), scrape: clamp(s.scrape / 30000, 0, 1), boost: s.boost > 0 || (G.bikeDef.rocket && run && !inp.brake) ? 1 : 0
+      wind: G.track.airless ? 0 : clamp((sp - 4) / 26, 0, 1) * (s.air ? 1 : 0.55), scrape: clamp(s.scrape / 30000, 0, 1), boost: s.boost > 0 || (G.bikeDef.rocket && run && inp.gas) ? 1 : 0
     });
   }
   hudT += dt;
@@ -4247,6 +4251,8 @@ var IC = {
   redo: '<svg viewBox="0 0 24 24" fill="none" stroke="#f6f2e7" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5V8h-4.5"/></svg>',
   full: '<svg viewBox="0 0 24 24" fill="none" stroke="#f6f2e7" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
   lock: '<svg viewBox="0 0 24 24" fill="#171a22"><rect x="4" y="10" width="16" height="11" rx="2.4"/><path d="M7.5 10V7.5a4.5 4.5 0 0 1 9 0V10" fill="none" stroke="#171a22" stroke-width="2.6"/></svg>',
+  gas: '<svg viewBox="0 0 24 24" fill="#f6f2e7"><path d="M5 4.5v15a1 1 0 0 0 1.5.9l13-7.5a1 1 0 0 0 0-1.8l-13-7.5A1 1 0 0 0 5 4.5z"/></svg>',
+  brake: '<svg viewBox="0 0 24 24" fill="#f6f2e7"><rect x="4.5" y="4.5" width="15" height="15" rx="2.6"/></svg>',
   leanB: '<svg viewBox="0 0 24 24" fill="none" stroke="#f6f2e7" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 17a8 8 0 1 0-11.5.3"/><path d="M3.5 13.5 6.4 17.4 10.6 15"/></svg>',
   leanF: '<svg viewBox="0 0 24 24" fill="none" stroke="#f6f2e7" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 17a8 8 0 1 1 11.5.3"/><path d="M20.5 13.5 17.6 17.4 13.4 15"/></svg>'
 };
@@ -4277,10 +4283,9 @@ UI.init = function () {
       '<div class="head"><h2>Settings</h2></div><div class="cols" id="setcols"></div>' +
     '</section>' +
     '<section id="s-hud" class="screen"><div id="touch"></div>' +
-      '<div class="howto" id="howto"><div class="divide"></div>' +
-        '<div class="half l">Left side<small>lean back</small></div><div class="half r">Right side<small>lean forward</small></div>' +
-        '<div class="mid plate" id="howmid">Touch to start<small>Hold both sides to brake. The throttle looks after itself.</small></div></div>' +
-      '<div class="pads" id="pads"><div class="pad l" id="padL">' + IC.leanB + '</div><div class="pad r" id="padR">' + IC.leanF + '</div></div>' +
+      '<div class="howto" id="howto"><div class="mid plate" id="howmid"></div></div>' +
+      '<div class="pads" id="pads"><div class="pad b" id="padB">' + IC.leanB + '<span>Lean back</span></div><div class="pad f" id="padF">' + IC.leanF + '<span>Lean fwd</span></div>' +
+        '<div class="pad k" id="padK">' + IC.brake + '<span>Brake</span></div><div class="pad g" id="padG">' + IC.gas + '<span>Gas</span></div></div>' +
       '<div class="tl"><button class="round" data-act="pause" aria-label="Pause">' + IC.pause + '</button><button class="round" data-act="retry" aria-label="Restart">' + IC.redo + '</button></div>' +
       '<div class="clock plate"><div class="t" id="clk">0.00</div><div class="goal" id="goal"></div></div>' +
       '<div class="boost" id="boost"><i id="boostI"></i></div>' +
@@ -4341,12 +4346,13 @@ function afterUnlock() {
   // phones only hand out tilt readings after a touch, so ask again here
   if (Store.data.settings.tilt) G.enableTilt(function (ok) { if (!ok) { Store.data.settings.tilt = false; } });
 }
-function clearInput() { var i = G.input; i.kL = i.kR = i.kB = false; for (var k in i.touch) delete i.touch[k]; }
+function clearInput() { var i = G.input; i.kL = i.kR = i.kB = i.kG = false; for (var k in i.touch) delete i.touch[k]; }
 function key(code, down) {
   var i = G.input;
   if (code === 'KeyA' || code === 'ArrowLeft') i.kL = down;
   else if (code === 'KeyD' || code === 'ArrowRight') i.kR = down;
-  else if (code === 'KeyS' || code === 'ArrowDown' || code === 'Space') i.kB = down;
+  else if (code === 'KeyS' || code === 'ArrowDown') i.kB = down;
+  else if (code === 'KeyW' || code === 'ArrowUp') i.kG = down;
   else return false;
   return true;
 }
@@ -4355,7 +4361,7 @@ function onKey(e) {
   Au.unlock(); afterUnlock();
   var c = e.code;
   if (UI.cur === 'hud') {
-    if (G.state === 'crash') { if (G.endT > 0.4 && (c === 'Enter' || c === 'Space' || c === 'KeyR' || key(c, false) || c === 'KeyW' || c === 'ArrowUp')) G.retry(); e.preventDefault(); return; }
+    if (G.state === 'crash') { if (G.endT > 0.4 && (c === 'Enter' || c === 'Space' || c === 'KeyR' || key(c, false))) G.retry(); e.preventDefault(); return; }
     if (key(c, true)) { e.preventDefault(); return; }
     if (c === 'KeyR') G.retry();
     else if (c === 'Escape' || c === 'KeyP') G.pause(true);
@@ -4385,6 +4391,14 @@ UI.resize = function () {
   $('rotate').className = portrait ? 'on' : '';
   if (portrait && (G.state === 'run' || G.state === 'ready')) G.pause(true);
   if (UI.cur === 'garage') UI.garageDraw();
+  UI.measurePads();
+};
+/* work out where the touch zones divide from where the buttons actually sit */
+UI.measurePads = function () {
+  var w = root.innerWidth, f = $('padF'), k = $('padK'), b = $('padB'), g = $('padG');
+  G.split.l = w * 0.16; G.split.r = w * 0.84;
+  if (f && b && f.offsetWidth) { var rb = b.getBoundingClientRect(), rf = f.getBoundingClientRect(), rk = k.getBoundingClientRect(), rg = g.getBoundingClientRect();
+    if (rf.left > rb.left) G.split.l = (rb.right + rf.left) / 2; if (rg.left > rk.left) G.split.r = (rk.right + rg.left) / 2; }
 };
 
 /* ------------------------------------------------------------------ */
@@ -4534,14 +4548,15 @@ UI.settings = function () {
   function sl(k, label) { return '<div class="row"><label for="r-' + k + '">' + label + '</label><input id="r-' + k + '" type="range" min="0" max="100" value="' + Math.round(s[k] * 100) + '" data-k="' + k + '"></div>'; }
   function seg(v, label) { return '<button data-act="seg" data-v="' + v + '" class="' + (s.quality === v ? 'on' : '') + '">' + label + '</button>'; }
   $('setcols').innerHTML =
-    sl('engine', 'Engine volume') + sw('tilt', 'Tilt to lean', 'Lean by tilting the phone like a steering wheel. Any touch brakes.') +
+    sl('engine', 'Engine volume') + sw('tilt', 'Tilt to lean', 'Lean by tilting the phone like a steering wheel. The lean buttons still work.') +
     (s.tilt ? '<div class="row"></div>' + sw('tiltFlip', 'Tilt leans the wrong way round', 'Switch this on if tilting right leans the bike back.') : '') +
-    sl('sfx', 'Effects volume') + sw('hints', 'Show the lean buttons') +
+    sl('sfx', 'Effects volume') + sw('hints', 'Show the on-screen buttons', 'Hidden or not, the four touch areas stay where they are.') +
     sl('music', 'Menu music') + sw('ghost', 'Race the ghost of your best run') +
     '<div class="row"><label>Picture quality</label><span class="seg">' + seg('auto', 'Auto') + seg('high', 'Sharp') + seg('low', 'Fast') + '</span></div>' + sw('buzz', 'Vibrate on hard landings', 'Android phones only.') +
     sw('unlockAll', 'Unlock everything', 'All tracks and bikes, no questions. Your real progress is kept.') +
     '<div class="row"><label>Start over<small>' + st.finishes + ' finishes, ' + st.crashes + ' crashes, ' + st.flips + ' flips landed</small></label><button class="btn small red" data-act="wipeAll">Wipe progress</button></div>' +
-    '<div class="how">Touch the right side of the screen to lean forward and the left side to lean back. Hold both to brake. On a keyboard use D or the right arrow, A or the left arrow, and S or the down arrow to brake. R restarts, P pauses. ' +
+    '<div class="how">On a phone the right thumb has gas (outer button) and brake, and the left thumb has lean back (outer button) and lean forward. You can hold gas and lean at the same time, and slide a thumb from one button to the other without lifting. ' +
+    'On a keyboard: W or up arrow is gas, S or down arrow is brake, A or left arrow leans back, D or right arrow leans forward. R restarts, P pauses. ' +
     'Land a flip and you get a short boost, which is how the fastest times are set. Your helmet touching anything ends the run. No sound on an iPhone? Flip the ring switch off silent.</div>';
   var rs = $('setcols').querySelectorAll('input[type=range]');
   for (var i = 0; i < rs.length; i++) rs[i].oninput = function () {
@@ -4559,15 +4574,16 @@ UI.onReset = function () {
   $('hname').textContent = info.name;
   $('hbest').textContent = best ? 'Best ' + fmt(best) : 'No time yet';
   $('wipe').className = 'wipe plate';
-  var first = Store.data.stats.runs <= 3, tilt = Store.data.settings.tilt;
-  $('howto').className = 'howto on' + (first && !tilt ? '' : ' brief');
-  var hv = $('howto').querySelectorAll('.half, .divide');
-  for (var k = 0; k < hv.length; k++) hv[k].style.display = first && !tilt ? '' : 'none';
-  var go = 'ontouchstart' in root ? 'Touch to start' : 'Press a key to start';
-  var tip = tilt ? 'Tilt to lean. Any touch brakes.' : (info.tip || (first ? 'Hold both sides to brake. The throttle looks after itself.' : ''));
+  var touchy = 'ontouchstart' in root, tilt = Store.data.settings.tilt;
+  $('howto').className = 'howto on';
+  var go = touchy ? 'Hold gas to start' : 'Press W or the up arrow to start';
+  var tip = info.tip || '';
+  if (i === 0 && !touchy) tip = 'W or up: gas. S or down: brake. A and D, or left and right: lean back and forward.';
+  if (tilt && i === 0) tip = 'Tilt the phone to lean. The lean buttons still work.';
   $('howmid').innerHTML = go + (tip ? '<small>' + esc(tip) + '</small>' : '');
-  $('pads').className = 'pads' + (Store.data.settings.hints && !tilt ? '' : ' off');
-  lastGoal = -1; lastClk = '';
+  $('pads').className = 'pads' + (Store.data.settings.hints ? '' : ' off');
+  UI.measurePads();
+  lastGoal = -1; lastClk = ''; lastPads = '';
 };
 UI.onStart = function () { $('howto').className = 'howto'; };
 UI.onCrash = function (cause) {
@@ -4584,8 +4600,8 @@ UI.hud = function (g, In) {
   if (txt !== lastClk) { $('clk').textContent = txt; lastClk = txt; }
   var tier = s.time <= st[0] ? 3 : s.time <= st[1] ? 2 : 1;
   if (tier !== lastGoal) { lastGoal = tier; $('goal').innerHTML = stars(tier) + '<span>' + (tier === 3 ? 'under ' + fmt(st[0]) : tier === 2 ? 'under ' + fmt(st[1]) : 'just finish') + '</span>'; }
-  var pads = (In.L ? 'L' : '') + (In.R ? 'R' : '');
-  if (pads !== lastPads) { lastPads = pads; $('padL').className = 'pad l' + (In.L ? ' on' : ''); $('padR').className = 'pad r' + (In.R ? ' on' : ''); $('pads').className = 'pads' + (Store.data.settings.hints && !Store.data.settings.tilt ? '' : ' off') + (In.L && In.R ? ' brake' : ''); }
+  var pads = (In.L ? 'L' : '') + (In.R ? 'R' : '') + (In.G ? 'G' : '') + (In.B ? 'B' : '');
+  if (pads !== lastPads) { lastPads = pads; $('padB').className = 'pad b' + (In.L ? ' on' : ''); $('padF').className = 'pad f' + (In.R ? ' on' : ''); $('padG').className = 'pad g' + (In.G && !In.B ? ' on' : ''); $('padK').className = 'pad k' + (In.B ? ' on' : ''); }
   var bo = $('boost');
   if (s.boost > 0) { bo.style.opacity = 1; $('boostI').style.width = Math.min(100, s.boost / 3.2 * 100) + '%'; } else if (bo.style.opacity !== '0') bo.style.opacity = 0;
 };

@@ -230,7 +230,7 @@ S.engineUpdate = function (st) {
     if (r > 0.97 && e.gear < e.gears - 1 && thr > 0.5 && !st.air) { e.gear++; e.shiftT = 0.09; r = x / top(e.gear); }
     else if (r < 0.56 && e.gear > 0) { e.gear--; r = x / top(e.gear); }
     target = Math.min(1.1, r);
-    if (st.air) target = Math.min(1.1, target * 1.05);
+    if (st.air && thr > 0.5) target = Math.min(1.12, target * 1.16);       // wheel off the ground with the gas open: the revs flare
   } else {
     target = 0.22 + 0.42 * thr + 0.36 * Math.min(1.1, x);     // twist-and-go: revs follow the throttle
   }

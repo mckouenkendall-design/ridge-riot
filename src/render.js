@@ -783,9 +783,9 @@ R.camFollow = function (cam, s, tr, dt, aspect, snap, lead) {
   var vh = clamp(8.2 + sp * 0.2 + hgt * 0.5, 8.2, 19);
   if (aspect < 1.5) vh *= 1.15;
   var vw = vh * aspect;
-  var tx = s.x + vw * (lead == null ? 0.2 : lead) + clamp(s.vx * 0.16, -2, 4);
+  var tx = s.x + vw * (lead == null ? 0.16 : lead) + clamp(s.vx * 0.16, -2, 4);
   // keep both the bike and the ground under it on screen
-  var ty = s.y + vh * 0.06 + clamp(s.vy * 0.1, -1.6, 1.6);
+  var ty = s.y - vh * 0.035 + clamp(s.vy * 0.1, -1.6, 1.6);
   var gAhead = RR.groundY(tr, s.x + vw * 0.3);
   if (gAhead > tr.minY - 5) ty = lerp(ty, (ty + gAhead + vh * 0.16) * 0.5, 0.35);
   if (snap) { cam.x = tx; cam.y = ty; cam.vh = vh; cam.px = cam.x; cam.py = cam.y; return; }

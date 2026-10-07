@@ -272,7 +272,7 @@ RR.createSim = function (bike, track) {
   };
   // In low gravity full power would just flip the bike on the spot, so the push is
   // capped a little above what lifts the front wheel on flat ground.
-  s.thrust = Math.min(bike.thrust, 1.15 * s.g * bike.com[0] / bike.com[1] * bike.Mtot);
+  s.thrust = Math.min(bike.thrust, (s.g < 8 ? 0.92 : 1.15) * s.g * bike.com[0] / bike.com[1] * bike.Mtot);
   s.pred = 0.25 * Math.sqrt(G0 / s.g);
   RR.resetSim(s);
   return s;
@@ -370,13 +370,6 @@ function substep(s, inp, dt) {
         if (boost) Fd = Math.max(Fd, s.thrust * 0.7);
         var lm = (vmax - wv) / (0.07 * vmax);
         Fd *= lm < 0 ? 0 : lm > 1 ? 1 : lm;
-        if (Nsum > 0 && s.airW[1] > 0.05) {
-          // front wheel is up: the rider rolls off the gas as the bike nears the tip-over point
-          var pr = s.a - Math.atan2(-s.nrmX[0], s.nrmY[0]);
-          pr -= TAU * Math.round(pr / TAU);
-          var cut = (b.tip - (inp.lean < -0.3 ? 0.2 : 0.38) - (pr + s.pred * s.w)) / 0.4;
-          Fd *= cut < 0 ? 0 : cut > 1 ? 1 : cut;
-        }
         wt -= Fd * W.r;
         tq += Fd * W.r * b.reaction;
       } else if (!braking && Nsum > 0 && wv > 0.5) {
@@ -388,7 +381,7 @@ function substep(s, inp, dt) {
     if (braking) {
       var tb = -s.ww[i] * W.I / dt * 0.5, tbm = b.brake[i];
       if (tb > tbm) tb = tbm; else if (tb < -tbm) tb = -tbm;
-      wt += tb; tq -= tb * (Nsum > 0 ? 1 : 0.35);
+      wt += tb; tq -= tb * (Nsum > 0 ? 1 : 0.12);      // braking in the air only nudges the nose down
     }
     s.wvx[i] += wfx / W.m * dt; s.wvy[i] += wfy / W.m * dt; s.ww[i] += wt / W.I * dt;
   }
@@ -439,7 +432,8 @@ function substep(s, inp, dt) {
     var L = inp.lean;
     var grounded = s.airW[0] < 0.03 || s.airW[1] < 0.03;
     if (L !== 0) {
-      var wtgt = -L * (grounded ? Math.min(b.spin, b.groundSpin) : b.spin), dw = wtgt - s.w, tl = 0;
+      // on the ground the rider can throw their weight forward faster than they can haul the front up
+      var wtgt = -L * (grounded ? Math.min(b.spin, L > 0 ? b.groundSpin * 1.8 : b.groundSpin) : b.spin), dw = wtgt - s.w, tl = 0;
       if (dw * wtgt > 0) {
         tl = dw * b.Isys * 14;
         // the rider has to shift their weight first, so a quick tap is a nudge and a hold is a full heave
@@ -447,7 +441,9 @@ function substep(s, inp, dt) {
         var tm = b.leanTq * (L < 0 ? -L : L) * (0.3 + 0.7 * ramp);
         if (tl > tm) tl = tm; else if (tl < -tm) tl = -tm;
       }
-      if (grounded) tl *= b.leanGround;
+      // Leaning forward pulls a wheelie back down at full strength, but once the front tyre is on
+      // the ground the rider cannot lever the bike over its own front wheel, so it does much less.
+      if (grounded) tl *= L > 0 ? (s.airW[1] > 0.03 ? Math.max(1, b.leanGround) : 0.3) : b.leanGround;
       tq += tl;
     } else if (!grounded) tq -= s.w * b.airDamp * b.Isys;
     if (b.rocket && gas) {

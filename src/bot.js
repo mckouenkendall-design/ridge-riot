@@ -1,7 +1,7 @@
 /* Ridge Riot: a simple robot rider.
    Used by tools/bot.js to prove every track can be finished and to set the
    star times, and by the title screen to show a bike riding in the background.
-   It only has the same three controls a player has: lean back, lean forward, brake.
+   It only has the same four controls a player has: gas, brake, lean back, lean forward.
    It rides the way a person does: in the air it looks at where it is going to
    come down and nudges the bike until it will land flat on that slope. */
 (function (root) {
@@ -32,8 +32,10 @@ RR.botInput = function (s, P, out) {
     var d = b.airDamp, coast = d > 0.01 ? (1 - Math.exp(-d * T)) / d : T;
     err = wrap(s.a + s.w * coast - target);
     var cur = out.lean || 0;
-    if (err > th || (cur > 0 && err > th * 0.3)) lean = 1;
-    else if (err < -th || (cur < 0 && err < -th * 0.3)) lean = -1;
+    // tiny hops are over before a correction could help, so leave them alone unless things are badly wrong
+    var big = T > (P.minAir == null ? 0.3 : P.minAir) ? 1 : 2.5;
+    if (err > th * big || (cur > 0 && err > th * 0.3)) lean = 1;
+    else if (err < -th * big || (cur < 0 && err < -th * 0.3)) lean = -1;
   }
   out.lean = lean;
   var sp = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
@@ -42,7 +44,13 @@ RR.botInput = function (s, P, out) {
   if (tr.roofs === undefined) tr.roofs = tr.feats.filter(function (f) { return f.t === 'roof'; });
   for (var r = 0; r < tr.roofs.length; r++) if (s.x > tr.roofs[r].x0 - 16 && s.x < tr.roofs[r].x1 - 3) cap = Math.min(cap, P.roofV || 9.5);
   out.brake = sp > cap && !air;
-  out.gas = true;
+  // throttle: held open, but eased off when the front wheel climbs too high, the way a rider would
+  var gas = !out.brake;
+  if (gas && s.gnd[0] && !s.gnd[1]) {
+    var pr = wrap(s.a - Math.atan2(-s.nrmX[0], s.nrmY[0])) + s.w * (P.wlook == null ? 0.22 : P.wlook);
+    if (pr > (P.wth || 0.4)) gas = false;
+  }
+  out.gas = gas;
   return out;
 };
 

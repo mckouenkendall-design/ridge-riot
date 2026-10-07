@@ -132,25 +132,27 @@ RR.Ghost = Ghost;
 /* ------------------------------------------------------------------ */
 /* Controls                                                             */
 /* ------------------------------------------------------------------ */
-var In = G.input = { kL: false, kR: false, kB: false, touch: {}, tilt: 0, tiltOK: false, tiltZero: 0, tiltRaw: 0, any: false, pressed: false };
+var In = G.input = { kL: false, kR: false, kB: false, kG: false, touch: {}, tilt: 0, tiltOK: false, tiltZero: 0, tiltRaw: 0, any: false, L: false, R: false, G: false, B: false };
 var inp = { lean: 0, brake: false, gas: false };
+/* Where the on-screen buttons divide. Left of split.l is "lean back", between that and the
+   middle is "lean forward", then "brake" up to split.r, and "gas" beyond it. Set by the UI. */
+G.split = { l: 0, r: 0 };
 function readInput() {
-  var L = In.kL, Rt = In.kR, anyT = false, k, mid = R.size().w * 0.5;
-  for (k in In.touch) { anyT = true; if (In.touch[k] < mid) L = true; else Rt = true; }
-  var set = Store.data.settings;
-  if (set.tilt && In.tiltOK) {
+  var L = In.kL, Rt = In.kR, gas = In.kG, brk = In.kB, k, mid = R.size().w * 0.5;
+  // every finger is looked at on its own, so one thumb can hold gas while the other leans
+  for (k in In.touch) {
+    var x = In.touch[k];
+    if (x < mid) { if (x < G.split.l) L = true; else Rt = true; }
+    else if (x >= G.split.r) gas = true; else brk = true;
+  }
+  var set = Store.data.settings, lean = L && Rt ? 0 : Rt ? 1 : L ? -1 : 0;
+  if (set.tilt && In.tiltOK && !L && !Rt) {
     var a = (In.tiltRaw - In.tiltZero) * set.tiltSens / 0.33 * (set.tiltFlip ? -1 : 1);
     if (a > -0.16 && a < 0.16) a = 0;
-    inp.lean = clamp(a, -1, 1);
-    if (In.kL) inp.lean = -1; else if (In.kR) inp.lean = 1;
-    inp.brake = anyT || In.kB;
-    In.any = anyT || In.kB || In.kL || In.kR;
-  } else {
-    inp.brake = In.kB || (L && Rt);
-    inp.lean = inp.brake ? 0 : Rt ? 1 : L ? -1 : 0;
-    In.any = L || Rt || In.kB;
+    lean = clamp(a, -1, 1);
   }
-  In.L = L; In.R = Rt;
+  inp.lean = lean; inp.brake = brk; inp.gas = gas && !brk;
+  In.L = L; In.R = Rt; In.G = gas; In.B = brk; In.any = gas;
   return inp;
 }
 G.readInput = readInput;
@@ -347,7 +349,7 @@ function trailFx() {
     var lx = ex[0] - b.com[0], ly = ex[1] - b.com[1], wx = s.x + ca * lx - sa * ly, wy = s.y + sa * lx + ca * ly;
     if (def.rocket) {
       var pw = clamp(s.rocketF / b.rocket, 0, 1.3);
-      if (pw > 0.05 && inp.gas !== false) for (k = 0; k < 2; k++) R.emit(3, wx, wy, s.vx - ca * rnd(5, 9) + rnd(-0.6, 0.6), s.vy - sa * rnd(5, 9) + rnd(-0.6, 0.6), rnd(0.1, 0.22), rnd(0.1, 0.2) * (0.6 + pw * 0.5), k ? '#ff7a1f' : '#ffe07a', { a: 0.9 });
+      if (pw > 0.05 && (G.attract || inp.gas)) for (k = 0; k < 2; k++) R.emit(3, wx, wy, s.vx - ca * rnd(5, 9) + rnd(-0.6, 0.6), s.vy - sa * rnd(5, 9) + rnd(-0.6, 0.6), rnd(0.1, 0.22), rnd(0.1, 0.2) * (0.6 + pw * 0.5), k ? '#ff7a1f' : '#ffe07a', { a: 0.9 });
     } else if (s.boost > 0) {
       for (k = 0; k < 2; k++) R.emit(3, wx, wy, s.vx - ca * rnd(3, 6) + rnd(-0.5, 0.5), s.vy - sa * rnd(3, 6) + rnd(-0.5, 0.5), rnd(0.12, 0.26), rnd(0.09, 0.17), k ? '#ff7a1f' : '#ffe07a', { a: 0.9 });
     } else if (exT > (s.driveF > 0 ? 0.05 : 0.14) && s.started) {
@@ -376,19 +378,18 @@ function tickOnce() {
   }
   input = readInput();
   if (G.state === 'ready') {
-    if (In.any && !G.blockStart) {
+    if (input.gas) {
       s.started = true; G.state = 'run'; Au.go();
       if (Store.data.settings.tilt) G.zeroTilt();
       if (RR.UI) RR.UI.onStart();
     }
-    input = { lean: 0, brake: false, gas: false };
-  } else if (G.state === 'run') { input.gas = true; }
-  else input = { lean: 0, brake: G.state === 'finish', gas: false };
+    if (G.state === 'ready') input = { lean: 0, brake: false, gas: false };
+  } else if (G.state !== 'run') input = { lean: 0, brake: G.state === 'finish', gas: false };
   RR.tick(s, input);
   if (G.state === 'run' && tickN % 8 === 0) Ghost.sample(s);
   if (G.state === 'run') {
     // sitting still for a while (wedged against a wall, flat on its back wheel): point at the restart button
-    if (Math.abs(s.vx) + Math.abs(s.vy) < 0.6 && s.time > 2) G.stuckT += DT; else G.stuckT = 0;
+    if (input.gas && Math.abs(s.vx) + Math.abs(s.vy) < 0.6 && s.time > 2) G.stuckT += DT; else G.stuckT = 0;
     if (G.stuckT > 3.5 && !G.stuckSaid) { G.stuckSaid = true; if (RR.UI) RR.UI.toast('Stuck? The round arrow at the top left restarts.'); }
   }
   tickN++;
@@ -443,12 +444,12 @@ G.frame = function (ts) {
   // sound that follows the bike
   if (!G.attract && G.state !== 'pause') {
     var sp = Math.sqrt(s.vx * s.vx + s.vy * s.vy), run = G.state === 'run';
-    Au.engineUpdate({ v: -s.ww[0] * b.wh[0].r, vmax: G.bikeDef.vmax, gas: run && !inp.brake ? (s.airW[0] > 0.12 ? 0.35 : 1) : 0, air: s.airW[0] > 0.12, boost: s.boost > 0, dt: dt });
+    Au.engineUpdate({ v: -s.ww[0] * b.wh[0].r, vmax: G.bikeDef.vmax, gas: run && inp.gas ? 1 : 0, air: s.airW[0] > 0.12, boost: s.boost > 0, dt: dt });
     var sl = Math.abs(s.slip[0]) * (s.gnd[0] ? 1 : 0), sf = Math.abs(s.slip[1]) * (s.gnd[1] ? 1 : 0);
     var hard = s.mat[0] === 1 || s.mat[0] === 5 || s.mat[0] === 2 || s.mat[0] === 4;
     Au.layersUpdate({
       skid: clamp(((hard ? sl : sl * 0.3) + sf * 0.6 - 0.6) / 6, 0, 1), dirt: clamp((hard ? 0 : sl - 0.3) / 4, 0, 1) + (s.gnd[0] && !hard ? clamp(sp / 60, 0, 0.25) : 0),
-      wind: G.track.airless ? 0 : clamp((sp - 4) / 26, 0, 1) * (s.air ? 1 : 0.55), scrape: clamp(s.scrape / 30000, 0, 1), boost: s.boost > 0 || (G.bikeDef.rocket && run && !inp.brake) ? 1 : 0
+      wind: G.track.airless ? 0 : clamp((sp - 4) / 26, 0, 1) * (s.air ? 1 : 0.55), scrape: clamp(s.scrape / 30000, 0, 1), boost: s.boost > 0 || (G.bikeDef.rocket && run && inp.gas) ? 1 : 0
     });
   }
   hudT += dt;

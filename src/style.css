@@ -130,20 +130,19 @@ input[type=range]::-moz-range-thumb { width: 1.3rem; height: 1.3rem; background:
 .boost { position: absolute; left: 50%; top: calc(3.7rem + var(--safe-t)); width: 7rem; height: 0.5rem; transform: translateX(-50%) skewX(-8deg); border: 0.12rem solid var(--ink); border-radius: 0.3rem; background: rgba(23, 26, 34, 0.5); overflow: hidden; opacity: 0; pointer-events: none; }
 .boost i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff7a1f, var(--yellow)); }
 .pads { position: absolute; inset: 0; pointer-events: none; }
-.pad { position: absolute; bottom: calc(0.9rem + var(--safe-b)); width: 5.6rem; height: 5.6rem; border-radius: 50%; border: 0.16rem solid rgba(246, 242, 231, 0.34); display: flex; align-items: center; justify-content: center; opacity: 0.5; transition: opacity 0.08s, background 0.08s; }
-.pad svg { width: 2.8rem; height: 2.8rem; }
-.pad.l { left: calc(1.2rem + var(--safe-l)); } .pad.r { right: calc(1.2rem + var(--safe-r)); }
-.pad.on { opacity: 1; background: rgba(242, 194, 48, 0.4); border-color: var(--yellow); }
-.pads.brake .pad.on { background: rgba(226, 64, 47, 0.5); border-color: var(--red); }
+.pad { position: absolute; bottom: calc(0.8rem + var(--safe-b)); width: 5.9rem; height: 5.9rem; border-radius: 1.3rem; border: 0.16rem solid rgba(246, 242, 231, 0.45); background: rgba(23, 26, 34, 0.3);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.1rem; opacity: 0.66; transition: opacity 0.06s, background 0.06s;
+  font-weight: 900; font-style: italic; font-size: 0.86rem; color: var(--plate); text-shadow: 0.06rem 0.06rem 0 var(--ink); }
+.pad svg { width: 2.5rem; height: 2.5rem; filter: drop-shadow(0.06rem 0.06rem 0 var(--ink)); }
+.pad.b { left: calc(0.9rem + var(--safe-l)); } .pad.f { left: calc(7.4rem + var(--safe-l)); }
+.pad.g { right: calc(0.9rem + var(--safe-r)); } .pad.k { right: calc(7.4rem + var(--safe-r)); }
+.pad.on { opacity: 1; background: rgba(242, 194, 48, 0.55); border-color: var(--yellow); }
+.pad.k.on { background: rgba(226, 64, 47, 0.6); border-color: var(--red); }
 .pads.off { display: none; }
 .howto { position: absolute; inset: 0; display: none; pointer-events: none; }
 .howto.on { display: block; }
-.howto .half { position: absolute; top: 28%; width: 34%; text-align: center; font-size: 1.5rem; font-weight: 900; font-style: italic; text-shadow: 0.12rem 0.12rem 0 var(--ink); line-height: 1.05; }
-.howto .half small { display: block; font-size: 0.9rem; font-weight: 700; margin-top: 0.25rem; }
-.howto .half.l { left: calc(1rem + var(--safe-l)); } .howto .half.r { right: calc(1rem + var(--safe-r)); }
-.howto .mid { position: absolute; left: 50%; bottom: calc(1.6rem + var(--safe-b)); transform: translateX(-50%) skewX(-8deg); padding: 0.3rem 1.1rem; font-size: 1.15rem; font-weight: 900; font-style: italic; white-space: nowrap; text-align: center; line-height: 1.1; }
-.howto .mid small { display: block; font-size: 0.78rem; font-weight: 700; }
-.howto .divide { position: absolute; left: 50%; top: 22%; bottom: 30%; border-left: 0.14rem dashed rgba(246, 242, 231, 0.5); }
+.howto .mid { position: absolute; left: 50%; top: calc(4.1rem + var(--safe-t)); transform: translateX(-50%) skewX(-8deg); padding: 0.25rem 1.2rem 0.3rem; font-size: 1.25rem; font-weight: 900; font-style: italic; text-align: center; line-height: 1.1; max-width: 32rem; width: max-content; }
+.howto .mid small { display: block; font-size: 0.8rem; font-weight: 700; margin-top: 0.15rem; line-height: 1.2; }
 .wipe { position: absolute; left: 50%; top: 34%; transform: translateX(-50%) rotate(-4deg) skewX(-8deg); padding: 0.4rem 1.6rem 0.3rem; text-align: center; display: none; pointer-events: none; background: var(--red); color: var(--plate); }
 .wipe.on { display: block; animation: pop 0.18s ease-out; }
 .wipe b { display: block; font-size: 2.4rem; font-weight: 900; font-style: italic; line-height: 1; }

@@ -52,7 +52,7 @@ function solve(trackIndex, bikeId, opts) {
       lastProgX = s.x; lastProgT = s.time;
       const caps = [1e9, 1e9, 22, 18, 15, 13, 11, 9, 7.5];
       P = { vcap: caps[Math.floor(rand() * caps.length)], bias: (rand() - 0.5) * 0.5, airBias: (rand() - 0.5) * 0.6,
-            th: 0.1 + rand() * 0.3, gth: 0.25 + rand() * 0.4 };
+            th: 0.1 + rand() * 0.3, gth: 0.25 + rand() * 0.4, wth: 0.2 + rand() * 0.5 };
       if (rand() < 0.25) { P.force = rand() < 0.5 ? -1 : 1; P.forceUntil = s.time + 0.2 + rand() * 0.8; }
       pUntil = tc + 1.0 + rand() * 1.5;
     }
@@ -102,11 +102,11 @@ function human(trackIndex, bikeId, runs, skill) {
     RR.resetSim(s); s.started = true;
     const rand = rng(999 + r * 7919 + trackIndex * 13);
     const delay = Math.round((skill.delay || 0.2) * 120), hold = Math.round((skill.hold || 0.12) * 120);
-    const hist = [], bh = [], path = []; const out = { lean: 0, brake: false, gas: true }; let cur = 0, lastX = s.x, lastT = 0;
+    const hist = [], bh = [], gh = [], path = []; const out = { lean: 0, brake: false, gas: true }; let cur = 0, lastX = s.x, lastT = 0;
     for (let tick = 0; tick < 120 * 150; tick++) {
       RR.botInput(s, { th: skill.th || 0.25 }, out);
-      hist.push(out.lean); bh.push(out.brake);
-      const brk = bh.length > delay ? bh[bh.length - 1 - delay] : false;
+      hist.push(out.lean); bh.push(out.brake); gh.push(out.gas);
+      const brk = bh.length > delay ? bh[bh.length - 1 - delay] : false, gas = gh.length > delay ? gh[gh.length - 1 - delay] : true;
       if (tick % 6 === 0) path.push([s.x, s.y, s.a]);
       if (tick % hold === 0) {
         let v = hist.length > delay ? hist[hist.length - 1 - delay] : 0;
@@ -114,7 +114,7 @@ function human(trackIndex, bikeId, runs, skill) {
         if (q < (skill.miss || 0.12)) v = 0; else if (q < (skill.miss || 0.12) + (skill.wrong || 0.04)) v = rand() < 0.5 ? -1 : 1;
         cur = v;
       }
-      RR.tick(s, skill.none ? { lean: 0, brake: false, gas: true } : { lean: brk ? 0 : cur, brake: brk, gas: true });
+      RR.tick(s, skill.none ? { lean: 0, brake: false, gas: true } : { lean: brk ? 0 : cur, brake: brk, gas: gas && !brk });
       s.events.length = 0;
       if (s.x > lastX + 3) { lastX = s.x; lastT = s.time; }
       if (s.finished) { ok++; times.push(s.finishTime); break; }
@@ -144,7 +144,7 @@ if (require.main === module) (async () => {
         const hist = {}; sloppy.where.forEach(x => { const k = Math.round(x / 10) * 10; hist[k] = (hist[k] || 0) + 1; });
         const top = Object.entries(hist).sort((a, b) => b[1] - a[1]).slice(0, 4).map(e => e[0] + 'm:' + e[1]).join(' ');
         if (args.includes('--plot') && ok.path) await plot(t, ok, path.join(arg('--out', '/tmp'), `fail${t}.png`));
-        line += ` ${id.slice(0, 4)} D=${String(Math.round(100 - (sloppy.rate + ok.rate) * 50)).padStart(2)} hands-off:${(none.rate ? 'FINISH' : 'x@' + none.where[0]).padEnd(6)} clumsy ${(sloppy.rate * 100).toFixed(0).padStart(3)}% careful ${(ok.rate * 100).toFixed(0).padStart(3)}%  [${top}]`;
+        line += ` ${id.slice(0, 4)} D=${String(Math.round(100 - (sloppy.rate + ok.rate) * 50)).padStart(2)} gas-only:${(none.rate ? 'FINISH' : 'x@' + none.where[0]).padEnd(6)} clumsy ${(sloppy.rate * 100).toFixed(0).padStart(3)}% careful ${(ok.rate * 100).toFixed(0).padStart(3)}%  [${top}]`;
       }
       console.log(line);
     }

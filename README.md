@@ -11,13 +11,18 @@ Every bike is earned by riding. There are no ads and nothing to buy.
 
 | | Phone (held sideways) | Keyboard |
 |---|---|---|
-| Lean forward | touch the right side of the screen | D or right arrow |
-| Lean back | touch the left side | A or left arrow |
-| Brake | hold both sides | S or down arrow |
+| Gas | right thumb, outer button | W or up arrow |
+| Brake | right thumb, inner button | S or down arrow |
+| Lean back | left thumb, outer button | A or left arrow |
+| Lean forward | left thumb, inner button | D or right arrow |
 | Restart | round arrow button | R |
 | Pause | pause button | P or Esc |
 
-The throttle is automatic. It opens when you first touch the screen and stays open unless you brake.
+The throttle is yours. Nothing drives the bike unless you hold gas, and the clock starts the first time you do.
+
+On a phone each finger is tracked on its own, so you can hold gas and lean at the same time, and slide a thumb from one button to its neighbour without lifting. The touch areas are bigger than the buttons you see: the whole left half of the screen is the two lean areas and the whole right half is brake and gas.
+
+Tilt-to-lean is an optional setting. With it on, tilting the phone like a steering wheel leans the bike, and the lean buttons still work.
 
 - Your helmet or back touching the ground ends the run.
 - Hold a lean through a whole jump to flip. Landing a flip gives a short boost, which is how the fastest times are set.
@@ -81,11 +86,12 @@ These are what was used to check the game. The last three need Playwright (a too
 
 | Command | What it checks |
 |---|---|
-| `node tools/bot.js --bikes all` | A robot rider, using only the player's three controls, finishes every track on every bike |
+| `node tools/bot.js --bikes all` | A robot rider, using only the player's four controls (gas, brake, lean back, lean forward), finishes every track on every bike |
 | `node tools/bot.js --human 40` | A deliberately clumsy robot and a careful one ride each track 40 times. Their crash rates are the difficulty score used to order the tracks |
 | `node tools/bot.js --bikes all --write` | Regenerates the star times from the robot's runs. Run this after changing tracks, bikes or physics |
 | `node tools/fuzz.js` | Thousands of runs with random inputs, looking for the physics blowing up |
 | `node tools/bikecheck.js` | Side by side numbers for how each bike accelerates, brakes, wheelies and flips |
+| `node tools/controls.js <folder>` | Opens the built page at three phone sizes and checks every button, two fingers at once, sliding between buttons, and the keyboard |
 | `node tools/play.js tour <folder>` | Opens the built page at phone size, plays it with real touch events and saves screenshots |
 | `node tools/audiotest.js <folder>` | Renders every sound without speakers and measures loudness, pitch and clipping |
 | `node tools/perf.js` | Time spent per frame |
