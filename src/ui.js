@@ -117,36 +117,42 @@ UI.init = function () {
 
 /* Buttons answer to the finger coming up anywhere on (or just beside) them, rather than
    waiting for the browser to decide the touch was a clean "click". A thumb that rolls a
-   little as it lands used to be ignored; now it counts. */
+   little as it lands used to be ignored; now it counts.
+   Fingers are followed with touch events (the kind every phone has had from the start, and
+   the kind phones accept as "the user really did this" for sound and tilt permission);
+   a mouse is followed with pointer events. */
 var tap = null, lastTap = 0;
 function wireTaps(ui) {
-  function btn(e) { var b = e.target.closest ? e.target.closest('[data-act]') : null; return b && !b.disabled ? b : null; }
+  function btn(e) { var b = e.target.closest ? e.target.closest('[data-act]') : null; return b && !b.disabled && !b.hasAttribute('data-click') ? b : null; }
   function clear() { if (tap) { tap.el.classList.remove('down'); tap = null; } }
-  ui.addEventListener('pointerdown', function (e) {
-    if (e.button) return;
-    var b = btn(e); clear();
-    if (!b) return;
-    tap = { id: e.pointerId, el: b, x: e.clientX, y: e.clientY, scroll: !!b.closest('.cols, .scroll') };
-    b.classList.add('down');
-  });
-  ui.addEventListener('pointermove', function (e) {
-    if (!tap || e.pointerId !== tap.id || !tap.scroll) return;
-    if (Math.abs(e.clientX - tap.x) + Math.abs(e.clientY - tap.y) > 12) clear();       // that was a scroll, not a tap
-  });
-  ui.addEventListener('pointerup', function (e) {
-    if (!tap || e.pointerId !== tap.id) return;
+  function begin(b, id, x, y) { clear(); if (!b) return; tap = { id: id, el: b, x: x, y: y, scroll: !!b.closest('.cols, .scroll') }; b.classList.add('down'); }
+  function moved(x, y) { if (tap && tap.scroll && Math.abs(x - tap.x) + Math.abs(y - tap.y) > 12) clear(); }      // that was a scroll, not a tap
+  function end(x, y) {
     var b = tap.el, r = b.getBoundingClientRect(), m = 16;
     clear();
-    if (e.clientX < r.left - m || e.clientX > r.right + m || e.clientY < r.top - m || e.clientY > r.bottom + m) return;
+    if (x < r.left - m || x > r.right + m || y < r.top - m || y > r.bottom + m) return;
     lastTap = Date.now();
     fire(b);
-  });
-  ui.addEventListener('pointercancel', clear);
-  // a click with no touch behind it is the keyboard (Enter or Space on a button) or an accessibility tool
+  }
+  function mine(list) { for (var i = 0; tap && i < list.length; i++) if (list[i].identifier === tap.id) return list[i]; return null; }
+  ui.addEventListener('touchstart', function (e) { var t = e.changedTouches[0]; begin(btn(e), t.identifier, t.clientX, t.clientY); }, { passive: true });
+  ui.addEventListener('touchmove', function (e) { var t = mine(e.changedTouches); if (t) moved(t.clientX, t.clientY); }, { passive: true });
+  ui.addEventListener('touchend', function (e) { var t = mine(e.changedTouches); if (t) end(t.clientX, t.clientY); });
+  ui.addEventListener('touchcancel', clear);
+  ui.addEventListener('pointerdown', function (e) { if (e.pointerType === 'touch' || e.button) return; begin(btn(e), 'm' + e.pointerId, e.clientX, e.clientY); });
+  ui.addEventListener('pointermove', function (e) { if (e.pointerType !== 'touch' && tap && tap.id === 'm' + e.pointerId) moved(e.clientX, e.clientY); });
+  ui.addEventListener('pointerup', function (e) { if (e.pointerType !== 'touch' && tap && tap.id === 'm' + e.pointerId) end(e.clientX, e.clientY); });
+  ui.addEventListener('pointercancel', function (e) { if (e.pointerType !== 'touch') clear(); });
+  // A click with no touch just before it is the keyboard (Enter or Space on a button), an accessibility
+  // tool, or one of the few buttons left to the browser's own click (marked data-click).
   ui.addEventListener('click', function (e) {
-    if (Date.now() - lastTap < 700) return;
-    var b = btn(e); if (b) fire(b);
+    var b = e.target.closest ? e.target.closest('[data-act]') : null;
+    if (!b || b.disabled) return;
+    if (!b.hasAttribute('data-click') && Date.now() - lastTap < 600) return;      // the echo of a touch already dealt with
+    fire(b);
   });
+  // sound can only be switched on from inside a real touch, click or key press
+  ['touchend', 'click', 'keydown'].forEach(function (n) { doc.addEventListener(n, function () { Au.unlock(); afterUnlock(); }, true); });
 }
 function fire(b) { if (!b.isConnected || b.disabled) return; Au.unlock(); afterUnlock(); act(b.getAttribute('data-act'), b); }
 
@@ -563,7 +569,7 @@ function toggle(el) {
 }
 UI.settings = function () {
   var s = Store.data.settings, st = Store.data.stats;
-  function sw(k, label, sub) { return '<div class="row"><label>' + label + (sub ? '<small>' + sub + '</small>' : '') + '</label><button class="sw' + (s[k] ? ' on' : '') + '" data-act="sw" data-k="' + k + '" role="switch" aria-checked="' + !!s[k] + '" aria-label="' + label + '"></button></div>'; }
+  function sw(k, label, sub) { return '<div class="row"><label>' + label + (sub ? '<small>' + sub + '</small>' : '') + '</label><button class="sw' + (s[k] ? ' on' : '') + '" data-act="sw" data-k="' + k + '"' + (k === 'tilt' ? ' data-click="1"' : '') + ' role="switch" aria-checked="' + !!s[k] + '" aria-label="' + label + '"></button></div>'; }
   function sl(k, label) { return '<div class="row"><label for="r-' + k + '">' + label + '</label><input id="r-' + k + '" type="range" min="0" max="100" value="' + Math.round(s[k] * 100) + '" data-k="' + k + '"></div>'; }
   function seg(v, label) { return '<button data-act="seg" data-v="' + v + '" class="' + (s.quality === v ? 'on' : '') + '">' + label + '</button>'; }
   function tf(v, label) { return '<button data-act="tfeel" data-v="' + v + '" class="' + (Math.abs(s.tiltSens - v) < 0.05 ? 'on' : '') + '">' + label + '</button>'; }

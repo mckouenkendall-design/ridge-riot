@@ -20,7 +20,8 @@ body { font-family: var(--font); color: var(--plate); -webkit-user-select: none;
 .shade { background: linear-gradient(90deg, rgba(23, 26, 34, 0.82), rgba(23, 26, 34, 0.5)); }
 .shade.full { background: rgba(23, 26, 34, 0.8); }
 #s-garage.shade.full { background: rgba(23, 26, 34, 0.9); }
-button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; touch-action: manipulation; }
+button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; touch-action: none; }
+.cols, .cols button, .cols .row, .cols label { touch-action: pan-y; }
 button:focus-visible, [tabindex]:focus-visible { outline: 0.18rem solid var(--yellow); outline-offset: 0.2rem; }
 
 /* plates and buttons */

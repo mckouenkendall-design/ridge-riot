@@ -10,6 +10,8 @@ const out = process.argv[2] || '/tmp';
   const errs = []; page.on('pageerror', e => errs.push(e.message)); page.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
   await page.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
   await page.waitForTimeout(300);
+  // the menu music would otherwise keep trying to play into each throwaway recording
+  await page.evaluate(() => { RR.Store.data.settings.music = 0; RR.Audio.music(false); });
   const res = await page.evaluate(async () => {
     const SR = 44100, Au = RR.Audio;
     function fft(re, im) { const n = re.length; for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } }
@@ -38,18 +40,22 @@ const out = process.argv[2] || '/tmp';
         Au.engineUpdate({ v, vmax: d.vmax, gas, air: false, boost: false, dt: 0.02 });
       });
       result.engines[d.id] = { type: d.snd.type, idle: Object.assign(level(data, 0.25, 0.6), stats(data, 0.3)), mid: Object.assign(level(data, 2.2, 2.8), stats(data, 2.4)), top: Object.assign(level(data, 4.6, 5.2), stats(data, 4.8)), off: level(data, 5.6, 6.3) };
-      if (['scrapper', 'mule', 'razor', 'volt', 'comet', 'dune'].includes(d.id)) result.images[d.id] = specImage(data, dur);
+      if (['scrapper', 'sling'].includes(d.id)) result.images[d.id] = specImage(data, dur);
       Au.engineStop();
     }
     const shots = { land_soft: () => Au.land(2.5, 0), land_hard: () => Au.land(9, 0), bottom: () => Au.bottom(4), crash: () => Au.crash(15), splash: () => Au.splash('water'), lava: () => Au.splash('lava'), fall: () => Au.fall(),
       flip1: () => Au.flip(1), flip3: () => Au.flip(3), boost: () => Au.boost(), go: () => Au.go(), finish: () => Au.finish(), star: () => { Au.star(0); }, newBest: () => Au.newBest(), unlocked: () => Au.unlocked(),
-      ui_tap: () => Au.ui('tap'), ui_go: () => Au.ui('go'), ui_back: () => Au.ui('back'), ui_no: () => Au.ui('no'), ui_swipe: () => Au.ui('swipe') };
-    for (const k in shots) { let done = false; const data = await render(1.6, () => {}, t => { if (!done && t >= 0.1) { done = true; shots[k](); } });
+      ui_tap: () => Au.ui('tap'), ui_go: () => Au.ui('go'), ui_back: () => Au.ui('back'), ui_no: () => Au.ui('no'), ui_swipe: () => Au.ui('swipe'),
+      pad: () => Au.pad(), bus_crunch: () => Au.crunch(), bonk: () => Au.bonk(), knock: () => Au.knock(6), coin: () => Au.coin(3),
+      geode_tap: () => Au.geode('tap', 1), geode_crack: () => Au.geode('crack', 2), geode_ruby: () => Au.geode('open', 0), geode_gold: () => Au.geode('open', 2), geode_opal: () => Au.geode('open', 4) };
+    ['stars', 'birds', 'inflate', 'pop', 'tumble', 'poof', 'bleat', 'bell', 'smash', 'zap', 'boing', 'whistleUp', 'ting', 'spring', 'boom', 'flutter', 'pat', 'pomf', 'squeak', 'whoosh', 'fwump'].forEach(k => { shots['wipe_' + k] = () => Au.wipe(k, 6); });
+    for (const k in shots) { let done = false; const data = await render(k === 'geode_opal' || k === 'wipe_bell' ? 3.2 : 1.9, () => {}, t => { if (!done && t >= 0.1) { done = true; shots[k](); } });
       let end = 0; for (let i = data.length - 1; i > 0; i--) if (Math.abs(data[i]) > 0.004) { end = i / SR; break; }
-      result.sfx[k] = Object.assign(level(data, 0.1, 1.5), stats(data, 0.12), { lastsS: +(end - 0.1).toFixed(2) }); }
+      result.sfx[k] = Object.assign(level(data, 0.1, Math.max(0.3, end)), stats(data, 0.12), { lastsS: +(end - 0.1).toFixed(2) }); }
     // layers + music
-    { let on = false; const data = await render(3, () => { }, t => { if (!on) { on = true; Au.layersStart(); } Au.layersUpdate({ skid: t < 1 ? 1 : 0, dirt: t >= 1 && t < 2 ? 1 : 0, wind: t >= 2 ? 1 : 0, scrape: 0, boost: 0 }); });
-      result.sfx.layer_skid = Object.assign(level(data, 0.4, 0.9), stats(data, 0.5)); result.sfx.layer_dirt = Object.assign(level(data, 1.4, 1.9), stats(data, 1.5)); result.sfx.layer_wind = Object.assign(level(data, 2.4, 2.9), stats(data, 2.5)); }
+    { let on = false; const data = await render(3, () => { }, t => { if (!on) { on = true; Au.layersStart(); } Au.layersUpdate({ skid: t < 1 ? 1 : 0, dirt: t >= 1 && t < 2 ? 1 : 0, wind: t >= 2 && t < 2.5 ? 1 : 0, kerb: t >= 2.5 ? 1 : 0, scrape: 0, boost: 0 }); });
+      result.sfx.layer_kerb = Object.assign(level(data, 2.7, 2.95), stats(data, 2.7));
+      result.sfx.layer_skid = Object.assign(level(data, 0.4, 0.9), stats(data, 0.5)); result.sfx.layer_dirt = Object.assign(level(data, 1.4, 1.9), stats(data, 1.5)); result.sfx.layer_wind = Object.assign(level(data, 2.2, 2.45), stats(data, 2.2)); }
     return result;
   });
   // spectrogram pictures

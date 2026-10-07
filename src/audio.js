@@ -273,7 +273,7 @@ S.layersUpdate = function (st) {
   layers.wind.f.frequency.setTargetAtTime(300 + 900 * st.wind, t, 0.12);
   layers.scrape.g.gain.setTargetAtTime(Math.min(0.2, st.scrape * 0.2), t, 0.03);
   layers.boost.g.gain.setTargetAtTime(st.boost * 0.22, t, 0.06);
-  layers.kerb.g.gain.setTargetAtTime((st.kerb || 0) * 0.55, t, 0.03);
+  layers.kerb.g.gain.setTargetAtTime((st.kerb || 0) * 0.38, t, 0.03);
   layers.boost.f.frequency.setTargetAtTime(700 + 1400 * st.boost, t, 0.1);
 };
 S.layersQuiet = function () { if (layers) S.layersUpdate({ skid: 0, dirt: 0, wind: 0, scrape: 0, boost: 0, kerb: 0 }); };
@@ -370,31 +370,31 @@ S.wipe = function (kind, v) {
   if (!ok) return;
   var i, f, k;
   switch (kind) {
-    case 'stars': [1318.5, 1568, 1975.5, 1568, 1318.5, 1568].forEach(function (n, j) { tone('sine', n, n, 0.12, 0.07, j * 0.08); }); break;
-    case 'birds': for (i = 0; i < 7; i++) { f = 2500 + Math.random() * 900; tone('sine', f, f * 1.22, 0.06, 0.05, i * 0.12 + Math.random() * 0.03); } break;
+    case 'stars': [1318.5, 1568, 1975.5, 1568, 1318.5, 1568].forEach(function (n, j) { tone('sine', n, n, 0.12, 0.12, j * 0.08); tone('triangle', n * 2, n * 2, 0.06, 0.03, j * 0.08); }); break;
+    case 'birds': for (i = 0; i < 7; i++) { f = 2500 + Math.random() * 900; tone('sine', f, f * 1.22, 0.07, 0.13, i * 0.12 + Math.random() * 0.03); } break;
     case 'inflate': tone('sine', 300, 950, 0.42, 0.12, 0, null, 0.02); tone('triangle', 600, 1900, 0.42, 0.04, 0, null, 0.02); break;
     case 'pop': noise(0.08, 'highpass', 1200, 0, 0.7, 0.7); tone('sine', 420, 80, 0.12, 0.5); break;
     case 'tumble': tone('sine', 880, 868, 0.22, 0.1, 0.1, null, 0.03); tone('sine', 660, 640, 0.42, 0.1, 0.36, null, 0.03); for (i = 0; i < 4; i++) noise(0.07, 'bandpass', 2600, 1800, 1.2, 0.06, i * 0.16, null, false, 0.02); break;
-    case 'poof': noise(0.3, 'lowpass', 900, 200, 0.7, 0.4, 0, null, false, 0.02); break;
-    case 'bleat': for (i = 0; i < 8; i++) tone('sawtooth', 440 - i * 5, 410 - i * 5, 0.05, 0.08, i * 0.065); break;
+    case 'poof': noise(0.3, 'lowpass', 900, 200, 0.7, 0.6, 0, null, false, 0.02); tone('sine', 180, 70, 0.2, 0.2); break;
+    case 'bleat': for (i = 0; i < 8; i++) { tone('sawtooth', 440 - i * 5, 410 - i * 5, 0.055, 0.15, i * 0.065); tone('square', 880 - i * 10, 820 - i * 10, 0.05, 0.04, i * 0.065); } break;
     case 'bell': bell(196, 1.6, 0.24); bell(98, 1.8, 0.18); tone('sine', 520, 330, 1.1, 0.03, 0.4, null, 0.3); break;
     case 'smash': noise(0.3, 'highpass', 3000, 6000, 0.6, 0.5); for (i = 0; i < 10; i++) { f = 1500 + Math.random() * 3500; tone('triangle', f, f * 0.97, 0.1 + Math.random() * 0.15, 0.07, Math.random() * 0.28); } break;
     case 'zap': for (i = 0; i < 12; i++) { tone('sawtooth', 112, 108, 0.04, 0.15, i * 0.055); noise(0.03, 'highpass', 5000, 0, 0.7, 0.1, i * 0.055 + 0.02); } break;
     case 'boing': k = Math.max(0.2, Math.min(1, (v || 5) / 9)); tone('sine', 160 + 140 * k, 420 + 200 * k, 0.08, 0.3 * k); tone('sine', 420 + 200 * k, 200, 0.22, 0.22 * k, 0.07); break;
-    case 'whistleUp': tone('sine', 500, 2600, 0.8, 0.09, 0, null, 0.05); break;
+    case 'whistleUp': tone('sine', 500, 2600, 0.8, 0.14, 0, null, 0.05); break;
     case 'ting': bell(2637, 0.8, 0.13); tone('sine', 5274, 5274, 0.3, 0.035); break;
     case 'spring': for (i = 0; i < 6; i++) tone('sine', 300 + (i % 2 ? 120 : 0) + i * 20, 220 + (i % 2 ? 160 : 0), 0.09, 0.16 * (1 - i / 7), i * 0.085); break;
     case 'boom': noise(0.7, 'lowpass', 900, 120, 0.7, 0.8); tone('sine', 70, 28, 0.6, 0.7); for (i = 0; i < 14; i++) noise(0.03, 'highpass', 4000, 0, 0.7, 0.09, 0.25 + Math.random() * 0.9); break;
-    case 'flutter': for (i = 0; i < 5; i++) noise(0.1, 'bandpass', 900, 600, 1.5, 0.07, i * 0.28, null, false, 0.04); tone('sine', 900, 300, 1.2, 0.045, 0, null, 0.1); break;
+    case 'flutter': for (i = 0; i < 5; i++) noise(0.1, 'bandpass', 900, 600, 1.5, 0.2, i * 0.28, null, false, 0.04); tone('sine', 900, 300, 1.2, 0.09, 0, null, 0.1); break;
     case 'pat': noise(0.06, 'lowpass', 700, 300, 0.7, 0.2); tone('sine', 140, 90, 0.08, 0.15); break;
     case 'pomf': noise(0.25, 'lowpass', 600, 200, 0.7, 0.5, 0, null, true); tone('sine', 220, 110, 0.2, 0.3); break;
-    case 'squeak': f = 900 + Math.random() * 500; tone('sine', f, f * 1.6, 0.05, 0.045); break;
-    case 'whoosh': noise(0.4, 'bandpass', 400, 1800, 1, 0.3, 0, null, false, 0.08); break;
+    case 'squeak': f = 900 + Math.random() * 500; tone('sine', f, f * 1.6, 0.06, 0.12); break;
+    case 'whoosh': noise(0.4, 'bandpass', 400, 1800, 1, 0.5, 0, null, false, 0.08); break;
     case 'fwump': noise(0.3, 'lowpass', 500, 150, 0.7, 0.6, 0, null, true, 0.01); tone('sine', 110, 60, 0.25, 0.4); break;
   }
 };
 /* nuggets and geodes */
-S.coin = function (n) { if (!ok) return; var c = Math.min(5, n || 1); for (var i = 0; i < c; i++) { tone('square', 1568, 1568, 0.05, 0.045, i * 0.07); tone('square', 2093, 2093, 0.1, 0.045, i * 0.07 + 0.045); } };
+S.coin = function (n) { if (!ok) return; var c = Math.min(5, n || 1); for (var i = 0; i < c; i++) { tone('square', 1568, 1568, 0.05, 0.07, i * 0.07); tone('square', 2093, 2093, 0.1, 0.07, i * 0.07 + 0.045); } };
 S.geode = function (stage, rank) {
   if (!ok) return;
   var i, f;

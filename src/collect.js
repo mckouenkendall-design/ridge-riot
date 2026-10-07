@@ -8,11 +8,11 @@ var RR = root.RR || (root.RR = {});
 
 /* odds are out of 100 for an ordinary geode */
 RR.TIERS = [
-  { id: 'ruby',    name: 'Ruby',    odds: 45, col: '#e0314b', hi: '#ff9aa9', lo: '#7d1026' },
-  { id: 'emerald', name: 'Emerald', odds: 28, col: '#19b56b', hi: '#9af3c1', lo: '#0b5f3a' },
-  { id: 'gold',    name: 'Gold',    odds: 17, col: '#f2b632', hi: '#fff3b0', lo: '#9a6a10' },
-  { id: 'diamond', name: 'Diamond', odds: 8,  col: '#8fdcff', hi: '#ffffff', lo: '#3a86c8' },
-  { id: 'opal',    name: 'Opal',    odds: 2,  col: '#f3f0ff', hi: '#ffffff', lo: '#8a7fd6' }
+  { id: 'ruby',    name: 'Ruby',    odds: 43, col: '#e0314b', hi: '#ff9aa9', lo: '#7d1026' },
+  { id: 'emerald', name: 'Emerald', odds: 27, col: '#19b56b', hi: '#9af3c1', lo: '#0b5f3a' },
+  { id: 'gold',    name: 'Gold',    odds: 18, col: '#f2b632', hi: '#fff3b0', lo: '#9a6a10' },
+  { id: 'diamond', name: 'Diamond', odds: 9,  col: '#8fdcff', hi: '#ffffff', lo: '#3a86c8' },
+  { id: 'opal',    name: 'Opal',    odds: 3,  col: '#f3f0ff', hi: '#ffffff', lo: '#8a7fd6' }
 ];
 RR.TIER = {};
 RR.TIERS.forEach(function (t, i) { t.rank = i; RR.TIER[t.id] = t; });

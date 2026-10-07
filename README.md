@@ -2,10 +2,9 @@
 
 A side-on dirt bike game for the browser. Ride over hills, ramps and loops, lean in the air, land flips, and finish each track as fast as you can without your helmet touching anything.
 
-Every bike is earned by riding. There are no ads and nothing to buy.
+Everything is earned by riding. There are no ads and nothing to buy.
 
 **Play it:** https://mckouenkendall-design.github.io/ridge-riot/
-(works once GitHub Pages is switched on for this repo, see below)
 
 ## How to play
 
@@ -22,52 +21,60 @@ The throttle is yours. Nothing drives the bike unless you hold gas, and the cloc
 
 On a phone each finger is tracked on its own, so you can hold gas and lean at the same time, and slide a thumb from one button to its neighbour without lifting. The touch areas are bigger than the buttons you see: the whole left half of the screen is the two lean areas and the whole right half is brake and gas.
 
-Tilt-to-lean is an optional setting. With it on, tilting the phone like a steering wheel leans the bike, and the lean buttons still work.
+Tilt-to-lean is an optional setting. With it on, tilting the phone like a steering wheel leans the bike, and the lean buttons still work. Settings also has a "tilt feel" choice for how far you have to tilt.
 
 - Your helmet or back touching the ground ends the run.
 - Hold a lean through a whole jump to flip. Landing a flip gives a short boost, which is how the fastest times are set.
 - Each track gives one star for finishing, two and three for beating its target times.
-- Stars open new worlds and most of the bikes. A few bikes are earned by feats instead (flips landed, air time, finishing a whole world).
+- Stars open new worlds and most of the bikes. The rest are earned by feats (flips landed, air time, distance ridden, top speed, even crashing a lot).
 - Settings has a switch that unlocks everything straight away. Your real progress is kept underneath.
 
 Progress is saved on the device, in the browser. Clearing the browser's site data for the page wipes it.
 
 ## What is in the game
 
-- 40 tracks in 5 worlds: Dustbowl, Pinewood, Frostbite (ice has no grip), Cinder Peak (lava, low rock roofs) and Low Orbit (a third of the gravity, no air).
-- 12 bikes that ride differently, not just look different: weight, wheelbase, wheel size, suspension, power, grip and how fast they can be flipped are all separate numbers in `src/bikes.js`.
+- **48 tracks in 6 worlds:** Dustbowl, Pinewood, Raceway (tarmac, boost strips, oil, rows of buses to jump), Frostbite (ice has no grip), Cinder Peak (lava, low rock roofs) and Low Orbit (a third of the gravity, no air).
+- **15 bikes that ride differently**, not just look different: weight, wheelbase, wheel size, suspension, power, grip and how fast they can be flipped are all separate numbers in `src/bikes.js`. Three have a trick of their own: the Penny Dreadful has one huge wheel, the Marshmallow's roll hoop takes one knock on the head for you each run, and the Slingshot is a drag bike that will not wheelie.
+- **A collection:** 24 paint jobs and 20 riders in five rarities, lowest to highest: ruby, emerald, gold, diamond, opal. Paint goes on any bike you own and each bike remembers its own paint and rider. The top tiers move: metal finishes have a sliding highlight, gem finishes glint, opal changes colour, and the wheels glow and leave a ribbon of light.
+- **Nuggets and geodes:** you earn nuggets by finishing tracks, earning stars and landing flips. A geode costs 150 nuggets and holds one paint job or rider. You never get something you already have. Finishing every track in a world gives a free gold geode (gold or better), and three stars on all of them a diamond one.
+- **A crash animation for every bike.** The run is over either way, so it may as well be funny.
 - A ghost of your best run on each track to race against.
-- All art is drawn in code and all sound is generated in code. There are no image or audio files.
+- All art is drawn in code and all sound is generated in code. The only picture files are the two app icons, which are also drawn by code (see below).
 
-## Switching on GitHub Pages
+### Geode odds
 
-1. Open this repo on github.com.
-2. Settings, then Pages (left-hand menu).
-3. Under "Build and deployment", set Source to "Deploy from a branch".
-4. Branch: `main`, folder: `/ (root)`. Save.
-5. Wait a minute or two. The game is then at the address at the top of this page.
+Shown in the game too. For an ordinary geode: ruby 43%, emerald 27%, gold 18%, diamond 9%, opal 3%. If the tier you rolled is used up you get the next tier up instead. After 8 geodes in a row below gold, the next one is gold or better.
 
-On an iPhone, open that address in Safari, tap Share, then "Add to Home Screen". Launched from the home screen it runs full screen with no address bar.
+## Putting it on your phone's home screen
+
+On an iPhone, open the address in Safari, tap Share, then "Add to Home Screen". Launched from there it runs full screen with no browser bars.
+
+If you added it before the icon was redrawn, the phone will still show the old icon. Delete the home-screen shortcut and add it again.
 
 ## Files
 
-`index.html` is the whole game in one file. That is the only file the browser needs.
+`index.html` is the whole game in one file. That is the only file the browser needs to play.
 
-It is glued together from the files in `src/` by `tools/build.js`. Edit the files in `src/`, never `index.html` directly, then rebuild.
+`apple-touch-icon.png` and `icon-512.png` are the app icon. Phones insist on reading the home-screen icon from a real picture file, so this is the one place the game uses any. They are drawn with the game's own bike art by `tools/icon.js`.
+
+`index.html` is glued together from the files in `src/` by `tools/build.js`. Edit the files in `src/`, never `index.html` directly, then rebuild.
 
 | File | What it does |
 |---|---|
 | `src/physics.js` | The bike simulation: chassis, two sprung wheels, tyres, crashes, flip counting |
-| `src/builder.js` | The "pen" that draws tracks from pieces (flat, hill, kicker, gap, loop...) |
-| `src/tracks.js` | The 5 worlds and 40 track recipes |
-| `src/bikes.js` | The 12 bikes and their numbers |
+| `src/builder.js` | The "pen" that draws tracks from pieces (flat, hill, kicker, gap, loop, boost strip, buses...) |
+| `src/tracks.js` | The 6 worlds and 48 track recipes, and the running order |
+| `src/bikes.js` | The 15 bikes and their numbers |
+| `src/collect.js` | Paint jobs, riders, rarities, prices and the geode rules |
 | `src/startimes.js` | Star target times. Written by a tool, do not edit by hand |
 | `src/bot.js` | A robot rider, used for testing and for the bike riding behind the title screen |
-| `src/art-bike.js` | Drawing the bikes and the rider |
+| `src/art-bike.js` | Drawing the bikes and the stock riders |
+| `src/art-skins.js` | Drawing paint jobs and the 20 collectable riders |
 | `src/render.js` | Drawing the worlds, ground, scenery and effects |
+| `src/wipeouts.js` | The crash animations |
 | `src/audio.js` | All sound |
-| `src/game.js` | Saving, controls, the main loop |
-| `src/ui.js` | Menus and the on-screen display |
+| `src/game.js` | Saving, controls, nuggets and unlocks, the main loop |
+| `src/ui.js` | Menus, the garage, geodes and the on-screen display |
 | `src/style.css` | How the menus look |
 
 ## Rebuilding
@@ -78,26 +85,33 @@ You need Node.js. From the repo folder:
 node tools/build.js
 ```
 
-That rewrites `index.html`. Commit and push, and Pages picks it up.
+That rewrites `index.html`. Commit and push to `main`, and GitHub Pages picks it up within a minute or two.
 
 ## Test tools
 
-These are what was used to check the game. The last three need Playwright (a tool that drives a real browser without a window).
+These are what was used to check the game. The ones marked "browser" need Playwright (a tool that drives a real browser without a window).
 
 | Command | What it checks |
 |---|---|
-| `node tools/bot.js --bikes all` | A robot rider, using only the player's four controls (gas, brake, lean back, lean forward), finishes every track on every bike |
+| `node tools/bot.js --bikes all` | A robot rider, using only the player's four controls, finishes every track on every bike. `node tools/tally.js <file>` sums up the output |
 | `node tools/bot.js --human 40` | A deliberately clumsy robot and a careful one ride each track 40 times. Their crash rates are the difficulty score used to order the tracks |
 | `node tools/bot.js --bikes all --write` | Regenerates the star times from the robot's runs. Run this after changing tracks, bikes or physics |
 | `node tools/fuzz.js` | Thousands of runs with random inputs, looking for the physics blowing up |
+| `node tools/leanfeel.js` | How quickly the lean control bites, how far a tap turns the bike and how soon it stops when you let go, as numbers |
 | `node tools/bikecheck.js` | Side by side numbers for how each bike accelerates, brakes, wheelies and flips |
-| `node tools/controls.js <folder>` | Opens the built page at three phone sizes and checks every button, two fingers at once, sliding between buttons, and the keyboard |
-| `node tools/play.js tour <folder>` | Opens the built page at phone size, plays it with real touch events and saves screenshots |
-| `node tools/audiotest.js <folder>` | Renders every sound without speakers and measures loudness, pitch and clipping |
-| `node tools/perf.js` | Time spent per frame |
+| `node tools/geodes.js` | Opens 200,000 geodes to confirm the odds, and 3,000 whole collections to confirm nothing ever repeats |
+| `node tools/layout.js <folder>` (browser) | Every menu screen at eight screen sizes, with and without a phone notch: every button fully on screen, not covered by anything, and no text cut off. Saves a picture of each |
+| `node tools/flow.js <folder>` (browser) | An old save carries over, progress survives a reload, nuggets are paid correctly, geodes work through the real buttons, buttons answer to a thumb that drifts, the keyboard works |
+| `node tools/controls.js <folder>` (browser) | The four ride buttons at three phone sizes: two fingers at once, sliding between buttons, and the keyboard |
+| `node tools/wipes.js <folder>` (browser) | Crashes every bike on purpose and photographs its crash animation |
+| `node tools/gallery.js <folder>` (browser) | Contact sheets of every bike, paint job and rider |
+| `node tools/ride.js <folder> '<list>'` (browser) | The robot rides chosen tracks in the real page and saves pictures along the way |
+| `node tools/audiotest.js <folder>` (browser) | Renders every sound without speakers and measures loudness, pitch and clipping |
+| `node tools/perf.js` (browser) | Time spent per frame, including the animated paint jobs |
+| `node tools/icon.js` (browser) | Redraws the app icon |
 
 ## What has and has not been tested
 
-Tested by machine: every track can be finished on every bike, physics stability, touch and keyboard controls, saving and reloading, unlocks, the menus at phone and desktop sizes, and that every sound plays at a sensible level without clipping.
+Tested by machine: every track can be finished on every bike, physics stability, touch and keyboard controls, button taps with a drifting thumb, menu layout at phone sizes with a notch, saving and reloading including saves from the first version, the nugget and geode rules, and that every sound plays at a sensible level without clipping.
 
-Not tested: how it sounds to a human ear, how the handling feels in the hand, tilt control on a real phone, and behaviour on real iPhone and Android hardware. Those need a person.
+Not tested: how it sounds to a human ear, how the handling feels in the hand, and behaviour on real iPhone and Android hardware (the tests run in a desktop browser pretending to be a phone). Those need a person.

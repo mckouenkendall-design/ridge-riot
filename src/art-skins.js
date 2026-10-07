@@ -26,7 +26,7 @@ function blobAt(c, x, y, r, rnd, col, lump) {
 }
 function tile(p) {
   if (tiles[p.id]) return tiles[p.id];
-  var P = p.pat, N = 128, cv = mk(N, N), c = cv.getContext('2d'), r = rng(77 + p.index * 131), i, x, y;
+  var P = p.pat, N = 128, cv = mk(N, N), c = cv.getContext('2d', { willReadFrequently: true }), r = rng(77 + p.index * 131), i, x, y;
   c.fillStyle = P.a || '#888'; c.fillRect(0, 0, N, N);
   if (P.t === 'stripes') { c.fillStyle = P.b; c.fillRect(N / 2, 0, N / 2, N); }
   else if (P.t === 'checker') { c.fillStyle = P.b; c.fillRect(0, 0, N / 2, N / 2); c.fillRect(N / 2, N / 2, N / 2, N / 2); }
@@ -80,17 +80,17 @@ function tile(p) {
         c.lineWidth = 1; c.strokeStyle = 'rgba(255,255,255,0.28)'; c.stroke(); });
     }
   }
-  tiles[p.id] = cv;
-  return cv;
+  return (tiles[p.id] = { cv: cv, pat: null, ctx: null });
 }
 
 /* opal: soft patches of colour drifting over a pale (or dark) base, repainted as time moves */
 var opalCv = {};
 function opalTile(p, t) {
   var N = 64, o = opalCv[p.id] || (opalCv[p.id] = { cv: mk(N, N), t: -9 });
-  if (Math.abs(t - o.t) < 0.03) return o.cv;
-  o.t = t;
-  var c = o.cv.getContext('2d'), P = p.pat, i;
+  if (Math.abs(t - o.t) < 0.09) return o;       // repainted about ten times a second; the drift in between is done by sliding it
+  o.t = t; o.pat = null;
+  // kept as a plain in-memory picture: it is small, repainted often and copied into a pattern each time
+  var c = o.cv.getContext('2d', { willReadFrequently: true }), P = p.pat, i;
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; c.fillStyle = P.base; c.fillRect(0, 0, N, N);
   c.globalCompositeOperation = P.dark ? 'lighter' : 'source-over';
   for (i = 0; i < P.fire.length; i++) {
@@ -101,13 +101,15 @@ function opalTile(p, t) {
       c.globalAlpha = P.dark ? 1 : 0.95; c.fillStyle = g; c.fillRect(px - rad2, py - rad2, rad2 * 2, rad2 * 2); }); })(x, y, rad, P.fire[i]);
   }
   c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
-  return o.cv;
+  return o;
 }
 
-function patternFill(ctx, cv, size, ang) {
-  var pat = ctx.createPattern(cv, 'repeat'), s = size / cv.width, ca = Math.cos(ang || 0) * s, sa = Math.sin(ang || 0) * s;
-  pat.setTransform(new root.DOMMatrix([ca, sa, -sa, ca, 0, 0]));
-  return pat;
+/* o: { cv, pat, ctx }. The pattern is only rebuilt when its picture changes or a different canvas asks for it. */
+function patternFill(ctx, o, size, ang, dx, dy) {
+  if (!o.pat || o.ctx !== ctx) { o.pat = ctx.createPattern(o.cv, 'repeat'); o.ctx = ctx; }
+  var s = size / o.cv.width, ca = Math.cos(ang || 0) * s, sa = Math.sin(ang || 0) * s;
+  o.pat.setTransform(new root.DOMMatrix([ca, sa, -sa, ca, dx || 0, dy || 0]));
+  return o.pat;
 }
 
 /* the fill for a paint job's main colour, in bike coordinates (metres, y up) */
@@ -126,7 +128,7 @@ A.paintFill = function (ctx, p, t, span) {
       var n = P.stops.length;
       for (var rep = 0; rep < 4; rep++) for (i = 0; i < n; i++) g.addColorStop((rep + i / n) / 4, P.stops[i]);
       g.addColorStop(1, P.stops[0]); f = g;
-    } else if (P.t === 'opal') f = patternFill(ctx, opalTile(p, t), 0.85, 0.5);
+    } else if (P.t === 'opal') f = patternFill(ctx, opalTile(p, t), 0.85, 0.5, t * 0.11, t * 0.07);
     else f = patternFill(ctx, tile(p), (P.t === 'stripes' ? P.w * 2 : P.t === 'checker' || P.t === 'dots' ? P.w * 2 : P.t === 'carbon' ? P.w * 8 : P.w), P.ang || 0);
   } catch (e) { return p.c[0]; }
   try { f.flat = p.c[0]; } catch (e2) {}

@@ -167,7 +167,7 @@ var T = [
 }],
 
 /* ----------------------------- RACEWAY ------------------------------ */
-['Green Flag', 'Yellow arrows on the road are boost strips. Ride over them with the gas open.', function (b) {
+['Green Flag', 'Yellow arrows on the road are boost strips. Ride over them with the gas open. There is a bus to clear at the end.', function (b) {
   b.flat(18).kerb(6).flat(8).boost(6).flat(22).table(12, 1.4, 7, 10).flat(14).ease(24, -3).flat(8)
    .kerb(5).flat(6).boost(6).flat(16).hill(1.6, 20).flat(12);
   ramp(b, 13, 9, 1.6); b.buses(1, { rise: -0.5 }).land(11, 8).flat(18);
@@ -205,8 +205,8 @@ var T = [
 ['Seven Buses', 'One long run-up. Hit every boost strip and do not lift.', function (b) {
   b.flat(16).kerb(6).flat(8).table(16, 1.8, 6, 9).flat(10);
   ramp(b, 17, 9, 1.4); b.buses(2, { rise: -0.9 }).land(15, 9).flat(10).oil(6).flat(8).hill(2, 18).flat(10)
-   .boost(8).flat(14).down(13, 26, 16).flat(6, 14).boost(8).flat(8);
-  ramp(b, 21, 10, 1.6); b.buses(7, { rise: -4 }).land(21, 14, 10).flat(24);
+   .boost(8).flat(14).down(14, 30, 16).flat(6, 14).boost(9).flat(8);
+  ramp(b, 21, 10, 1.6); b.buses(7, { rise: -4.6 }).land(22, 15, 10).flat(24);
 }],
 ['Chequered Flag', '', function (b) {
   b.flat(18).boost(7).flat(12).loop(4.4).flat(10).kerb(6).flat(6);
@@ -297,10 +297,10 @@ var T = [
 ['Hot Start', 'Lava ends the run. Jump too short and that is where you land.', function (b) {
   b.flat(22);
   kick(b, 17, 6.5, 15, 8, { rise: -0.8, R: 7 });
-  b.flat(10).hill(2.0, 18).flat(10);
-  jump(b, 19, 8, 17, 9, { rise: -1 });
+  b.flat(10).hill(2.0, 18).flat(12);
+  jump(b, 18, 7, 16, 10, { rise: -1, lip: 1.5 });
   b.flat(8).waves(2, 16, 1.0).flat(12);
-  jump(b, 20, 9.5, 18, 10, { rise: -1.4 });
+  jump(b, 19, 8.5, 17, 11, { rise: -1.3, lip: 1.4 });
   b.flat(10).table(20, 2.4, 5, 8).flat(14);
 }],
 ['Ember Steps', '', function (b) {
@@ -348,9 +348,9 @@ var T = [
   b.flat(14).ease(30, -6.5).flat(6);
   jump(b, 22, 15, 20, 12, { rise: -2.4 });
   b.flat(8).roofStart(3.4).flat(8).bumps(6, 3.4, 0.28).flat(8).hill(1.1, 12).flat(10).roofEnd().flat(6);
-  hop(b, 19, 7, { rise: -0.4 }).flat(9);
-  hop(b, 19, 7, { rise: -0.4 }).flat(9);
-  b.kicker(20, 5.5, 0).gap(8, { rise: -0.6 }).land(16, 8);
+  hop(b, 19, 7, { rise: -0.4 }).flat(10.5);
+  hop(b, 19, 7, { rise: -0.4 }).flat(10.5);
+  b.kicker(20, 5.5, 0).gap(8, { rise: -0.6 }).land(16, 9);
   b.flat(14);
 }],
 ['Caldera', '', function (b) {
@@ -416,19 +416,19 @@ var T = [
 }],
 ['Escape Velocity', '', function (b) {
   b.flat(14).down(18, 30, 16).flat(8, 12);
-  jump(b, 23, 36, 21, 22, { rise: -5 });
-  b.flat(14).up(20, 16, 14).flat(8, 16).down(22, 28, 13).flat(8, 12);
-  jump(b, 24, 38, 23, 24, { rise: -6 });
+  jump(b, 23, 33, 21, 24, { rise: -5 });
+  b.flat(14).up(20, 16, 14).flat(8, 16).down(22, 30, 13).flat(20, 12);
+  jump(b, 24, 34, 23, 26, { rise: -6 });
   b.flat(24);
 }],
 ['Riot Run', '', function (b) {
   b.flat(26).loop(6).flat(16);
   jump(b, 21, 22, 18, 16, { rise: -2 });
   b.flat(12).hill(-2.6, 44).flat(12).kicker(21, 10).gap(9, { rise: 1.7 }).flat(20).drop(3.5).flat(16)
-   .bumps(5, 5.5, 0.34).flat(22).loop(7).flat(12).down(18, 24, 14).flat(8, 12);
-  jump(b, 23, 36, 21, 22, { rise: -5 });
+   .bumps(5, 5.5, 0.34).flat(22).loop(7).flat(12).down(18, 28, 14).flat(12, 12);
+  jump(b, 23, 33, 21, 24, { rise: -5 });
   b.flat(28);
-  kick(b, 20, 18, 17, 14, { rise: -1.5, R: 8 });
+  jump(b, 20, 18, 17, 15, { rise: -1.5, R: 9, lip: 1.4 });
   b.flat(12).table(22, 4.5, 8, 11).flat(22);
 }]
 ];
@@ -436,12 +436,12 @@ var T = [
 /* Running order inside each world, easiest first. The recipes above are grouped
    by idea; this list sorts them by how often the test riders crashed on them. */
 var ORDER = [
-  ['First Gear', 'Washboard', 'Rolling Dunes', 'Hop Skip', 'Loop de Dust', 'Mesa Drop', 'Gulch Gap', 'Canyon Run'],
+  ['First Gear', 'Rolling Dunes', 'Hop Skip', 'Loop de Dust', 'Mesa Drop', 'Washboard', 'Gulch Gap', 'Canyon Run'],
   ['Log Jam', 'Mossy Loop', 'Timber Table', 'Sawmill', 'Root Rage', 'Creek Hop', 'Beaver Dam', 'Old Growth'],
-  ['Green Flag', 'Bus Stop', 'Rumble Strip', 'Oil Slick', 'Stunt Show', 'Pit Lane', 'Seven Buses', 'Chequered Flag'],
-  ['Black Ice', 'Whiteout', 'Glacier Loop', 'Slip Road', 'Powder Keg', 'Avalanche', 'Crevasse', 'Aurora'],
-  ['Hot Start', 'The Chimney', 'Ash Loop', 'Caldera', 'Magma Hop', 'Fire Walk', 'Ember Steps', 'Eruption'],
-  ['One Small Hop', 'Double Loop', 'Crater Maker', 'Slow Float', 'Dark Side', 'Escape Velocity', 'Regolith', 'Riot Run']
+  ['Green Flag', 'Rumble Strip', 'Oil Slick', 'Bus Stop', 'Pit Lane', 'Seven Buses', 'Stunt Show', 'Chequered Flag'],
+  ['Black Ice', 'Glacier Loop', 'Slip Road', 'Whiteout', 'Powder Keg', 'Aurora', 'Crevasse', 'Avalanche'],
+  ['Hot Start', 'The Chimney', 'Caldera', 'Ash Loop', 'Magma Hop', 'Ember Steps', 'Fire Walk', 'Eruption'],
+  ['One Small Hop', 'Double Loop', 'Crater Maker', 'Slow Float', 'Regolith', 'Escape Velocity', 'Dark Side', 'Riot Run']
 ];
 function slug(n) { return n.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
 function hashStr(n) { var h = 2166136261; for (var i = 0; i < n.length; i++) { h ^= n.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
