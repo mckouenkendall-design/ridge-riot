@@ -19,4 +19,11 @@ const icon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180"><rec
              .replace('/*CSS*/', () => src('style.css')).replace('/*JS*/', () => js);
   fs.writeFileSync(path.join(root, 'index.html'), html);
   console.log('index.html', (html.length / 1024).toFixed(0) + ' KB');
+  // optional second copy without the outer page tags, for hosts that add their own: node tools/build.js --bare <file>
+  const i = process.argv.indexOf('--bare');
+  if (i > 0) {
+    const bare = '<title>Ridge Riot</title>\n<style>\n' + src('style.css') + '\n</style>\n<canvas id="stage"></canvas>\n<div id="ui"></div>\n<script>\n' + js + '\n</script>\n<script>RR.boot();</script>\n';
+    fs.writeFileSync(process.argv[i + 1], bare);
+    console.log(process.argv[i + 1], (bare.length / 1024).toFixed(0) + ' KB');
+  }
 })();

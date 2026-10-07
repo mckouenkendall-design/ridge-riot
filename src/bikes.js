@@ -115,7 +115,7 @@ RR.BIKES = [
     rider: { seat: [0.50, 1.12], peg: [0.62, 0.62], grip: [1.12, 1.40], scale: 1, torso: 0.34 },
     col: ['#f08a24', '#20242e', '#f5f1e6'], suit: ['#20242e', '#f08a24', '#f5f1e6'],
     snd: { type: 'thump', pitch: 0.66, gears: 4 },
-    unlock: { type: 'air', n: 2.5, text: 'Stay airborne for 2.5 seconds in one jump' }
+    unlock: { type: 'air', n: 2.2, text: 'Stay airborne for 2.2 seconds in one jump' }
   },
   {
     id: 'razor', name: 'Razorback RR', kind: 'sport', tag: 'Far too fast for dirt',

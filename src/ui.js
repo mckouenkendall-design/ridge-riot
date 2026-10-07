@@ -305,7 +305,8 @@ UI.settings = function () {
   function sl(k, label) { return '<div class="row"><label for="r-' + k + '">' + label + '</label><input id="r-' + k + '" type="range" min="0" max="100" value="' + Math.round(s[k] * 100) + '" data-k="' + k + '"></div>'; }
   function seg(v, label) { return '<button data-act="seg" data-v="' + v + '" class="' + (s.quality === v ? 'on' : '') + '">' + label + '</button>'; }
   $('setcols').innerHTML =
-    sl('engine', 'Engine volume') + sw('tilt', 'Tilt to lean', 'Lean by tilting the phone. Any touch brakes.') +
+    sl('engine', 'Engine volume') + sw('tilt', 'Tilt to lean', 'Lean by tilting the phone like a steering wheel. Any touch brakes.') +
+    (s.tilt ? '<div class="row"></div>' + sw('tiltFlip', 'Tilt leans the wrong way round', 'Switch this on if tilting right leans the bike back.') : '') +
     sl('sfx', 'Effects volume') + sw('hints', 'Show the lean buttons') +
     sl('music', 'Menu music') + sw('ghost', 'Race the ghost of your best run') +
     '<div class="row"><label>Picture quality</label><span class="seg">' + seg('auto', 'Auto') + seg('high', 'Sharp') + seg('low', 'Fast') + '</span></div>' + sw('buzz', 'Vibrate on hard landings', 'Android phones only.') +

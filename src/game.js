@@ -13,7 +13,7 @@ function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 var KEY = 'ridgeRiot.v1';
 var DEF = {
   best: {}, bike: 'scrapper', owned: { scrapper: 1 }, last: 0, seenHow: false,
-  settings: { sfx: 0.8, engine: 0.7, music: 0.5, tilt: false, tiltSens: 1, hints: true, ghost: true, unlockAll: false, quality: 'auto', buzz: true },
+  settings: { sfx: 0.8, engine: 0.7, music: 0.5, tilt: false, tiltSens: 1, tiltFlip: false, hints: true, ghost: true, unlockAll: false, quality: 'auto', buzz: true },
   stats: { flips: 0, bestAir: 0, crashes: 0, runs: 0, finishes: 0, bestJump: 0, bestFlips: 0, time: 0 }
 };
 var mem = {};
@@ -36,7 +36,11 @@ var Store = RR.Store = {
     d.owned.scrapper = 1;
     Store.data = d;
   },
-  save: function () { return Store.set(KEY, JSON.stringify(Store.data)); },
+  save: function () {
+    var ok = Store.set(KEY, JSON.stringify(Store.data));
+    if (!ok && !Store.warned) { Store.warned = true; if (RR.UI && RR.UI.toast) RR.UI.toast('This browser is not letting the game save. Progress lasts until you close the page.'); }
+    return ok;
+  },
   reset: function () {
     var s = Store.data.settings;
     Store.data = JSON.parse(JSON.stringify(DEF)); Store.data.settings = s; Store.data.settings.unlockAll = false;
@@ -135,7 +139,7 @@ function readInput() {
   for (k in In.touch) { anyT = true; if (In.touch[k] < mid) L = true; else Rt = true; }
   var set = Store.data.settings;
   if (set.tilt && In.tiltOK) {
-    var a = (In.tiltRaw - In.tiltZero) * set.tiltSens / 0.33;
+    var a = (In.tiltRaw - In.tiltZero) * set.tiltSens / 0.33 * (set.tiltFlip ? -1 : 1);
     if (a > -0.16 && a < 0.16) a = 0;
     inp.lean = clamp(a, -1, 1);
     if (In.kL) inp.lean = -1; else if (In.kR) inp.lean = 1;
@@ -194,7 +198,7 @@ G.reset = function (snapCam) {
   var s = G.sim;
   RR.resetSim(s);
   R.clearParts(); R.clearPopups();
-  G.rag = null; G.sunk = false; G.flash = 0; G.boostGlow = 0; G.timeScale = 1; G.endT = 0; G.resultShown = false;
+  G.rag = null; G.sunk = false; G.camHold = false; G.stuckT = 0; G.stuckSaid = false; G.flash = 0; G.boostGlow = 0; G.timeScale = 1; G.endT = 0; G.resultShown = false;
   vis.noRider = false; vis.stand = 0; vis.crouch = 0;
   Ghost.rec.length = 0; tickN = 0; acc = 0;
   if (!G.attract) Ghost.load(G.track.index);
@@ -278,10 +282,11 @@ function onEvents() {
       R.popup(nm, 'BOOST!', e.n > 1 ? '#ffd24a' : '#ffffff');
       Au.flip(e.n); Au.boost(); buzz(30);
       Store.data.stats.flips += e.n;
+      if (e.air > Store.data.stats.bestAir) Store.data.stats.bestAir = Math.round(e.air * 100) / 100;
       for (k = 0; k < 3; k++) R.emit(5, s.x, s.y, 0, 0, 0.5 + k * 0.12, 0.6, '#ffe07a', { gr: 5 + k * 2, a: 0.8, front: 1, w: 0.09 });
       var got = P.claim(); if (got.length && RR.UI) RR.UI.toastBikes(got);
     } else if (e.t === 'air') {
-      if (e.air >= 1.5) { R.popup('BIG AIR', e.air.toFixed(1) + ' s', '#9fe8ff'); Au.air(); }
+      if (e.air >= 1.8 * Math.sqrt(9.81 / s.g)) { R.popup('BIG AIR', e.air.toFixed(1) + ' s', '#9fe8ff'); Au.air(); }
       if (e.air > Store.data.stats.bestAir) { Store.data.stats.bestAir = Math.round(e.air * 100) / 100; var g2 = P.claim(); if (g2.length && RR.UI) RR.UI.toastBikes(g2); }
     } else if (e.t === 'crash') {
       Store.data.stats.crashes++;
@@ -294,7 +299,7 @@ function onEvents() {
         dustBurst(e.x, RR.groundY(G.track, e.x) + 0.2, 16, T.dust, 3);
         for (k = 0; k < 10; k++) R.emit(1, e.x, e.y, rnd(-5, 5) + s.vx * 0.4, rnd(2, 8), rnd(0.6, 1.2), rnd(0.04, 0.08), k % 2 ? G.bikeDef.col[0] : '#ffffff', { g: 1, vr: rnd(-12, 12), front: 1 });
       } else if (e.cause === 'fall') {
-        Au.fall();
+        Au.fall(); G.camHold = true;
       } else {
         Au.splash(e.cause); G.sunk = true; G.cam.shake = 0.6;
         var col = e.cause === 'lava' ? '#ff8a2a' : e.cause === 'ice' ? '#bfe6ff' : '#8fd6f5', hz = null;
@@ -381,6 +386,11 @@ function tickOnce() {
   else input = { lean: 0, brake: G.state === 'finish', gas: false };
   RR.tick(s, input);
   if (G.state === 'run' && tickN % 8 === 0) Ghost.sample(s);
+  if (G.state === 'run') {
+    // sitting still for a while (wedged against a wall, flat on its back wheel): point at the restart button
+    if (Math.abs(s.vx) + Math.abs(s.vy) < 0.6 && s.time > 2) G.stuckT += DT; else G.stuckT = 0;
+    if (G.stuckT > 3.5 && !G.stuckSaid) { G.stuckSaid = true; if (RR.UI) RR.UI.toast('Stuck? The round arrow at the top left restarts.'); }
+  }
   tickN++;
   onEvents();
   trailFx();
@@ -420,7 +430,8 @@ G.frame = function (ts) {
     var fs = { x: vis.x, y: vis.y, vx: s.vx, vy: s.vy };
     if (G.rag && G.state === 'crash') { fs.x = (vis.x + G.rag.pts[2].x) * 0.5; fs.y = (vis.y + G.rag.pts[2].y) * 0.5; fs.vx *= 0.3; fs.vy *= 0.3; }
     if (G.sunk) { fs.vx = 0; fs.vy = 0; fs.y = Math.max(fs.y, RR.groundY(G.track, s.x - 6)); }
-    R.camFollow(G.cam, fs, G.track, dt, R.size().w / R.size().h, false, G.attract ? 0.06 : null);
+    if (!G.camHold) R.camFollow(G.cam, fs, G.track, dt, R.size().w / R.size().h, false, G.attract ? 0.06 : null);
+    else { G.cam.px = G.cam.x; G.cam.py = G.cam.y; }
     R.stepParts(dt * G.timeScale, s.g);
   }
   G.ghostPose = (G.state === 'run' || G.state === 'ready') && Store.data.settings.ghost && Ghost.play ? Ghost.pose(s.time, gp) : null;
