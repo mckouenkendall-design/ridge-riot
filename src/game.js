@@ -187,7 +187,7 @@ G.load = function (trackIndex, bikeId, attract) {
   G.cam = G.cam || R.newCamera();
   G.attract = !!attract;
   Au.setWorld(tr.worldIndex);
-  if (!attract) { Ghost.load(trackIndex); Au.engineStart(def); Au.layersStart(); }
+  if (!attract) { Au.engineStart(def); Au.layersStart(); }
   G.reset(true);
 };
 G.reset = function (snapCam) {
@@ -197,6 +197,7 @@ G.reset = function (snapCam) {
   G.rag = null; G.sunk = false; G.flash = 0; G.boostGlow = 0; G.timeScale = 1; G.endT = 0; G.resultShown = false;
   vis.noRider = false; vis.stand = 0; vis.crouch = 0;
   Ghost.rec.length = 0; tickN = 0; acc = 0;
+  if (!G.attract) Ghost.load(G.track.index);
   copyPrev();
   R.camFollow(G.cam, s, G.track, 0, R.size().w / R.size().h, true, G.attract ? 0.06 : null);
   G.state = G.attract ? 'attract' : 'ready';
