@@ -40,12 +40,22 @@ RR.botInput = function (s, P, out) {
   out.lean = lean;
   var sp = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
   var cap = P.vcap || 1e9;
-  // under a rock roof, go slowly enough that humps do not throw the rider into it
-  if (tr.roofs === undefined) tr.roofs = tr.feats.filter(function (f) { return f.t === 'roof'; });
-  for (var r = 0; r < tr.roofs.length; r++) if (s.x > tr.roofs[r].x0 - 16 && s.x < tr.roofs[r].x1 - 3) cap = Math.min(cap, P.roofV || 9.5);
-  out.brake = sp > cap && !air;
+  /* Slow zones: stretches where full gas gets you hurt. The track carries a sensible
+     limit for each one; the test tools can hand in limits worked out for this bike.
+     The rider starts slowing early enough to be down to the limit as the zone begins. */
+  if (tr.zones === undefined) tr.zones = tr.feats.filter(function (f) { return f.t === 'zone'; });
+  var zs = tr.zones, dec = (P.dec || 0.42) * s.g;
+  for (var r = 0; r < zs.length; r++) {
+    var z = zs[r], zv = P.caps ? P.caps[r] : z.v;
+    if (zv == null || s.x >= z.x1 || s.x < z.x0 - 90) continue;
+    var dz = z.x0 - s.x - (P.early == null ? 2.5 : P.early);
+    var allow = dz > 0 ? Math.sqrt(zv * zv + 2 * dec * dz) : zv;
+    if (allow < cap) cap = allow;
+  }
+  out.cap = cap;
+  out.brake = sp > cap + (cap < 1e8 ? 0.5 : 0) && !air;
   // throttle: held open, but eased off when the front wheel climbs too high, the way a rider would
-  var gas = !out.brake;
+  var gas = !out.brake && sp < cap - 0.15;
   if (gas && s.gnd[0] && !s.gnd[1]) {
     var pr = wrap(s.a - Math.atan2(-s.nrmX[0], s.nrmY[0])) + s.w * (P.wlook == null ? 0.22 : P.wlook);
     if (pr > (P.wth || 0.4)) gas = false;

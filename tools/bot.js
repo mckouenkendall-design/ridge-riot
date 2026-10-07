@@ -1,5 +1,7 @@
-/* Proves each track can be finished with only the player's controls, and sets star times.
-   usage: node tools/bot.js [--tracks 0-39] [--bikes all|scrapper,...] [--write] [--plot i] */
+/* The rewind-and-retry robot: proves a track can be finished with only the player's controls, by
+   backing up a few seconds after each crash and trying that stretch another way.
+   (Star times and the speed limits for slow zones come from tools/skill.js.)
+   usage: node tools/bot.js [--tracks 0-47] [--bikes all|scrapper,...] [--plot] [--human 40] */
 const fs = require('fs'), path = require('path');
 const RR = require('../src/physics.js');
 require('../src/builder.js'); require('../src/bikes.js'); require('../src/tracks.js'); require('../src/bot.js');
@@ -12,7 +14,9 @@ function solve(trackIndex, bikeId, opts) {
   const tr = RR.getTrack(trackIndex), bike = RR.prepBike(RR.BIKE[bikeId]);
   const s = RR.createSim(bike, tr);
   const rand = rng(12345 + trackIndex * 31 + RR.BIKE[bikeId].index * 7);
-  const base = { vcap: 1e9, bias: 0 };
+  // base: how this bike rides the track when nothing has gone wrong yet. tools/skill.js hands in the
+  // speed limits it worked out for each slow zone; without them the track's own figures are used.
+  const base = opts.base || { vcap: 1e9, bias: 0 };
   let P = base, pUntil = -1;
   const snaps = [];              // {t, snap, tick}
   const out = {};
@@ -53,6 +57,11 @@ function solve(trackIndex, bikeId, opts) {
       const caps = [1e9, 1e9, 22, 18, 15, 13, 11, 9, 7.5];
       P = { vcap: caps[Math.floor(rand() * caps.length)], bias: (rand() - 0.5) * 0.5, airBias: (rand() - 0.5) * 0.6,
             th: 0.1 + rand() * 0.3, gth: 0.25 + rand() * 0.4, wth: 0.2 + rand() * 0.5 };
+      if (base.vcap < P.vcap) P.vcap = base.vcap;
+      // try the slow zones a bit slower or faster too
+      const zs = tr.feats.filter(f => f.t === "zone"), kz = 0.55 + rand() * 0.7;
+      if (zs.length && rand() < 0.7) P.caps = zs.map((z, i) => { const c = base.caps ? base.caps[i] : z.v; return c > 1e8 ? (rand() < 0.5 ? 1e9 : z.v * kz) : Math.max(3, c * kz); });
+      else if (base.caps) P.caps = base.caps;
       if (rand() < 0.25) { P.force = rand() < 0.5 ? -1 : 1; P.forceUntil = s.time + 0.2 + rand() * 0.8; }
       pUntil = tc + 1.0 + rand() * 1.5;
     }
@@ -165,18 +174,5 @@ if (require.main === module) (async () => {
     console.log(line);
   }
   if (args.includes('--json')) fs.writeFileSync(arg('--json'), JSON.stringify(table));
-  if (args.includes('--write')) {
-    // Star times come from the robot's clean, no-flips run on the starter bike.
-    const F3 = { dust: 1.07, pine: 1.03, race: 1.02, frost: 1.0, cinder: 0.97, orbit: 0.95 }, F2 = { dust: 1.35, pine: 1.3, race: 1.28, frost: 1.25, cinder: 1.22, orbit: 1.2 }, rows = [];
-    for (let t = 0; t < RR.TRACK_COUNT; t++) {
-      const base = table[t].scrapper, w = Math.floor(t / 8);
-      if (!base) throw new Error('starter bike cannot finish track ' + t);
-      const wid = RR.WORLDS[w].id, s3 = Math.round(base * F3[wid] * 10) / 10, s2 = Math.round(base * F2[wid] * 10) / 10;
-      const can = Object.keys(table[t]).filter(id => table[t][id] && table[t][id] <= s3).length;
-      rows.push(`  [${s3.toFixed(1)}, ${s2.toFixed(1)}]${t < RR.TRACK_COUNT - 1 ? ',' : ' '}   // ${String(t + 1).padStart(2)} ${RR.getTrack(t).name}: robot on starter ${base.toFixed(1)}s, ${can} of ${Object.keys(table[t]).length} bikes beat three stars without a single flip`);
-    }
-    fs.writeFileSync(path.join(__dirname, '..', 'src', 'startimes.js'),
-      `/* Star times: [three-star time, two-star time] per track, in seconds.\n   Written by: node tools/bot.js --bikes all --write   (do not edit by hand) */\n(function (root) {\nvar RR = root.RR || (root.RR = {});\nRR.STAR_TIMES = [\n${rows.join('\n')}\n];\nif (typeof module !== 'undefined' && module.exports) module.exports = RR;\n})(typeof window !== 'undefined' ? window : globalThis);\n`);
-    console.log('wrote src/startimes.js');
-  }
+  if (args.includes('--write')) console.log('star times are written by tools/skill.js now: node tools/skill.js --bikes all --write');
 })();

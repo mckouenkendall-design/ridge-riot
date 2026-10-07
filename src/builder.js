@@ -182,10 +182,11 @@ P.loop = function (R) {
 P.roofStart = function (clear) { this._roof = { i: this.pts.length / 2 - 1, clear: clear }; return this; };
 P.roofEnd = function (thick) {
   var r = this._roof, n = this.pts.length / 2, i, bottom = [], top = -1e9;
-  thick = thick || 2.2;
+  var built = this.world.id === 'race' || this.world.id === 'orbit';      // poured or bolted, so no lumps
+  thick = thick || 40;      // nobody rides over the top of one
   for (i = r.i; i < n; i++) {
     if (this.pit[i]) continue;
-    var x = this.pts[i * 2], y = this.pts[i * 2 + 1] + r.clear + 0.25 * Math.sin(x * 1.7) + 0.15 * Math.sin(x * 4.1 + 1);
+    var x = this.pts[i * 2], y = this.pts[i * 2 + 1] + r.clear + (built ? 0.3 : 0.25 * Math.sin(x * 1.7) + 0.15 * Math.sin(x * 4.1 + 1));
     if (bottom.length && x - bottom[bottom.length - 2] < 0.8 && i < n - 1) continue;
     bottom.push(x, y); if (y > top) top = y;
   }
@@ -193,13 +194,26 @@ P.roofEnd = function (thick) {
   var poly = [bottom[0], top, bottom[bottom.length - 2], top];
   for (i = bottom.length / 2 - 1; i >= 0; i--) poly.push(bottom[i * 2], bottom[i * 2 + 1]);
   this.chains.push({ pts: poly, closed: true, mat: RR.MAT.rock, depth: 0.4, kind: 'roof' });
-  this.feats.push({ t: 'roof', x0: bottom[0], x1: bottom[bottom.length - 2] });
+  this.feats.push({ t: 'roof', x0: bottom[0], x1: bottom[bottom.length - 2], bot: bottom });
   this._roof = null;
   return this;
 };
+/* a block hanging over the track: dx metres ahead of the pen, its underside `clear` metres above
+   the pen's height, w long and h thick. Touching it with your head ends the run. */
+P.beam = function (dx, clear, w, h, style) {
+  var x0 = this.x + dx, y0 = this.y + clear, x1 = x0 + w, y1 = y0 + (h || 0.7);
+  this.chains.push({ pts: [x0, y1, x1, y1, x1, y0, x0, y0], closed: true, mat: RR.MAT.wood, depth: 0.3, kind: 'beam' });
+  this.feats.push({ t: 'beam', x0: x0, x1: x1, y0: y0, y1: y1, style: style || '' });
+  return this;
+};
+/* A slow zone: from here until go(), full gas is the wrong answer. v is the speed (m/s) the
+   starter bike should hold. The robot riders use it; the player just has to find out. */
+P.slow = function (v) { this._zone = { t: 'zone', x0: this.x, v: v }; return this; };
+P.go = function () { var z = this._zone; if (z) { z.x1 = this.x; this.feats.push(z); this._zone = null; } return this; };
 P.sign = function (kind) { this.feats.push({ t: 'sign', x: this.x, y: this.y, kind: kind }); return this; };
 
 P.finish = function (name, id) {
+  this.go();
   this.to(0); this.line(5);
   var fx = this.x;
   this.feats.push({ t: 'finish', x: fx, y: this.y });

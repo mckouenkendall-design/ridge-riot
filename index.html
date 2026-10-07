@@ -228,7 +228,7 @@ input[type=range]::-moz-range-thumb { width: 1.3rem; height: 1.3rem; background:
 .wipe { position: absolute; left: 50%; bottom: calc(1.3rem + var(--safe-b)); transform: translateX(-50%) rotate(-3deg) skewX(-8deg); padding: 0.3rem 1.3rem 0.25rem; text-align: center; display: none; pointer-events: none; background: var(--red); color: var(--plate); }
 .wipe.on { display: block; animation: pop 0.18s ease-out; }
 .wipe b { display: block; font-size: 1.8rem; font-weight: 900; font-style: italic; line-height: 1; white-space: nowrap; }
-.wipe span { font-size: 0.9rem; font-weight: 800; white-space: nowrap; }
+.wipe span { display: block; font-size: 0.9rem; font-weight: 800; white-space: pre; line-height: 1.15; }
 @keyframes pop { from { transform: translateX(-50%) rotate(-3deg) skewX(-8deg) scale(0.6); opacity: 0; } to { transform: translateX(-50%) rotate(-3deg) skewX(-8deg) scale(1); opacity: 1; } }
 
 /* pause and results */
@@ -1089,10 +1089,11 @@ P.loop = function (R) {
 P.roofStart = function (clear) { this._roof = { i: this.pts.length / 2 - 1, clear: clear }; return this; };
 P.roofEnd = function (thick) {
   var r = this._roof, n = this.pts.length / 2, i, bottom = [], top = -1e9;
-  thick = thick || 2.2;
+  var built = this.world.id === 'race' || this.world.id === 'orbit';      // poured or bolted, so no lumps
+  thick = thick || 40;      // nobody rides over the top of one
   for (i = r.i; i < n; i++) {
     if (this.pit[i]) continue;
-    var x = this.pts[i * 2], y = this.pts[i * 2 + 1] + r.clear + 0.25 * Math.sin(x * 1.7) + 0.15 * Math.sin(x * 4.1 + 1);
+    var x = this.pts[i * 2], y = this.pts[i * 2 + 1] + r.clear + (built ? 0.3 : 0.25 * Math.sin(x * 1.7) + 0.15 * Math.sin(x * 4.1 + 1));
     if (bottom.length && x - bottom[bottom.length - 2] < 0.8 && i < n - 1) continue;
     bottom.push(x, y); if (y > top) top = y;
   }
@@ -1100,13 +1101,26 @@ P.roofEnd = function (thick) {
   var poly = [bottom[0], top, bottom[bottom.length - 2], top];
   for (i = bottom.length / 2 - 1; i >= 0; i--) poly.push(bottom[i * 2], bottom[i * 2 + 1]);
   this.chains.push({ pts: poly, closed: true, mat: RR.MAT.rock, depth: 0.4, kind: 'roof' });
-  this.feats.push({ t: 'roof', x0: bottom[0], x1: bottom[bottom.length - 2] });
+  this.feats.push({ t: 'roof', x0: bottom[0], x1: bottom[bottom.length - 2], bot: bottom });
   this._roof = null;
   return this;
 };
+/* a block hanging over the track: dx metres ahead of the pen, its underside `clear` metres above
+   the pen's height, w long and h thick. Touching it with your head ends the run. */
+P.beam = function (dx, clear, w, h, style) {
+  var x0 = this.x + dx, y0 = this.y + clear, x1 = x0 + w, y1 = y0 + (h || 0.7);
+  this.chains.push({ pts: [x0, y1, x1, y1, x1, y0, x0, y0], closed: true, mat: RR.MAT.wood, depth: 0.3, kind: 'beam' });
+  this.feats.push({ t: 'beam', x0: x0, x1: x1, y0: y0, y1: y1, style: style || '' });
+  return this;
+};
+/* A slow zone: from here until go(), full gas is the wrong answer. v is the speed (m/s) the
+   starter bike should hold. The robot riders use it; the player just has to find out. */
+P.slow = function (v) { this._zone = { t: 'zone', x0: this.x, v: v }; return this; };
+P.go = function () { var z = this._zone; if (z) { z.x1 = this.x; this.feats.push(z); this._zone = null; } return this; };
 P.sign = function (kind) { this.feats.push({ t: 'sign', x: this.x, y: this.y, kind: kind }); return this; };
 
 P.finish = function (name, id) {
+  this.go();
   this.to(0); this.line(5);
   var fx = this.x;
   this.feats.push({ t: 'finish', x: fx, y: this.y });
@@ -1188,11 +1202,11 @@ RR.BIKES = [
   },
   {
     id: 'mosquito', name: 'Mosquito 50', kind: 'mini', tag: 'Tiny, twitchy, flips for fun', wipe: 'pop',
-    blurb: 'A pit bike with wheels the size of dinner plates. Spins like a coin, hates big bumps.',
+    blurb: 'A pit bike with wheels the size of dinner plates. Spins like a coin, hates big bumps, fits under most things.',
     mass: 126, kgyr: 0.37, wb: 1.02, rr: 0.225, rf: 0.225, com: [0.45, 0.68], wheelMass: [5.5, 5], rake: 25, swing: 8,
     sus: [{ travel: 0.13, freq: 2.7, sag: 0.3, zc: 0.45, zr: 0.9 }, { travel: 0.13, freq: 2.7, sag: 0.3, zc: 0.42, zr: 0.9 }],
-    accel: 0.60, vp: 7.5, vmax: 13.6, grip: 0.96, brake: 0.8, leanAcc: 23, spin: 8.4, cda: 0.5,
-    rider: { seat: [0.28, 0.70], peg: [0.40, 0.30], grip: [0.74, 0.96], scale: 0.96, torso: 0.30 },
+    accel: 0.60, vp: 7.5, vmax: 14.4, grip: 0.96, brake: 0.8, leanAcc: 23, spin: 8.4, cda: 0.5,
+    rider: { seat: [0.28, 0.73], peg: [0.40, 0.30], grip: [0.74, 0.98], scale: 1, torso: 0.26 },
     col: ['#e8483a', '#20242e', '#ffe9a8'], suit: ['#3a7be8', '#ffffff', '#20242e'],
     snd: { type: 'mini', pitch: 1.45, gears: 4 },
     unlock: { type: 'stars', n: 6 }
@@ -1232,12 +1246,12 @@ RR.BIKES = [
   },
   {
     id: 'penny', name: 'Penny Dreadful', kind: 'penny', tag: 'One huge wheel, one afterthought', wipe: 'paper',
-    blurb: 'A motorised penny-farthing. The big front wheel rolls over anything. You sit a long way up, and it knows it.',
+    blurb: 'A motorised penny-farthing. The big wheel rolls over anything. You sit a long way up, so mind your head.',
     mass: 150, kgyr: 0.56, wb: 1.08, rr: 0.20, rf: 0.56, com: [0.68, 1.00], wheelMass: [7.5, 13], rake: 10, swing: 8,
     sus: [{ travel: 0.08, freq: 2.7, sag: 0.3, zc: 0.45, zr: 0.9 }, { travel: 0.11, freq: 2.4, sag: 0.3, zc: 0.42, zr: 0.9 }],
     accel: 0.50, vp: 7, vmax: 13.4, grip: 0.98, brake: 0.5, leanAcc: 14.5, spin: 5.7, cda: 0.7,
-    rider: { seat: [0.60, 1.26], peg: [1.00, 0.64], grip: [1.02, 1.52], scale: 1, torso: 0.16 },
-    body: [[0.5, 0.42, 0.1], [0.2, 1.15, 0.09], [0.86, 1.34, 0.09], [0.6, 1.2, 0.1]],
+    rider: { seat: [0.60, 1.21], peg: [1.00, 0.62], grip: [1.02, 1.46], scale: 0.95, torso: 0.2 },
+    body: [[0.5, 0.42, 0.1], [0.2, 1.12, 0.09], [0.86, 1.3, 0.09], [0.6, 1.16, 0.1]],
     col: ['#1f3d36', '#c9a24a', '#f1e6cc'], suit: ['#5a3a2a', '#c9b98a', '#2a2118'],
     snd: { type: 'scoot', pitch: 0.72, gears: 0 },
     unlock: { type: 'dist', n: 20000, text: 'Ride 20 km in total' }
@@ -1523,6 +1537,52 @@ function hop(b, deg, w, o) { o = o || {}; b.kicker(deg, o.R || 8, o.lip == null 
 
 /* steel launch ramp (raceway): same shape as a kicker, bolted on top of the tarmac */
 function ramp(b, deg, R, lip) { b.surface('steel').kicker(deg, R || 8, lip == null ? 1.2 : lip).surface(); return b; }
+/* a bus jump with a sign gantry over it: clear the bus, stay under the steel */
+function gantry(b, v, deg, buses, at, clear, o) {
+  o = o || {};
+  b.slow(v).flat(6); ramp(b, deg, 8, 1.2);
+  b.beam(at, clear, 1.4, 9, 'gantry');
+  return b.buses(buses, { rise: o.rise == null ? -0.6 : o.rise }).land(o.land || deg - 4, o.landLen || 8).go();
+}
+
+/* ------------------------------------------------------------------ */
+/* Pieces with teeth. Each one is fine at the right speed and ends the  */
+/* run flat out (and some of them if you crawl, too). tools/lab.js      */
+/* rides every bike into each of them at every speed to find the safe   */
+/* range, which is where the numbers in the comments come from.         */
+/* v is the speed (m/s) the robot riders hold; players have to find it. */
+/* ------------------------------------------------------------------ */
+var PC = RR.PIECES = {
+  /* Low roof over one or more humps. The roof follows the ground, so a bike that leaves the
+     crest of a hump meets the rock coming down the far side. humps: [[height, length], ...] */
+  cave: function (b, clear, humps, gapLen) {
+    humps = humps || [[1.1, 10]];
+    b.roofStart(clear || 3.2).flat(5);
+    for (var i = 0; i < humps.length; i++) { b.hill(humps[i][0], humps[i][1]); b.flat(gapLen == null ? 5 : gapLen); }
+    return b.roofEnd();
+  },
+  tunnel: function (b, v, clear, humps, gapLen) { b.slow(v).flat(5); PC.cave(b, clear, humps, gapLen); return b.go().flat(3); },
+  /* Letterbox: ride off a ledge and in under a rock face. Too fast and you are still up at face
+     height when you get there. pit > 0 puts a hole under the ledge, so crawling off is no good either. */
+  box: function (b, v, drop, pit, face, clear, len) {
+    b.slow(v).flat(5);
+    if (pit) b.gap(pit, { rise: -drop }); else b.drop(drop);
+    return b.flat(face - (pit || 0)).roofStart(clear || 3.1).flat(len || 9).roofEnd().go().flat(3);
+  },
+  /* Limbo: a jump with something hanging over it. Too slow drops you in the hole, too fast puts your head in it. */
+  limbo: function (b, v, deg, w, at, clear, o) {
+    o = o || {};
+    b.slow(v).flat(6).kicker(deg, 8, 1.2).beam(at, clear, o.bw || 1.2, o.bh || 9, o.style);
+    b.gap(w, { rise: o.rise == null ? -0.6 : o.rise });
+    return b.land(o.land || deg - 4, o.landLen || 8).go();
+  },
+  /* A jump inside a tunnel: the roof is why you cannot take it flat out */
+  cavejump: function (b, v, clear, deg, w, o) {
+    o = o || {};
+    b.slow(v).flat(4).roofStart(clear).flat(6).kicker(deg, 8, 1.0).gap(w, { rise: o.rise == null ? -0.5 : o.rise });
+    return b.land(deg - 2, 6).flat(6).roofEnd().go().flat(3);
+  }
+};
 
 /* [name, tip shown before the start, recipe] */
 var T = [
@@ -1546,9 +1606,11 @@ var T = [
   jump(b, 15, 5.5, 13, 9, { rise: -0.8, lip: 1.4 });
   b.flat(14);
 }],
-['Washboard', 'Bumps unsettle the bike. Stay on the gas and keep your lean thumb quiet.', function (b) {
+['Washboard', 'Rock overhead means slow down. Brake before the hump, or it throws you into the roof.', function (b) {
   b.flat(14).bumps(8, 3.4, 0.26).flat(8).ease(18, -2.5).flat(6).bumps(5, 5.2, 0.34).flat(8)
-   .steps(4, 6, 0.7).flat(10).hill(-1.6, 14).flat(8).bumps(9, 2.8, 0.22).flat(10)
+   .steps(4, 6, 0.7).flat(14).sign('slow').flat(10);
+  PC.tunnel(b, 9, 3.6, [[1.1, 10]]);
+  b.flat(8).hill(-1.6, 14).flat(8).bumps(9, 2.8, 0.22).flat(10)
    .table(17, 1.8, 4, 8).flat(8).logs(3, 6, 0.2).flat(14);
 }],
 ['Mesa Drop', 'The last ramp flicks the front wheel up. Lean forward as you leave it.', function (b) {
@@ -1559,12 +1621,14 @@ var T = [
   kick(b, 17, 6.5, 14, 8, { rise: -0.8, R: 7 });
   b.flat(12);
 }],
-['Gulch Gap', 'Match the bike to the slope you are landing on.', function (b) {
+['Gulch Gap', 'Not every ledge wants speed. Roll off the marked one gently and duck in under the rock.', function (b) {
   b.flat(22);
   jump(b, 16, 6, 14, 9, { rise: -0.8, lip: 1.5 });
   b.flat(14).hill(1.6, 16).flat(12);
   kick(b, 17, 7, 15, 10, { rise: -1.1, R: 7.5 });
-  b.flat(12).ease(22, -3.5).flat(10);
+  b.flat(12).ease(22, -3.5).flat(10).sign('slow').flat(10);
+  PC.box(b, 9, 2.4, 3, 6.5, 3.2);
+  b.flat(12);
   jump(b, 20, 10, 18, 11, { rise: -1.6, lip: 1.5 });
   b.flat(14).bumps(4, 4.6, 0.28).flat(12).table(17, 1.9, 5, 8).flat(14);
 }],
@@ -1574,13 +1638,16 @@ var T = [
   kick(b, 18, 7, 16, 9, { rise: -1, R: 6.5 });
   b.flat(14);
 }],
-['Canyon Run', 'Hold a lean through a whole jump to flip. Land it and you get a boost.', function (b) {
-  b.flat(16).waves(2, 22, 1.2).flat(10);
+['Canyon Run', 'Hold a lean through a whole jump to flip. Land it and you get a boost. Mind the rock.', function (b) {
+  b.flat(18);
   kick(b, 18, 7, 16, 9, { rise: -1, R: 6.5 });
-  b.flat(8).up(20, 16, 10).flat(14, 14).drop(2.6).flat(16).bumps(6, 3.6, 0.28).flat(12)
-   .loop(3.8).flat(18);
+  b.flat(8).up(20, 16, 10).flat(14, 14).drop(2.6).flat(16).sign('slow').flat(8);
+  PC.tunnel(b, 9, 3.4, [[1.1, 10], [0.9, 9]]);
+  b.flat(14).loop(3.8).flat(16);
   jump(b, 20, 9, 18, 10, { rise: -1.4 });
-  b.flat(8).ease(26, -5).flat(10).table(20, 2.4, 5, 8).flat(8).steps(3, 7, 0.9).flat(12);
+  b.flat(8).ease(26, -5).flat(12).sign('slow').flat(8);
+  PC.limbo(b, 9, 22, 4.5, 4, 3.2);
+  b.flat(10).steps(3, 7, 0.9).flat(12);
   kick(b, 20, 10, 20, 11, { rise: -2, R: 6.5 });
   b.flat(16);
 }],
@@ -1596,25 +1663,29 @@ var T = [
   b.flat(24);
   jump(b, 16, 6, 14, 7, { rise: -0.6 });
   b.flat(10);
-  kick(b, 17, 6.5, 15, 7, { rise: -0.6, R: 6.5 });
-  b.flat(12).hill(2.4, 18).flat(10);
+  PC.limbo(b, 9, 22, 4.5, 4, 3.0);
+  b.flat(10).hill(2.4, 18).flat(10);
   hop(b, 18, 6, { rise: -0.4 }).flat(9);
   hop(b, 18, 6.5, { rise: -0.4 }).land(14, 7);
-  b.flat(8).logs(3, 5, 0.24).flat(12);
+  b.flat(8).logs(3, 5, 0.24).flat(10);
+  PC.box(b, 8, 3, 3, 7, 3.2);
+  b.flat(12);
   kick(b, 20, 9.5, 18, 9, { rise: -1.2, R: 6 });
   b.flat(14);
 }],
 ['Root Rage', '', function (b) {
-  b.flat(12).bumps(6, 3, 0.3).logs(3, 4.5, 0.24).flat(6).ease(26, -5).bumps(7, 3.2, 0.32).flat(8)
-   .waves(3, 14, 1.0).flat(6).logs(4, 4, 0.24).flat(8).up(22, 12, 9).flat(8, 10).down(20, 12, 9)
-   .flat(6).bumps(8, 2.6, 0.26).flat(6).logs(2, 5, 0.25).flat(14);
+  b.flat(12).bumps(6, 3, 0.3).logs(3, 4.5, 0.24).flat(6).ease(26, -5).flat(10);
+  PC.tunnel(b, 9, 3.3, [[1.1, 10], [1.0, 9]]);
+  b.flat(6).waves(3, 14, 1.0).flat(6).logs(4, 4, 0.24).flat(8).up(22, 12, 9).flat(8, 10).down(20, 12, 9).flat(8);
+  PC.cavejump(b, 9, 3.4, 16, 4.5);
+  b.flat(6).bumps(8, 2.6, 0.26).flat(6).logs(2, 5, 0.25).flat(14);
 }],
-['Timber Table', '', function (b) {
+['Timber Table', 'A dead tree hangs over the last jump. Go under it, not through it.', function (b) {
   b.flat(22).to(20, 6.5).line(2.2).to(0, 1.6).line(7).to(-20, 1.6).line(2.2).to(0, 8).flat(14);
   b.kicker(20, 8, 1.2).gap(4.5, { rise: 1.0 }).flat(14);               // step-up over water
   b.drop(2.2).flat(16).to(22, 6.5).line(3.4).to(0, 1.6).line(6).to(-22, 1.6).line(3.4).to(0, 8).flat(12);
-  b.kicker(22, 8, 1.2).gap(4.5, { rise: 1.2 }).flat(12).down(18, 12, 9).flat(16);
-  kick(b, 20, 9, 18, 10, { rise: -1.4, R: 6 });
+  b.kicker(22, 8, 1.2).gap(4.5, { rise: 1.2 }).flat(12).down(18, 12, 9).flat(12).sign('slow').flat(10);
+  PC.limbo(b, 9, 22, 4.5, 4, 3.2);
   b.flat(14);
 }],
 ['Mossy Loop', '', function (b) {
@@ -1624,32 +1695,40 @@ var T = [
    .table(20, 2.4, 5, 8).flat(14);
 }],
 ['Sawmill', '', function (b) {
-  b.flat(14).steps(5, 5.5, 0.85).flat(16).up(24, 14, 10).flat(10, 12).drop(2.4).flat(18)
-   .surface('wood').flat(12);
+  b.flat(14).steps(5, 5.5, 0.85).flat(18).sign('slow').flat(10);
+  PC.tunnel(b, 9, 3.4, [[1.1, 10]]);
+  b.flat(8).up(24, 14, 10).flat(10, 12).drop(2.4).flat(18).surface('wood').flat(12);
   b.kicker(19, 7, 0.6).gap(7, { rise: -0.6 }).surface().land(16, 8);
-  b.flat(8).steps(3, 6, 1.1).flat(8).logs(3, 5.5, 0.22).flat(14).up(24, 12, 10).flat(10, 13)
-   .drop(3).flat(18);
+  b.flat(8).logs(3, 5.5, 0.22).flat(10).sign('slow').flat(8);
+  PC.limbo(b, 9, 22, 4.5, 4, 3.0);
+  b.flat(10).up(24, 12, 10).flat(10, 13).drop(3).flat(18);
 }],
 ['Beaver Dam', '', function (b) {
   b.flat(16).ease(30, -6).flat(8);
   jump(b, 21, 13, 19, 11, { rise: -1.8 });
-  b.flat(10).logs(3, 5, 0.24).flat(6).up(20, 14, 10).flat(10, 12).down(22, 16, 10).flat(6);
-  kick(b, 21, 13.5, 20, 12, { rise: -2.2, R: 6.5 });
-  b.flat(10).bumps(4, 4.2, 0.34).flat(10);
-  hop(b, 19, 6, { rise: -0.5 }).flat(8);
+  b.flat(10).logs(3, 5, 0.24).flat(6).up(20, 14, 10).flat(10, 12).down(22, 16, 10).flat(8);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10], [-0.9, 9], [1.1, 10]]);
+  b.flat(7);
+  kick(b, 21, 11, 20, 12, { rise: -2.0, R: 6.5 });
+  b.flat(12);
+  PC.limbo(b, 9, 22, 4.5, 4, 3.0);
+  b.flat(8);
   hop(b, 19, 6, { rise: -0.5 }).flat(8);
   hop(b, 19, 6.5, { rise: -0.5 }).land(16, 8);
   b.flat(14);
 }],
 ['Old Growth', '', function (b) {
-  b.flat(20).logs(3, 5, 0.24).flat(8).table(20, 2.4, 6, 8).flat(8);
-  kick(b, 19, 9, 17, 10, { rise: -1.2, R: 6 });
-  b.flat(14).loop(4).flat(8).loop(4).flat(16).up(24, 14, 9).flat(8, 9).drop(2.6).flat(10)
-   .bumps(7, 3, 0.3).flat(6).ease(28, -6).flat(6);
+  b.flat(20).logs(3, 5, 0.24).flat(8).table(20, 2.4, 6, 8).flat(10);
+  PC.limbo(b, 9, 25, 4.5, 4, 3.1);
+  b.flat(18).loop(4).flat(12).up(24, 14, 9).flat(8, 9).drop(2.6).flat(12);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10], [1.1, 9]]);
+  b.flat(4).ease(28, -6).flat(6);
   jump(b, 22, 13, 20, 12, { rise: -2 });
-  b.flat(8).logs(4, 4.5, 0.24).flat(10);
+  b.flat(12);
+  PC.box(b, 8, 3, 3, 7, 3.2);
+  b.flat(6);
   b.kicker(21, 8).gap(4.5, { rise: 1.1 }).flat(10).drop(2).flat(12);
-  kick(b, 19, 8, 17, 9, { rise: -1, R: 6 });
+  PC.cavejump(b, 9, 3.2, 14, 4);
   b.flat(14);
 }],
 
@@ -1659,10 +1738,13 @@ var T = [
    .kerb(5).flat(6).boost(6).flat(16).hill(1.6, 20).flat(12);
   ramp(b, 13, 9, 1.6); b.buses(1, { rise: -0.5 }).land(11, 8).flat(18);
 }],
-['Bus Stop', 'Clear the buses. Come up short and you park on a roof.', function (b) {
+['Bus Stop', 'Clear the buses, but not by too much. The gantries are lower than they look.', function (b) {
   b.flat(22);
-  ramp(b, 15, 9, 1.5); b.buses(1, { rise: -0.6 }).land(13, 8).flat(14).boost(6).flat(12);
-  ramp(b, 17, 9, 1.5); b.buses(2, { rise: -1 }).land(15, 9).flat(16).kerb(6).flat(8).hill(1.8, 18).flat(8).boost(7).flat(10);
+  ramp(b, 15, 9, 1.5); b.buses(1, { rise: -0.6 }).land(13, 8).flat(14).boost(6).flat(10).sign('slow').flat(10);
+  gantry(b, 9, 22, 1, 4, 3.0);
+  b.flat(16).kerb(6).flat(8).hill(1.8, 18).flat(10);
+  gantry(b, 9, 22, 1, 4, 3.0);
+  b.flat(8).boost(7).flat(10);
   ramp(b, 18, 9, 1.4); b.buses(3, { rise: -1.4 }).land(17, 11).flat(18);
 }],
 ['Rumble Strip', 'Kerbs shake the bike. Stay loose and keep the gas on.', function (b) {
@@ -1672,35 +1754,53 @@ var T = [
   ramp(b, 16, 8, 1.2); b.drop(1.2).flat(10).logs(3, 6, 0.2).flat(8).ease(22, -3.5).flat(6).kerb(8).flat(6).boost(6).flat(10)
    .table(18, 2.0, 5, 8).flat(8).logs(2, 6, 0.2).flat(14);
 }],
-['Oil Slick', 'Oil is as slippery as ice. Get your speed first, then coast across it.', function (b) {
-  b.flat(20).oil(8).flat(10).hill(1.6, 18).flat(6).oil(8).flat(4).ease(20, -2.5).flat(10).boost(6).flat(6).oil(10).flat(8);
+['Oil Slick', 'Oil is as slippery as ice. Get your speed first, then coast across it. And a boost strip is not always your friend.', function (b) {
+  b.flat(20).oil(8).flat(10).hill(1.6, 18).flat(6).oil(8).flat(4).ease(20, -2.5).flat(10).boost(6).flat(10).sign('slow').flat(10);
+  PC.tunnel(b, 9, 3.4, [[1.1, 10]]);
+  b.flat(4).oil(10).flat(8);
   ramp(b, 16, 9, 1.4); b.buses(2, { rise: -0.9 }).land(14, 9).flat(8).oil(8).flat(10).waves(2, 18, 1.0).flat(6).oil(6).flat(12)
    .table(16, 1.7, 6, 9).flat(14);
 }],
-['Stunt Show', 'A boost strip straight into a loop. Hold the gas all the way round.', function (b) {
-  b.flat(20).boost(7).flat(14).loop(4.6).flat(14).kerb(6).flat(8);
-  ramp(b, 18, 8, 1.3); b.buses(2, { rise: -1 }).land(16, 9).flat(12).boost(6).flat(12).loop(4.0).flat(6).loop(4.0).flat(16);
-  ramp(b, 19, 8, 1.2); b.buses(3, { rise: -1.3 }).land(17, 10).flat(16);
+['Stunt Show', 'A boost strip straight into a loop. Hold the gas all the way round. Then stop holding it.', function (b) {
+  b.flat(20).boost(7).flat(14).loop(4.6).flat(20);
+  gantry(b, 9, 22, 1, 4, 3.0);
+  b.flat(4).kerb(6).flat(4).boost(6).flat(8).loop(4.0).flat(6).loop(4.0).flat(12);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10], [-1.0, 10], [1.1, 10]]);
+  b.flat(8);
+  ramp(b, 19, 8, 1.2); b.buses(3, { rise: -1.3 }).land(17, 10).flat(10);
+  PC.box(b, 8, 3, 3, 7, 3.2);
+  b.flat(16);
 }],
 ['Pit Lane', '', function (b) {
-  b.flat(14).steps(3, 7, 0.8).flat(8).logs(3, 5.5, 0.22).flat(8).oil(7).flat(6).up(18, 12, 10).flat(10, 13).drop(2.4).flat(14)
-   .kerb(8).flat(4).boost(6).flat(8);
+  b.flat(14).steps(3, 7, 0.8).flat(8).logs(3, 5.5, 0.22).flat(8).oil(7).flat(8);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10], [1.0, 9]]);
+  b.flat(6).up(18, 12, 10).flat(10, 13).drop(2.4).flat(14).kerb(8).flat(4).boost(6).flat(8);
   b.surface('steel').kicker(18, 6.5, 0).surface(); b.buses(2, { rise: -1 }).land(16, 9);
-  b.flat(8).logs(2, 6, 0.24).flat(6).steps(2, 7, 1.0).flat(8).oil(6).flat(8);
+  b.flat(6).boost(6).flat(12);
+  PC.box(b, 8, 3, 3, 7, 3.2);
+  b.flat(8).oil(6).flat(8);
   ramp(b, 19, 8, 1.2); b.buses(2, { rise: -1.1 }).land(17, 9).flat(14);
 }],
-['Seven Buses', 'One long run-up. Hit every boost strip and do not lift.', function (b) {
-  b.flat(16).kerb(6).flat(8).table(16, 1.8, 6, 9).flat(10);
-  ramp(b, 17, 9, 1.4); b.buses(2, { rise: -0.9 }).land(15, 9).flat(10).oil(6).flat(8).hill(2, 18).flat(10)
-   .boost(8).flat(14).down(14, 30, 16).flat(6, 14).boost(9).flat(8);
+['Seven Buses', 'Slow for the gantry and the underpass, then everything you have got for the big one.', function (b) {
+  b.flat(16).kerb(6).flat(8).table(16, 1.8, 6, 9).flat(14);
+  gantry(b, 9, 25, 1, 4, 3.1);
+  b.flat(10).oil(6).flat(8).hill(2, 18).flat(8);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10], [1.1, 10]]);
+  b.flat(4).boost(8).flat(14).down(14, 30, 16).flat(6, 14).boost(9).flat(8);
   ramp(b, 21, 10, 1.6); b.buses(7, { rise: -4.6 }).land(22, 15, 10).flat(24);
 }],
 ['Chequered Flag', '', function (b) {
-  b.flat(18).boost(7).flat(12).loop(4.4).flat(10).kerb(6).flat(6);
-  ramp(b, 18, 8, 1.3); b.buses(3, { rise: -1.3 }).land(16, 10).flat(8).oil(8).flat(6).ease(24, -4.5).flat(8).logs(3, 5.5, 0.22).flat(8)
-   .up(20, 12, 10).flat(8, 12).drop(2.6).flat(12).boost(7).flat(10);
-  b.surface('steel').kicker(19, 6, 0).surface(); b.buses(2, { rise: -1.2 }).land(17, 10);
-  b.flat(8).kerb(8).flat(4).oil(6).flat(8).boost(7).flat(10).loop(4.2).flat(12);
+  b.flat(18).boost(7).flat(12).loop(4.4).flat(18);
+  gantry(b, 9, 25, 1, 4, 3.1);
+  b.flat(8).oil(8).flat(10);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10], [-1.0, 10], [1.1, 10]]);
+  b.flat(6).boost(7).flat(10);
+  gantry(b, 10, 28, 2, 6, 3.8, { rise: -0.9, landLen: 9 });
+  b.flat(4).kerb(6).flat(14);
+  PC.box(b, 8, 3, 3, 7, 3.2);
+  b.flat(10);
+  PC.cavejump(b, 9, 3.2, 14, 4);
+  b.flat(4).boost(7).flat(8);
   ramp(b, 20, 9, 1.3); b.buses(4, { rise: -2 }).land(18, 11).flat(16);
 }],
 
@@ -1715,17 +1815,22 @@ var T = [
 ['Powder Keg', '', function (b) {
   b.flat(14).waves(3, 16, 1.1).flat(8);
   kick(b, 18, 6.5, 16, 8, { rise: -0.8, R: 6.5 });
-  b.flat(8).bumps(5, 3.6, 0.34).flat(8).ease(24, -4).flat(8).table(20, 2.4, 6, 8).flat(8);
+  b.flat(8).bumps(5, 3.6, 0.34).flat(8).ease(24, -4).flat(10);
+  PC.box(b, 8, 3, 3, 7, 3.2);
+  b.flat(8).table(20, 2.4, 6, 8).flat(8);
   jump(b, 20, 8.5, 18, 9, { rise: -1.2 });
   b.flat(6).logs(3, 5, 0.25).flat(8);
+  PC.cavejump(b, 9, 3.4, 16, 4.5);
+  b.flat(8);
   kick(b, 19, 7.5, 17, 9, { rise: -1, R: 6 });
   b.flat(14);
 }],
-['Slip Road', '', function (b) {
+['Slip Road', 'You cannot brake on ice. Lose the speed before you reach it.', function (b) {
   b.flat(18).surface('ice').down(12, 22, 16).flat(10).surface();
   jump(b, 18, 8, 16, 9, { rise: -1 });
-  b.flat(10).up(16, 14, 12).flat(8, 14).surface('ice').down(15, 20, 14).flat(12, 12).surface().flat(10)
-   .hill(2.2, 16).surface('ice').flat(14).surface().flat(6);
+  b.flat(10).up(16, 14, 12).flat(8, 14).sign('slow').flat(8);
+  b.slow(6).flat(4).surface('ice').down(10, 14, 14).flat(4, 12); PC.cave(b, 3.4, [[1.1, 10]]); b.surface().go();
+  b.flat(12).hill(2.2, 16).surface('ice').flat(14).surface().flat(6);
   kick(b, 19, 9, 17, 10, { rise: -1.2, R: 6.5 });
   b.surface('ice').flat(12).surface().flat(10);
 }],
@@ -1733,11 +1838,16 @@ var T = [
   b.flat(22);
   jump(b, 18, 7, 16, 8, { rise: -0.8 });
   b.surface('ice').flat(12).surface().flat(10);
+  PC.box(b, 8, 3, 3, 7, 3.2);
+  b.flat(8);
   kick(b, 20, 9, 18, 9, { rise: -1.2, R: 6 });
   b.flat(8).ease(24, -4.5).surface('ice').flat(10).surface();
   jump(b, 21, 12, 19, 11, { rise: -1.6 });
-  b.flat(10).bumps(4, 3.8, 0.32).flat(10);
-  hop(b, 18, 6, { rise: -0.4 }).flat(14);
+  b.flat(12);
+  PC.limbo(b, 9, 25, 4.5, 4, 3.1);
+  b.flat(10);
+  PC.box(b, 8, 3, 3, 7, 3.2);
+  b.flat(8);
   b.kicker(20, 8).gap(4.5, { rise: 0.9 }).flat(12).drop(1.8).flat(14);
 }],
 ['Glacier Loop', '', function (b) {
@@ -1751,30 +1861,45 @@ var T = [
   b.flat(12);
 }],
 ['Whiteout', '', function (b) {
-  b.flat(12).bumps(6, 3.2, 0.3).flat(6).surface('ice').flat(8).surface().steps(4, 6, 0.9).flat(6)
-   .flat(6).logs(2, 6, 0.22).flat(10).up(22, 12, 10).flat(10, 13).drop(2.8).flat(10).surface('ice').flat(12).surface()
-   .flat(10).bumps(7, 2.8, 0.22).flat(14);
+  b.flat(12).bumps(6, 3.2, 0.3).flat(6).surface('ice').flat(8).surface().steps(4, 6, 0.9).flat(10).sign('slow').flat(8);
+  PC.limbo(b, 9, 22, 4.5, 4, 3.0);
+  b.flat(8).logs(2, 6, 0.22).flat(10).up(22, 12, 10).flat(10, 13).drop(2.8).flat(10).surface('ice').flat(12).surface().flat(8);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10], [1.0, 9]]);
+  b.flat(6).bumps(7, 2.8, 0.22).flat(12);
   kick(b, 20, 9, 18, 10, { rise: -1.4, R: 6 });
   b.flat(10).surface('ice').flat(8).surface();
   kick(b, 18, 7, 16, 9, { rise: -1, R: 6 });
   b.flat(14);
 }],
-['Avalanche', '', function (b) {
+['Avalanche', 'It is all downhill, so lifting is not enough. Use the brake.', function (b) {
   b.flat(12).down(16, 26, 14).flat(6, 10);
   jump(b, 14, 10, 20, 12, { rise: -2.5 });
-  b.down(14, 20, 12).surface('ice').flat(10, 12).surface().flat(6);
+  b.down(14, 20, 12).flat(8, 12);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10], [1.0, 9]]);
+  b.flat(6).surface('ice').flat(8).surface().flat(6);
   kick(b, 16, 12, 22, 13, { rise: -3, R: 7 });
-  b.flat(8).bumps(5, 4.2, 0.34).down(18, 22, 12).flat(8, 10);
+  b.flat(8).down(18, 22, 12).flat(8, 10);
+  PC.limbo(b, 9, 25, 4.5, 4, 3.1);
+  b.flat(6).down(14, 16, 12).flat(6, 10);
+  PC.box(b, 8, 3, 3, 7, 3.2);
+  b.flat(8);
   jump(b, 15, 13, 22, 14, { rise: -3.5 });
-  b.flat(10).surface('ice').flat(10).surface().flat(10);
+  b.flat(8);
+  b.slow(6).flat(4).surface('ice').flat(10); PC.cave(b, 3.2, [[1.1, 10]]); b.surface().go();
+  b.flat(14);
 }],
 ['Aurora', '', function (b) {
   b.flat(18).surface('ice').flat(10).surface().table(20, 2.4, 6, 8).flat(8);
   kick(b, 19, 9, 17, 10, { rise: -1.2, R: 6 });
-  b.flat(26).loop(4.2).flat(12).surface('ice').flat(10).surface().flat(10).up(20, 14, 10).flat(10, 14).drop(2.6)
-   .flat(14).logs(2, 6, 0.22).flat(8).ease(26, -5).flat(6);
+  b.flat(12);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10]]);
+  b.flat(22).loop(4.2).flat(12).surface('ice').flat(10).surface().flat(10);
+  PC.limbo(b, 9, 22, 4.5, 4, 3.0);
+  b.flat(8).ease(26, -5).flat(6);
   jump(b, 21, 12.5, 19, 11, { rise: -1.8 });
-  b.surface('ice').flat(12).surface().flat(8).bumps(5, 3.2, 0.3).flat(10);
+  b.flat(8);
+  b.slow(6).flat(4).surface('ice').flat(12); PC.cave(b, 3.2, [[1.1, 10]]); b.surface().go();
+  b.flat(10);
   hop(b, 18, 6, { rise: -0.4 }).flat(9);
   hop(b, 18, 6.5, { rise: -0.4 }).land(15, 8);
   b.flat(14);
@@ -1794,39 +1919,50 @@ var T = [
   b.flat(20);
   b.kicker(20, 8).gap(4, { rise: 0.8 }).flat(12);
   b.kicker(21, 8).gap(4.5, { rise: 1.0 }).flat(12);
-  b.kicker(22, 8).gap(4.5, { rise: 1.2 }).flat(14);
-  b.steps(4, 6, 1.1).flat(10).bumps(5, 3.2, 0.26).flat(16).up(22, 12, 11).flat(10, 15).drop(3).flat(22);
+  b.kicker(22, 8).gap(4.5, { rise: 1.2 }).flat(12);
+  PC.box(b, 8, 3, 3, 7, 3.2);
+  b.flat(6).steps(3, 6, 1.1).flat(14);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10], [1.1, 10]]);
+  b.flat(7);
   kick(b, 20, 9, 18, 10, { rise: -1.4, R: 6 });
-  b.flat(14);
-  kick(b, 20, 8, 18, 9, { rise: -1.2, R: 6 });
+  b.flat(10);
+  PC.limbo(b, 9, 25, 4.5, 4, 3.1);
+  b.flat(8);
+  PC.cavejump(b, 9, 3.2, 14, 4);
   b.flat(14);
 }],
-['Magma Hop', '', function (b) {
+['Magma Hop', 'Stalactites hang over some jumps. Clear the lava, not the ceiling.', function (b) {
   b.flat(24);
   hop(b, 17, 5.5, { rise: -0.3 }).flat(8);
   hop(b, 17, 5.5, { rise: -0.3 }).flat(8);
   hop(b, 18, 6, { rise: -0.3 }).flat(8);
   hop(b, 18, 6.5, { rise: -0.4 }).land(14, 7);
-  b.flat(10).hill(2, 16).flat(8);
+  b.flat(10).hill(2, 16).flat(8).sign('slow').flat(8);
+  PC.limbo(b, 9, 22, 4.5, 4, 3.2);
+  b.flat(10);
   hop(b, 19, 7, { rise: -0.4 }).flat(9);
   hop(b, 19, 7.5, { rise: -0.5 }).land(16, 8);
   b.flat(14);
 }],
 ['The Chimney', 'Low rock roofs. Brake before a hump or you will hit your head.', function (b) {
-  b.flat(18).roofStart(3.4).flat(10).bumps(4, 4.4, 0.3).flat(10).hill(1.1, 12).flat(10).ease(18, -2).flat(8)
-   .roofEnd().flat(10);
+  b.flat(18).slow(9).roofStart(3.4).flat(10).bumps(4, 4.4, 0.3).flat(10).hill(1.1, 12).flat(10).ease(18, -2).flat(8)
+   .roofEnd().go().flat(10);
   kick(b, 18, 8, 16, 9, { rise: -1, R: 6 });
-  b.flat(8).roofStart(3.3).flat(8).ease(16, 2).flat(8).hill(1.3, 12).flat(8).hill(-1.2, 12).flat(8).hill(1.0, 10).flat(10)
-   .roofEnd().flat(12);
+  b.flat(8).slow(9).roofStart(3.3).flat(8).ease(16, 2).flat(8).hill(1.3, 12).flat(8).hill(-1.2, 12).flat(8).hill(1.0, 10).flat(10)
+   .roofEnd().go().flat(12);
   kick(b, 20, 9, 18, 10, { rise: -1.4, R: 5.5 });
   b.flat(14);
 }],
 ['Ash Loop', '', function (b) {
   b.flat(34).loop(4.2).flat(10);
   kick(b, 18, 8, 16, 9, { rise: -1, R: 6 });
-  b.flat(18).loop(3.8).flat(6).loop(3.8).flat(14).ease(24, -4.5).flat(6);
-  jump(b, 21, 12, 19, 11, { rise: -1.8 });
   b.flat(10);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10]]);
+  b.flat(9).loop(3.8).flat(6).loop(3.8).flat(14).ease(24, -4.5).flat(6);
+  jump(b, 21, 12, 19, 11, { rise: -1.8 });
+  b.flat(8);
+  PC.cavejump(b, 9, 3.4, 16, 4.5);
+  b.flat(8);
   hop(b, 18, 6, { rise: -0.4 }).flat(9);
   hop(b, 18, 6.5, { rise: -0.4 }).land(15, 8);
   b.flat(14);
@@ -1834,10 +1970,16 @@ var T = [
 ['Fire Walk', '', function (b) {
   b.flat(14).ease(30, -6.5).flat(6);
   jump(b, 22, 15, 20, 12, { rise: -2.4 });
-  b.flat(8).roofStart(3.4).flat(8).bumps(6, 3.4, 0.28).flat(8).hill(1.1, 12).flat(10).roofEnd().flat(6);
+  b.flat(8).slow(9).roofStart(3.4).flat(8).bumps(6, 3.4, 0.28).flat(8).hill(1.1, 12).flat(10).roofEnd().go().flat(6);
   hop(b, 19, 7, { rise: -0.4 }).flat(10.5);
   hop(b, 19, 7, { rise: -0.4 }).flat(10.5);
   b.kicker(20, 5.5, 0).gap(8, { rise: -0.6 }).land(16, 9);
+  b.flat(8);
+  PC.box(b, 8, 3, 3, 7, 3.2);
+  b.flat(7);
+  PC.limbo(b, 9, 25, 4.5, 4, 3.1);
+  b.flat(8);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10], [-1.0, 10], [1.1, 10]]);
   b.flat(14);
 }],
 ['Caldera', '', function (b) {
@@ -1853,16 +1995,22 @@ var T = [
 }],
 ['Eruption', '', function (b) {
   b.flat(18);
-  b.kicker(21, 8).gap(4.5, { rise: 1.0 }).flat(12).kicker(21, 8).gap(4.5, { rise: 1.1 }).flat(20);
-  b.loop(4).flat(14).drop(2.6).flat(8).roofStart(3.4).flat(6).bumps(5, 3.4, 0.28).flat(8).hill(1.0, 12).flat(8).roofEnd().flat(6)
-   .ease(26, -5).flat(6);
+  b.kicker(21, 8).gap(4.5, { rise: 1.0 }).flat(12).kicker(21, 8).gap(4.5, { rise: 1.1 }).flat(12);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10], [-1.0, 10], [1.1, 10]]);
+  b.flat(9).loop(4).flat(12).drop(2.6).flat(8).ease(26, -5).flat(6);
   jump(b, 22, 13.5, 20, 12, { rise: -2 });
-  b.flat(6);
+  b.flat(8);
+  PC.box(b, 8, 3, 3, 7, 3.2);
+  b.flat(8);
   hop(b, 18, 6.5, { rise: -0.4 }).flat(8);
   hop(b, 18, 6.5, { rise: -0.4 }).land(15, 8);
   b.flat(8);
+  PC.limbo(b, 9, 25, 4.5, 4, 3.1);
+  b.flat(7);
+  PC.cavejump(b, 9, 3.2, 14, 4);
+  b.flat(7);
   kick(b, 21, 9, 19, 10, { rise: -1.4, R: 5.5 });
-  b.flat(8).loop(4.3).flat(16);
+  b.flat(14);
 }],
 
 /* ----------------------------- LOW ORBIT ---------------------------- */
@@ -1871,22 +2019,34 @@ var T = [
   jump(b, 15, 12, 12, 14, { rise: -1, lip: 2 });
   b.flat(18).hill(-1.6, 34).flat(14).table(17, 2.6, 9, 12).flat(22);
 }],
-['Crater Maker', '', function (b) {
+['Crater Maker', 'Low gravity means a small hump throws you a long way up. Go gently under anything.', function (b) {
   b.flat(16).hill(-2, 40).flat(12).hill(-2.8, 48).flat(14);
   jump(b, 20, 20, 16, 14, { rise: -1.5 });
-  b.flat(14).hill(-2.2, 40).flat(10).up(20, 14, 14).flat(10, 16).drop(4).flat(26);
+  b.flat(20).sign('slow').flat(12);
+  PC.tunnel(b, 8, 3.6, [[1.0, 12]]);
+  b.flat(8).hill(-2.2, 40).flat(10).up(20, 14, 14).flat(10, 16).drop(4).flat(26);
 }],
-['Slow Float', '', function (b) {
-  b.flat(26);
+['Slow Float', 'Things float up here, and so do you. Small jumps under the pylons.', function (b) {
+  b.flat(34).sign('slow').flat(10);
+  PC.cavejump(b, 8, 4.0, 12, 8);
+  b.flat(16);
   jump(b, 20, 22, 17, 16, { rise: -2 });
-  b.flat(20).table(20, 3.4, 9, 12).flat(26);
+  b.flat(14).table(20, 3.4, 9, 12).flat(22).sign('slow').flat(10);
+  PC.limbo(b, 8, 14, 7, 8, 3.3, { land: 10, landLen: 10 });
+  b.flat(16);
   jump(b, 22, 25, 19, 18, { rise: -3 });
-  b.flat(16).waves(2, 34, 1.3).flat(22);
+  b.flat(22);
 }],
 ['Dark Side', '', function (b) {
-  b.flat(18).bumps(5, 5.5, 0.3).flat(12).steps(3, 12, 1.1).flat(16).up(22, 16, 13).flat(8, 16).drop(5).flat(52);
+  b.flat(18).bumps(5, 5.5, 0.3).flat(22);
+  PC.box(b, 7, 2.6, 0, 9, 3.1);
+  b.flat(8).up(22, 16, 13).flat(8, 16).drop(5).flat(30);
   jump(b, 18, 16, 16, 14, { rise: -1.5 });
-  b.flat(14).drop(3).flat(26).logs(2, 9, 0.22).flat(18);
+  b.flat(18);
+  PC.tunnel(b, 8, 3.6, [[1.0, 12], [0.8, 12]]);
+  b.flat(6).drop(3).flat(26);
+  PC.cavejump(b, 8, 4.2, 14, 8);
+  b.flat(12);
   kick(b, 20, 20, 19, 18, { rise: -3, R: 8 });
   b.flat(20);
 }],
@@ -1896,27 +2056,41 @@ var T = [
   b.flat(20).loop(5.5).flat(22);
 }],
 ['Regolith', '', function (b) {
-  b.flat(14).surface('sand').flat(16).surface().bumps(6, 4.5, 0.4).flat(10).hill(-4, 30).flat(8)
-   .surface('sand').flat(12).surface().flat(6);
+  b.flat(14).surface('sand').flat(16).surface().bumps(6, 4.5, 0.4).flat(10).hill(-4, 30).flat(10);
+  PC.tunnel(b, 8, 3.6, [[1.0, 12], [0.8, 12]]);
+  b.flat(4).surface('sand').flat(12).surface().flat(6);
   jump(b, 20, 18, 17, 14, { rise: -1.5 });
-  b.flat(10).logs(4, 7, 0.25).flat(10).table(22, 4, 7, 11).flat(8).surface('sand').flat(12).surface().flat(16);
+  b.flat(26);
+  PC.box(b, 7, 2.6, 0, 9, 3.1);
+  b.flat(4).surface('sand').flat(12).surface().flat(10);
+  PC.cavejump(b, 8, 4.0, 12, 8);
+  b.flat(16);
 }],
 ['Escape Velocity', '', function (b) {
   b.flat(14).down(18, 30, 16).flat(8, 12);
   jump(b, 23, 33, 21, 24, { rise: -5 });
-  b.flat(14).up(20, 16, 14).flat(8, 16).down(22, 30, 13).flat(20, 12);
-  jump(b, 24, 34, 23, 26, { rise: -6 });
-  b.flat(24);
+  b.flat(16);
+  PC.tunnel(b, 8, 3.4, [[1.0, 14], [0.8, 12]]);
+  b.flat(6).up(20, 16, 14).flat(8, 16).down(22, 30, 13).flat(20, 12);
+  jump(b, 24, 27, 23, 30, { rise: -6 });
+  b.flat(30);
+  PC.tunnel(b, 8, 3.6, [[1.0, 12]]);
+  b.flat(18);
 }],
 ['Riot Run', '', function (b) {
   b.flat(26).loop(6).flat(16);
   jump(b, 21, 22, 18, 16, { rise: -2 });
-  b.flat(12).hill(-2.6, 44).flat(12).kicker(21, 10).gap(9, { rise: 1.7 }).flat(20).drop(3.5).flat(16)
-   .bumps(5, 5.5, 0.34).flat(22).loop(7).flat(12).down(18, 28, 14).flat(12, 12);
+  b.flat(18);
+  PC.tunnel(b, 8, 3.4, [[1.0, 14], [0.8, 12]]);
+  b.flat(26);
+  PC.box(b, 7, 3, 0, 9, 3.3);
+  b.flat(14).loop(7).flat(12).down(18, 28, 14).flat(12, 12);
   jump(b, 23, 33, 21, 24, { rise: -5 });
-  b.flat(28);
-  jump(b, 20, 18, 17, 15, { rise: -1.5, R: 9, lip: 1.4 });
-  b.flat(12).table(22, 4.5, 8, 11).flat(22);
+  b.flat(26);
+  PC.cavejump(b, 8, 4.2, 14, 8);
+  b.flat(12);
+  PC.limbo(b, 8, 14, 7, 8, 3.3, { land: 10, landLen: 10 });
+  b.flat(22);
 }]
 ];
 
@@ -1926,9 +2100,9 @@ var ORDER = [
   ['First Gear', 'Rolling Dunes', 'Hop Skip', 'Loop de Dust', 'Mesa Drop', 'Washboard', 'Gulch Gap', 'Canyon Run'],
   ['Log Jam', 'Mossy Loop', 'Timber Table', 'Sawmill', 'Root Rage', 'Creek Hop', 'Beaver Dam', 'Old Growth'],
   ['Green Flag', 'Rumble Strip', 'Oil Slick', 'Bus Stop', 'Pit Lane', 'Seven Buses', 'Stunt Show', 'Chequered Flag'],
-  ['Black Ice', 'Glacier Loop', 'Slip Road', 'Whiteout', 'Powder Keg', 'Aurora', 'Crevasse', 'Avalanche'],
-  ['Hot Start', 'The Chimney', 'Caldera', 'Ash Loop', 'Magma Hop', 'Ember Steps', 'Fire Walk', 'Eruption'],
-  ['One Small Hop', 'Double Loop', 'Crater Maker', 'Slow Float', 'Regolith', 'Escape Velocity', 'Dark Side', 'Riot Run']
+  ['Black Ice', 'Glacier Loop', 'Slip Road', 'Whiteout', 'Aurora', 'Powder Keg', 'Crevasse', 'Avalanche'],
+  ['Hot Start', 'Caldera', 'Magma Hop', 'The Chimney', 'Fire Walk', 'Ash Loop', 'Ember Steps', 'Eruption'],
+  ['One Small Hop', 'Double Loop', 'Crater Maker', 'Slow Float', 'Regolith', 'Dark Side', 'Escape Velocity', 'Riot Run']
 ];
 function slug(n) { return n.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
 function hashStr(n) { var h = 2166136261; for (var i = 0; i < n.length; i++) { h ^= n.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -1957,6 +2131,9 @@ RR.getTrack = function (i) {
   T[i][2](b);
   var tr = b.finish(T[i][0], id);
   tr.index = i; tr.worldIndex = Math.floor(i / 8); tr.airless = !!w.airless; tr.seed = hashStr(id) % 9973;
+  // the measured speed for each slow zone replaces the rough figure in the recipe (see startimes.js)
+  var zv = RR.ZONE_V && RR.ZONE_V[i], zk = 0;
+  if (zv) tr.feats.forEach(function (f) { if (f.t === 'zone') { if (zk < zv.length) f.v = zv[zk]; zk++; } });
   cache[i] = tr;
   return tr;
 };
@@ -1965,60 +2142,103 @@ if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);
 
 /* ---- startimes.js ---- */
-/* Star times: [three-star time, two-star time] per track, in seconds.
-   Written by: node tools/bot.js --bikes all --write   (do not edit by hand) */
+/* Star times: [three-star time, two-star time] per track, in seconds, and the speed the robot rider
+   holds through each slow zone. Written by: node tools/skill.js --bikes all --write   (do not edit by hand) */
 (function (root) {
 var RR = root.RR || (root.RR = {});
 RR.STAR_TIMES = [
-  [20.2, 25.5],   //  1 First Gear: robot on starter 18.9s, 11 of 15 bikes beat three stars without a single flip
-  [23.6, 29.8],   //  2 Rolling Dunes: robot on starter 22.1s, 11 of 15 bikes beat three stars without a single flip
-  [16.6, 21.0],   //  3 Hop Skip: robot on starter 15.5s, 11 of 15 bikes beat three stars without a single flip
-  [18.7, 23.5],   //  4 Loop de Dust: robot on starter 17.4s, 11 of 15 bikes beat three stars without a single flip
-  [21.0, 26.6],   //  5 Mesa Drop: robot on starter 19.7s, 11 of 15 bikes beat three stars without a single flip
-  [22.8, 28.8],   //  6 Washboard: robot on starter 21.3s, 11 of 15 bikes beat three stars without a single flip
-  [21.5, 27.1],   //  7 Gulch Gap: robot on starter 20.1s, 11 of 15 bikes beat three stars without a single flip
-  [32.5, 41.1],   //  8 Canyon Run: robot on starter 30.4s, 11 of 15 bikes beat three stars without a single flip
-  [20.9, 26.4],   //  9 Log Jam: robot on starter 20.3s, 11 of 15 bikes beat three stars without a single flip
-  [20.1, 25.4],   // 10 Mossy Loop: robot on starter 19.5s, 11 of 15 bikes beat three stars without a single flip
-  [17.9, 22.6],   // 11 Timber Table: robot on starter 17.4s, 11 of 15 bikes beat three stars without a single flip
-  [21.4, 27.1],   // 12 Sawmill: robot on starter 20.8s, 11 of 15 bikes beat three stars without a single flip
-  [26.6, 33.6],   // 13 Root Rage: robot on starter 25.9s, 11 of 15 bikes beat three stars without a single flip
-  [18.9, 23.8],   // 14 Creek Hop: robot on starter 18.3s, 10 of 15 bikes beat three stars without a single flip
-  [24.9, 31.4],   // 15 Beaver Dam: robot on starter 24.1s, 11 of 15 bikes beat three stars without a single flip
-  [34.2, 43.2],   // 16 Old Growth: robot on starter 33.2s, 11 of 15 bikes beat three stars without a single flip
-  [16.5, 20.7],   // 17 Green Flag: robot on starter 16.2s, 11 of 15 bikes beat three stars without a single flip
-  [20.6, 25.9],   // 18 Rumble Strip: robot on starter 20.2s, 11 of 15 bikes beat three stars without a single flip
-  [21.4, 26.9],   // 19 Oil Slick: robot on starter 21.0s, 11 of 15 bikes beat three stars without a single flip
-  [16.4, 20.5],   // 20 Bus Stop: robot on starter 16.1s, 11 of 15 bikes beat three stars without a single flip
-  [21.3, 26.7],   // 21 Pit Lane: robot on starter 20.9s, 11 of 15 bikes beat three stars without a single flip
-  [20.7, 25.9],   // 22 Seven Buses: robot on starter 20.3s, 11 of 15 bikes beat three stars without a single flip
-  [19.6, 24.6],   // 23 Stunt Show: robot on starter 19.2s, 11 of 15 bikes beat three stars without a single flip
-  [28.9, 36.2],   // 24 Chequered Flag: robot on starter 28.3s, 11 of 15 bikes beat three stars without a single flip
-  [19.5, 24.4],   // 25 Black Ice: robot on starter 19.5s, 11 of 15 bikes beat three stars without a single flip
-  [22.3, 27.9],   // 26 Glacier Loop: robot on starter 22.3s, 9 of 15 bikes beat three stars without a single flip
-  [19.3, 24.2],   // 27 Slip Road: robot on starter 19.3s, 9 of 15 bikes beat three stars without a single flip
-  [22.5, 28.1],   // 28 Whiteout: robot on starter 22.5s, 11 of 15 bikes beat three stars without a single flip
-  [24.2, 30.3],   // 29 Powder Keg: robot on starter 24.2s, 9 of 15 bikes beat three stars without a single flip
-  [30.6, 38.3],   // 30 Aurora: robot on starter 30.6s, 10 of 15 bikes beat three stars without a single flip
-  [20.4, 25.5],   // 31 Crevasse: robot on starter 20.4s, 10 of 15 bikes beat three stars without a single flip
-  [20.2, 25.3],   // 32 Avalanche: robot on starter 20.2s, 10 of 15 bikes beat three stars without a single flip
-  [18.8, 23.7],   // 33 Hot Start: robot on starter 19.4s, 9 of 15 bikes beat three stars without a single flip
-  [28.5, 35.9],   // 34 The Chimney: robot on starter 29.4s, 6 of 15 bikes beat three stars without a single flip
-  [24.2, 30.4],   // 35 Caldera: robot on starter 24.9s, 9 of 15 bikes beat three stars without a single flip
-  [21.9, 27.5],   // 36 Ash Loop: robot on starter 22.5s, 9 of 15 bikes beat three stars without a single flip
-  [15.4, 19.4],   // 37 Magma Hop: robot on starter 15.9s, 5 of 15 bikes beat three stars without a single flip
-  [21.1, 26.5],   // 38 Ember Steps: robot on starter 21.7s, 8 of 15 bikes beat three stars without a single flip
-  [20.1, 25.3],   // 39 Fire Walk: robot on starter 20.7s, 8 of 15 bikes beat three stars without a single flip
-  [28.9, 36.3],   // 40 Eruption: robot on starter 29.8s, 9 of 15 bikes beat three stars without a single flip
-  [21.1, 26.7],   // 41 One Small Hop: robot on starter 22.3s, 7 of 15 bikes beat three stars without a single flip
-  [22.2, 28.0],   // 42 Double Loop: robot on starter 23.3s, 6 of 15 bikes beat three stars without a single flip
-  [23.2, 29.2],   // 43 Crater Maker: robot on starter 24.4s, 8 of 15 bikes beat three stars without a single flip
-  [26.4, 33.4],   // 44 Slow Float: robot on starter 27.8s, 7 of 15 bikes beat three stars without a single flip
-  [25.9, 32.8],   // 45 Regolith: robot on starter 27.3s, 6 of 15 bikes beat three stars without a single flip
-  [26.4, 33.4],   // 46 Escape Velocity: robot on starter 27.8s, 7 of 15 bikes beat three stars without a single flip
-  [29.0, 36.6],   // 47 Dark Side: robot on starter 30.5s, 6 of 15 bikes beat three stars without a single flip
-  [44.9, 56.7]    // 48 Riot Run: robot on starter 47.3s, 7 of 15 bikes beat three stars without a single flip
+  [20.2, 25.5],   //  1 First Gear: robot on starter 18.9s, 11 of 15 bikes beat three stars riding the same careful way
+  [23.6, 29.8],   //  2 Rolling Dunes: robot on starter 22.1s, 12 of 15 bikes beat three stars riding the same careful way
+  [16.6, 21.0],   //  3 Hop Skip: robot on starter 15.5s, 11 of 15 bikes beat three stars riding the same careful way
+  [18.7, 23.5],   //  4 Loop de Dust: robot on starter 17.4s, 11 of 15 bikes beat three stars riding the same careful way
+  [21.0, 26.6],   //  5 Mesa Drop: robot on starter 19.7s, 11 of 15 bikes beat three stars riding the same careful way
+  [28.1, 35.5],   //  6 Washboard: robot on starter 26.3s, 12 of 15 bikes beat three stars riding the same careful way
+  [25.8, 32.6],   //  7 Gulch Gap: robot on starter 24.1s, 13 of 15 bikes beat three stars riding the same careful way
+  [34.9, 44.0],   //  8 Canyon Run: robot on starter 32.6s, 14 of 15 bikes beat three stars riding the same careful way
+  [20.9, 26.4],   //  9 Log Jam: robot on starter 20.3s, 11 of 15 bikes beat three stars riding the same careful way
+  [20.1, 25.4],   // 10 Mossy Loop: robot on starter 19.5s, 11 of 15 bikes beat three stars riding the same careful way
+  [19.5, 24.6],   // 11 Timber Table: robot on starter 18.9s, 12 of 15 bikes beat three stars riding the same careful way
+  [28.5, 36.0],   // 12 Sawmill: robot on starter 27.7s, 11 of 15 bikes beat three stars riding the same careful way
+  [35.5, 44.9],   // 13 Root Rage: robot on starter 34.5s, 11 of 15 bikes beat three stars riding the same careful way
+  [23.5, 29.7],   // 14 Creek Hop: robot on starter 22.9s, 10 of 15 bikes beat three stars riding the same careful way
+  [34.2, 43.1],   // 15 Beaver Dam: robot on starter 33.2s, 13 of 15 bikes beat three stars riding the same careful way
+  [39.8, 50.3],   // 16 Old Growth: robot on starter 38.7s, 11 of 15 bikes beat three stars riding the same careful way
+  [16.5, 20.7],   // 17 Green Flag: robot on starter 16.2s, 11 of 15 bikes beat three stars riding the same careful way
+  [20.6, 25.9],   // 18 Rumble Strip: robot on starter 20.2s, 11 of 15 bikes beat three stars riding the same careful way
+  [26.7, 33.5],   // 19 Oil Slick: robot on starter 26.1s, 11 of 15 bikes beat three stars riding the same careful way
+  [22.2, 27.9],   // 20 Bus Stop: robot on starter 21.8s, 11 of 15 bikes beat three stars riding the same careful way
+  [28.4, 35.6],   // 21 Pit Lane: robot on starter 27.8s, 11 of 15 bikes beat three stars riding the same careful way
+  [27.6, 34.6],   // 22 Seven Buses: robot on starter 27.1s, 13 of 15 bikes beat three stars riding the same careful way
+  [31.4, 39.4],   // 23 Stunt Show: robot on starter 30.8s, 11 of 15 bikes beat three stars riding the same careful way
+  [36.7, 46.1],   // 24 Chequered Flag: robot on starter 36.0s, 13 of 15 bikes beat three stars riding the same careful way
+  [19.5, 24.4],   // 25 Black Ice: robot on starter 19.5s, 11 of 15 bikes beat three stars riding the same careful way
+  [22.3, 27.9],   // 26 Glacier Loop: robot on starter 22.3s, 11 of 15 bikes beat three stars riding the same careful way
+  [24.0, 30.0],   // 27 Slip Road: robot on starter 24.0s, 11 of 15 bikes beat three stars riding the same careful way
+  [32.3, 40.4],   // 28 Whiteout: robot on starter 32.3s, 10 of 15 bikes beat three stars riding the same careful way
+  [36.2, 45.3],   // 29 Aurora: robot on starter 36.2s, 9 of 15 bikes beat three stars riding the same careful way
+  [31.8, 39.8],   // 30 Powder Keg: robot on starter 31.8s, 9 of 15 bikes beat three stars riding the same careful way
+  [27.4, 34.3],   // 31 Crevasse: robot on starter 27.4s, 9 of 15 bikes beat three stars riding the same careful way
+  [39.1, 48.8],   // 32 Avalanche: robot on starter 39.1s, 10 of 15 bikes beat three stars riding the same careful way
+  [18.8, 23.7],   // 33 Hot Start: robot on starter 19.4s, 9 of 15 bikes beat three stars riding the same careful way
+  [24.2, 30.4],   // 34 Caldera: robot on starter 24.9s, 9 of 15 bikes beat three stars riding the same careful way
+  [19.3, 24.2],   // 35 Magma Hop: robot on starter 19.9s, 8 of 15 bikes beat three stars riding the same careful way
+  [28.5, 35.9],   // 36 The Chimney: robot on starter 29.8s, 9 of 15 bikes beat three stars riding the same careful way
+  [33.8, 42.5],   // 37 Fire Walk: robot on starter 34.8s, 9 of 15 bikes beat three stars riding the same careful way
+  [29.1, 36.6],   // 38 Ash Loop: robot on starter 30.0s, 9 of 15 bikes beat three stars riding the same careful way
+  [28.8, 36.3],   // 39 Ember Steps: robot on starter 29.7s, 8 of 15 bikes beat three stars riding the same careful way
+  [38.2, 48.1],   // 40 Eruption: robot on starter 39.4s, 8 of 15 bikes beat three stars riding the same careful way
+  [21.1, 26.7],   // 41 One Small Hop: robot on starter 22.2s, 7 of 15 bikes beat three stars riding the same careful way
+  [22.2, 28.0],   // 42 Double Loop: robot on starter 23.3s, 7 of 15 bikes beat three stars riding the same careful way
+  [28.6, 36.1],   // 43 Crater Maker: robot on starter 30.1s, 9 of 15 bikes beat three stars riding the same careful way
+  [29.7, 37.6],   // 44 Slow Float: robot on starter 31.3s, 6 of 15 bikes beat three stars riding the same careful way
+  [33.8, 42.7],   // 45 Regolith: robot on starter 35.6s, 8 of 15 bikes beat three stars riding the same careful way
+  [38.6, 48.8],   // 46 Dark Side: robot on starter 40.6s, 7 of 15 bikes beat three stars riding the same careful way
+  [37.1, 46.8],   // 47 Escape Velocity: robot on starter 39.0s, 7 of 15 bikes beat three stars riding the same careful way
+  [46.9, 59.3]    // 48 Riot Run: robot on starter 49.4s, 7 of 15 bikes beat three stars riding the same careful way
 ];
+RR.ZONE_V = [[], [], [], [], [], [8.5], [10], [8, 10.5], [], [], [10.5], [8.5, 10], [8, 11], [10, 10], [7, 10], [9, 7, 9.5, 10.5], [], [], [9.5], [10, 10], [8.5, 10], [9, 8.5], [10, 8.5, 10], [9, 8.5, 11, 10, 11], [], [], [8], [10, 8], [8, 10, 8], [9, 10.5], [9.5, 9, 9], [8, 9, 9, 8.5], [], [], [10.5], [9, 8], [9, 9, 9, 8.5], [8, 11], [8.5, 8, 9, 10.5], [7, 9, 9, 10.5], [], [], [8.5], [11, 10.5], [7.5, 8, 11], [8, 8.5, 10], [8.5, 8.5], [9, 7.5, 10, 10.5]];
+if (typeof module !== 'undefined' && module.exports) module.exports = RR;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+/* ---- revs.js ---- */
+/* Tracks whose shape has changed since a player may have set a time on them.
+   Written by: node tools/rebuilt.js   (do not edit by hand) */
+(function (root) {
+var RR = root.RR || (root.RR = {});
+RR.REBUILT = {
+  'washboard': [1, 22.8, 28.8],
+  'gulch-gap': [1, 21.5, 27.1],
+  'canyon-run': [1, 32.5, 41.1],
+  'timber-table': [1, 17.9, 22.6],
+  'sawmill': [1, 21.4, 27.1],
+  'root-rage': [1, 26.6, 33.6],
+  'creek-hop': [1, 18.9, 23.8],
+  'beaver-dam': [1, 24.9, 31.4],
+  'old-growth': [1, 34.2, 43.2],
+  'oil-slick': [1, 21.4, 26.9],
+  'bus-stop': [1, 16.4, 20.5],
+  'pit-lane': [1, 21.3, 26.7],
+  'seven-buses': [1, 20.7, 25.9],
+  'stunt-show': [1, 19.6, 24.6],
+  'chequered-flag': [1, 28.9, 36.2],
+  'slip-road': [1, 19.3, 24.2],
+  'whiteout': [1, 22.5, 28.1],
+  'aurora': [1, 30.6, 38.3],
+  'powder-keg': [1, 24.2, 30.3],
+  'crevasse': [1, 20.4, 25.5],
+  'avalanche': [1, 20.2, 25.3],
+  'magma-hop': [1, 15.4, 19.4],
+  'fire-walk': [1, 20.1, 25.3],
+  'ash-loop': [1, 21.9, 27.5],
+  'ember-steps': [1, 21.1, 26.5],
+  'eruption': [1, 28.9, 36.3],
+  'crater-maker': [1, 23.2, 29.2],
+  'slow-float': [1, 26.4, 33.4],
+  'regolith': [1, 25.9, 32.8],
+  'dark-side': [1, 29, 36.6],
+  'escape-velocity': [1, 26.4, 33.4],
+  'riot-run': [1, 44.9, 56.7]
+};
 if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -2065,12 +2285,22 @@ RR.botInput = function (s, P, out) {
   out.lean = lean;
   var sp = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
   var cap = P.vcap || 1e9;
-  // under a rock roof, go slowly enough that humps do not throw the rider into it
-  if (tr.roofs === undefined) tr.roofs = tr.feats.filter(function (f) { return f.t === 'roof'; });
-  for (var r = 0; r < tr.roofs.length; r++) if (s.x > tr.roofs[r].x0 - 16 && s.x < tr.roofs[r].x1 - 3) cap = Math.min(cap, P.roofV || 9.5);
-  out.brake = sp > cap && !air;
+  /* Slow zones: stretches where full gas gets you hurt. The track carries a sensible
+     limit for each one; the test tools can hand in limits worked out for this bike.
+     The rider starts slowing early enough to be down to the limit as the zone begins. */
+  if (tr.zones === undefined) tr.zones = tr.feats.filter(function (f) { return f.t === 'zone'; });
+  var zs = tr.zones, dec = (P.dec || 0.42) * s.g;
+  for (var r = 0; r < zs.length; r++) {
+    var z = zs[r], zv = P.caps ? P.caps[r] : z.v;
+    if (zv == null || s.x >= z.x1 || s.x < z.x0 - 90) continue;
+    var dz = z.x0 - s.x - (P.early == null ? 2.5 : P.early);
+    var allow = dz > 0 ? Math.sqrt(zv * zv + 2 * dec * dz) : zv;
+    if (allow < cap) cap = allow;
+  }
+  out.cap = cap;
+  out.brake = sp > cap + (cap < 1e8 ? 0.5 : 0) && !air;
   // throttle: held open, but eased off when the front wheel climbs too high, the way a rider would
-  var gas = !out.brake;
+  var gas = !out.brake && sp < cap - 0.15;
   if (gas && s.gnd[0] && !s.gnd[1]) {
     var pr = wrap(s.a - Math.atan2(-s.nrmX[0], s.nrmY[0])) + s.w * (P.wlook == null ? 0.22 : P.wlook);
     if (pr > (P.wth || 0.4)) gas = false;
@@ -3656,7 +3886,7 @@ R.makeProps = function (tr) {
     if (px < 8 || px > tr.finishX - 6 && px < tr.finishX + 6) return true;
     for (i = 0; i < tr.hazards.length; i++) if (px > tr.hazards[i].x0 - 1.2 && px < tr.hazards[i].x1 + 1.2) return true;
     for (i = 0; i < tr.loops.length; i++) if (Math.abs(px - tr.loops[i].cx) < tr.loops[i].R + 1.5) return true;
-    for (i = 0; i < tr.feats.length; i++) { var f = tr.feats[i]; if (f.t === 'roof' && px > f.x0 - 1 && px < f.x1 + 1) return true; if (f.t === 'log' && Math.abs(px - f.x) < 1.2) return true; }
+    for (i = 0; i < tr.feats.length; i++) { var f = tr.feats[i]; if ((f.t === 'roof' || f.t === 'beam') && px > f.x0 - 1 && px < f.x1 + 1) return true; if (f.t === 'log' && Math.abs(px - f.x) < 1.2) return true; }
     if (Math.abs(RR.groundSlope(tr, px)) > 0.42) return true;
     if (Math.abs(RR.groundY(tr, px - 0.7) - RR.groundY(tr, px + 0.7)) > 0.9) return true;
     return false;
@@ -4158,27 +4388,111 @@ function drawLoop(c, lp, T) {
   c.stroke();
 }
 
+/* What the rock overhead is made of in each world: [fill, inner shade, edge, kind] */
+var ROOF = {
+  dust:   { kind: 'rock' },
+  pine:   { kind: 'roots', fill: '#4d3526', in2: '#38261b', edge: '#5fae3f' },
+  race:   { kind: 'concrete', fill: '#8a8f99', in2: '#70757f', edge: '#f2c230' },
+  frost:  { kind: 'ice', fill: '#8fb6ee', in2: '#6f97dc', edge: '#f6fbff' },
+  cinder: { kind: 'rock' },
+  orbit:  { kind: 'hull', fill: '#565b78', in2: '#43475f', edge: '#22e0c8' }
+};
 function drawRoofs(c, G, T, xl, xr, yt) {
-  var ch = G.track.chains, i, k;
+  var ch = G.track.chains, i, k, st = ROOF[T.id] || ROOF.dust, kind = st.kind;
+  var fill = st.fill || T.ground[1], in2 = st.in2 || T.ground[2], edge = st.edge || T.crust;
   for (i = 1; i < ch.length; i++) {
     if (ch[i].kind !== 'roof') continue;
-    var p = ch[i].pts;
+    var p = ch[i].pts, top = yt + 30;
     if (p[2] < xl || p[0] > xr) continue;
-    c.beginPath(); c.moveTo(p[0], Math.max(p[1], yt + 30)); c.lineTo(p[2], Math.max(p[3], yt + 30));
+    c.beginPath(); c.moveTo(p[0], top); c.lineTo(p[2], top);
     for (k = 4; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]);
-    c.closePath(); c.fillStyle = T.ground[1]; c.fill();
+    c.closePath(); c.fillStyle = fill; c.fill();
     c.save(); c.clip();
-    c.fillStyle = T.ground[2];
+    c.fillStyle = in2;
     c.beginPath(); for (k = 4; k < p.length; k += 2) c[k === 4 ? 'moveTo' : 'lineTo'](p[k], p[k + 1] + 1.4);
-    c.lineTo(p[0], p[1] + 60); c.lineTo(p[2], p[3] + 60); c.closePath(); c.fill();
+    c.lineTo(p[0], top + 30); c.lineTo(p[2], top + 30); c.closePath(); c.fill();
+    if (kind === 'concrete' || kind === 'hull') {
+      // slab joints
+      c.strokeStyle = 'rgba(0,0,0,0.22)'; c.lineWidth = 0.05; c.beginPath();
+      for (var jx = Math.ceil(Math.max(p[0], xl) / 3) * 3; jx < Math.min(p[2], xr); jx += 3) { c.moveTo(jx, top); c.lineTo(jx, p[5] - 2); }
+      c.stroke();
+    }
     c.restore();
+    // the underside
     c.beginPath(); c.moveTo(p[4], p[5]); for (k = 6; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]);
-    c.lineWidth = 0.32; c.strokeStyle = T.crust; c.stroke();
-    c.beginPath(); c.moveTo(p[2], yt + 30); c.lineTo(p[2], p[3]); for (k = 4; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]); c.lineTo(p[0], yt + 30);
+    c.lineWidth = kind === 'concrete' || kind === 'hull' ? 0.26 : 0.32; c.strokeStyle = edge; c.stroke();
+    if (kind === 'concrete') {
+      // hazard stripes along the edge you can hit
+      c.save(); c.setLineDash([0.5, 0.5]); c.lineCap = 'butt'; c.lineWidth = 0.26; c.strokeStyle = '#1c1d22';
+      c.beginPath(); c.moveTo(p[4], p[5]); for (k = 6; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]); c.stroke(); c.restore();
+    }
+    c.beginPath(); c.moveTo(p[2], top); c.lineTo(p[2], p[3]); for (k = 4; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]); c.lineTo(p[0], top);
     c.lineWidth = 0.055; c.strokeStyle = OUT; c.stroke();
-    // drips of rock
-    c.fillStyle = T.ground[1];
-    for (k = 6; k < p.length - 2; k += 6) { var hx = p[k], hy = p[k + 1], hl = 0.3 + hash(hx) * 0.5; c.beginPath(); c.moveTo(hx - 0.16, hy + 0.05); c.lineTo(hx, hy - hl); c.lineTo(hx + 0.16, hy + 0.05); c.closePath(); c.fill(); c.lineWidth = 0.045; c.stroke(); }
+    // what hangs off it
+    for (k = 6; k < p.length - 2; k += 6) {
+      var hx = p[k], hy = p[k + 1], hh = hash(hx);
+      if (hx < xl - 1 || hx > xr + 1) continue;
+      if (kind === 'rock') {
+        var hl = 0.3 + hh * 0.5; c.fillStyle = fill;
+        c.beginPath(); c.moveTo(hx - 0.16, hy + 0.05); c.lineTo(hx, hy - hl); c.lineTo(hx + 0.16, hy + 0.05); c.closePath(); c.fill(); c.lineWidth = 0.045; c.strokeStyle = OUT; c.stroke();
+      } else if (kind === 'ice') {
+        var il = 0.25 + hh * 0.45; c.fillStyle = '#dff1ff';
+        c.beginPath(); c.moveTo(hx - 0.11, hy + 0.05); c.lineTo(hx + 0.02, hy - il); c.lineTo(hx + 0.12, hy + 0.05); c.closePath(); c.fill(); c.lineWidth = 0.04; c.strokeStyle = OUT; c.stroke();
+      } else if (kind === 'roots') {
+        var rl = 0.25 + hh * 0.4; c.lineWidth = 0.06; c.strokeStyle = '#6d4a33';
+        c.beginPath(); c.moveTo(hx, hy + 0.05); c.quadraticCurveTo(hx + 0.18 * (hh - 0.5), hy - rl * 0.5, hx + 0.1 * (hh - 0.5), hy - rl); c.stroke();
+        if (hh > 0.55) A.circ(c, hx + 0.1 * (hh - 0.5), hy - rl, 0.07, '#74c24f', 0.025);
+      } else if (kind === 'concrete' && (k % 18) === 6) {
+        A.shape(c, [hx - 0.28, hy - 0.02, hx + 0.28, hy - 0.02, hx + 0.2, hy - 0.2, hx - 0.2, hy - 0.2], '#3a3d46', 0.04);
+        A.circ(c, hx, hy - 0.2, 0.09, '#fff3b8', 0.02);
+      } else if (kind === 'hull' && (k % 12) === 6) {
+        A.circ(c, hx, hy - 0.02, 0.08, (Math.floor(G.t * 2 + hx) % 2) ? '#22e0c8' : '#0f6a60', 0.02);
+      }
+    }
+  }
+}
+
+/* Something hanging over a jump. The solid part is the plain column from y0 upward; the drawing
+   stays inside it at the bottom so what you see is what you hit. */
+function drawBeams(c, G, T, xl, xr, yt) {
+  var f = G.track.feats, i, k;
+  for (i = 0; i < f.length; i++) {
+    var b = f[i];
+    if (b.t !== 'beam' || b.x1 < xl - 2 || b.x0 > xr + 2) continue;
+    var x0 = b.x0, x1 = b.x1, y0 = b.y0, top = yt + 30, w = x1 - x0, mx = (x0 + x1) * 0.5, id = T.id;
+    if (id === 'race') {
+      // lighting rig: a steel lattice coming down from above, with a striped bumper
+      c.fillStyle = 'rgba(40,44,54,0.55)'; c.fillRect(x0 + 0.1, y0 + 0.5, w - 0.2, top - y0);
+      c.lineWidth = 0.09; c.strokeStyle = '#aab1bb'; c.beginPath();
+      c.moveTo(x0 + 0.1, y0 + 0.5); c.lineTo(x0 + 0.1, top); c.moveTo(x1 - 0.1, y0 + 0.5); c.lineTo(x1 - 0.1, top);
+      for (k = 0; y0 + 0.5 + k * w < top; k++) { var ya = y0 + 0.5 + k * w; c.moveTo(k % 2 ? x1 - 0.1 : x0 + 0.1, ya); c.lineTo(k % 2 ? x0 + 0.1 : x1 - 0.1, ya + w); }
+      c.stroke();
+      A.shape(c, [x0, y0, x1, y0, x1, y0 + 0.5, x0, y0 + 0.5], '#f2c230', 0.06);
+      c.fillStyle = '#1c1d22'; for (k = 0; k < 3; k++) { var sx = x0 + 0.12 + k * (w - 0.24) / 3; c.beginPath(); c.moveTo(sx, y0 + 0.03); c.lineTo(sx + (w - 0.24) / 6, y0 + 0.03); c.lineTo(sx + (w - 0.24) / 3, y0 + 0.47); c.lineTo(sx + (w - 0.24) / 6, y0 + 0.47); c.closePath(); c.fill(); }
+      A.circ(c, mx, y0 + 0.82, 0.13, (Math.floor(G.t * 3) % 2) ? '#ff4a4a' : '#6a1f1f', 0.03);
+    } else if (id === 'orbit') {
+      // docking pylon
+      A.shape(c, [x0, y0, x1, y0, x1, top, x0, top], '#5f6483', 0.06);
+      c.fillStyle = '#494d69'; c.fillRect(x0 + w * 0.6, y0, w * 0.4 - 0.03, top - y0);
+      c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 0.05; c.beginPath(); for (k = 1; y0 + k * 1.6 < top; k++) { c.moveTo(x0, y0 + k * 1.6); c.lineTo(x1, y0 + k * 1.6); } c.stroke();
+      A.shape(c, [x0 - 0.12, y0, x1 + 0.12, y0, x1 + 0.12, y0 + 0.3, x0 - 0.12, y0 + 0.3], '#d5d8ea', 0.05);
+      A.circ(c, mx, y0 + 0.62, 0.12, (Math.floor(G.t * 2) % 2) ? '#22e0c8' : '#0f6a60', 0.03);
+    } else if (id === 'pine') {
+      // a dead trunk hung up in the canopy, broken end down
+      A.shape(c, [x0, y0 + 0.25, x0 + w * 0.2, y0, x0 + w * 0.45, y0 + 0.18, x0 + w * 0.7, y0 + 0.02, x1, y0 + 0.3, x1 + 0.08, top, x0 - 0.08, top], '#7a5236', 0.06);
+      c.fillStyle = '#5c3c27'; c.fillRect(x0 + w * 0.62, y0 + 0.3, w * 0.38, top - y0);
+      c.strokeStyle = 'rgba(0,0,0,0.28)'; c.lineWidth = 0.05; c.beginPath();
+      for (k = 0; k < 3; k++) { var bx = x0 + w * (0.22 + k * 0.24); c.moveTo(bx, y0 + 0.5 + hash(bx) * 0.6); c.lineTo(bx + 0.04, top); }
+      c.stroke();
+      A.circ(c, x0 + 0.02, y0 + 1.5, 0.3, '#5fae3f', 0.045); A.circ(c, x1 - 0.02, y0 + 2.4, 0.26, '#74c24f', 0.045); A.circ(c, x0 + 0.2, y0 + 3.3, 0.22, '#5fae3f', 0.04);
+    } else {
+      // rock fang or giant icicle: thick above, blunt end down
+      var ice = id === 'frost', col = ice ? '#bfe0ff' : T.ground[1], sh = ice ? '#8fb6ee' : T.ground[2], hot = id === 'cinder';
+      A.shape(c, [x0 + w * 0.1, y0 + 0.12, x0 + w * 0.5, y0, x1 - w * 0.1, y0 + 0.12, x1, y0 + 1.2, x1 + 0.5, y0 + 5, x1 + 0.9, top, x0 - 0.9, top, x0 - 0.5, y0 + 5, x0, y0 + 1.2], col, 0.06);
+      A.shape(c, [x0 + w * 0.62, y0 + 0.14, x1 - w * 0.1, y0 + 0.12, x1, y0 + 1.2, x1 + 0.5, y0 + 5, x1 + 0.9, top, x0 + w * 0.7, top], sh, 0);
+      A.line(c, [x0 + w * 0.28, y0 + 0.5, x0 + w * 0.2, y0 + 2.4], 0.07, ice ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.14)');
+      A.line(c, [x0 + w * 0.1, y0 + 0.12, x0 + w * 0.5, y0, x1 - w * 0.1, y0 + 0.12], 0.14, hot ? '#ff7a1f' : ice ? '#ffffff' : T.crust);
+    }
   }
 }
 
@@ -4222,6 +4536,13 @@ function drawFeats(c, G, T, xl, xr, behind) {
     } else if (ft.t === 'sign' && behind) {
       if (ft.x < xl - 2 || ft.x > xr + 2) continue;
       A.tube(c, [ft.x, ft.y - 0.1, ft.x, ft.y + 1.7], 0.1, '#7a5236', 0.05);
+      if (ft.kind === 'slow') {
+        // warning triangle: something ahead does not want full gas
+        A.shape(c, [ft.x - 0.66, ft.y + 1.22, ft.x + 0.66, ft.y + 1.22, ft.x, ft.y + 2.44], '#fff6e0', 0.06);
+        c.beginPath(); c.moveTo(ft.x - 0.5, ft.y + 1.31); c.lineTo(ft.x + 0.5, ft.y + 1.31); c.lineTo(ft.x, ft.y + 2.25); c.closePath(); c.lineWidth = 0.1; c.strokeStyle = '#e2402f'; c.stroke();
+        A.line(c, [ft.x, ft.y + 1.96, ft.x, ft.y + 1.68], 0.11, OUT); A.circ(c, ft.x, ft.y + 1.5, 0.055, OUT, 0);
+        continue;
+      }
       A.shape(c, [ft.x - 0.6, ft.y + 1.3, ft.x + 0.6, ft.y + 1.3, ft.x + 0.6, ft.y + 2.2, ft.x - 0.6, ft.y + 2.2], '#f2c230', 0.06);
       if (ft.kind === 'loop') { c.beginPath(); c.arc(ft.x, ft.y + 1.75, 0.25, 0, TAU); c.lineWidth = 0.09; c.strokeStyle = OUT; c.stroke(); }
       else A.shape(c, [ft.x - 0.35, ft.y + 1.5, ft.x + 0.1, ft.y + 1.5, ft.x + 0.1, ft.y + 1.42, ft.x + 0.4, ft.y + 1.75, ft.x + 0.1, ft.y + 2.08, ft.x + 0.1, ft.y + 2.0, ft.x - 0.35, ft.y + 1.9], OUT, 0);
@@ -4255,8 +4576,24 @@ R.camFollow = function (cam, s, tr, dt, aspect, snap, lead) {
   var ty = s.y - vh * 0.035 + clamp(s.vy * 0.1, -1.6, 1.6);
   var gAhead = RR.groundY(tr, s.x + vw * 0.3);
   if (gAhead > tr.minY - 5) ty = lerp(ty, (ty + gAhead + vh * 0.16) * 0.5, 0.35);
+  // Anything you can hit your head on has to be on screen, clear of the timer, before you get to it:
+  // pull back and tilt up when there is a roof or something hanging in the stretch ahead.
+  if (tr.over === undefined) tr.over = tr.feats.filter(function (f) { return f.t === 'roof' || f.t === 'beam'; });
+  var need = -1e9, x0v = s.x - 3, x1v = s.x + vw * 0.95, oi, ok2;
+  for (oi = 0; oi < tr.over.length; oi++) {
+    var of = tr.over[oi];
+    if (of.x1 < x0v || of.x0 > x1v) continue;
+    if (of.t === 'beam') { if (of.y0 > need) need = of.y0; continue; }
+    for (ok2 = 0; ok2 < of.bot.length; ok2 += 2) if (of.bot[ok2] >= x0v && of.bot[ok2] <= x1v && of.bot[ok2 + 1] > need) need = of.bot[ok2 + 1];
+  }
+  if (need > -1e8) {
+    var ex = need + 0.7 + vh * 0.27 - (ty + vh * 0.5);
+    if (ex > 0) { if (ex > 7) ex = 7; vh += ex * 0.8; ty += ex * 0.5; cam.over = 1; } else cam.over = 0;
+  } else cam.over = 0;
+  {
+  }
   if (snap) { cam.x = tx; cam.y = ty; cam.vh = vh; cam.px = cam.x; cam.py = cam.y; return; }
-  var k = 1 - Math.exp(-dt * 6), kz = 1 - Math.exp(-dt * 1.7), ky = 1 - Math.exp(-dt * 4.5);
+  var k = 1 - Math.exp(-dt * 6), kz = 1 - Math.exp(-dt * (cam.over && vh > cam.vh ? 4 : 1.7)), ky = 1 - Math.exp(-dt * 4.5);
   cam.px = cam.x; cam.py = cam.y;
   cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * ky; cam.vh += (vh - cam.vh) * kz;
   // never let the bike slide off the top or bottom edge
@@ -4345,6 +4682,7 @@ R.frame = function (G, dt) {
   for (i = 0; i < tr.loops.length; i++) if (tr.loops[i].cx + tr.loops[i].R + 2 > xl && tr.loops[i].cx - tr.loops[i].R - 2 < xr) drawLoop(c, tr.loops[i], T);
   drawGround(c, G, T, xl, xr, yb);
   drawRoofs(c, G, T, xl, xr, yt);
+  drawBeams(c, G, T, xl, xr, yt);
   drawFeats(c, G, T, xl, xr, false);
 
   // ghost of the best run
@@ -5374,7 +5712,7 @@ function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 var KEY = 'ridgeRiot.v1';
 var DEF = {
   v: 2, best: {}, bike: 'scrapper', owned: { scrapper: 1 }, last: 0, seenHow: false,
-  nuggets: 0, paints: {}, riders: {}, fit: {}, geodes: { gold: 0, diamond: 0 }, opened: 0, pity: 0, paid: {}, got: {}, fresh: {},
+  nuggets: 0, paints: {}, riders: {}, fit: {}, geodes: { gold: 0, diamond: 0 }, opened: 0, pity: 0, paid: {}, got: {}, fresh: {}, kept: {},
   settings: { sfx: 0.8, engine: 0.7, music: 0.5, tilt: false, tiltSens: 0.8, tiltFlip: false, hints: true, ghost: true, unlockAll: false, quality: 'auto', buzz: true },
   stats: { flips: 0, bestAir: 0, crashes: 0, runs: 0, finishes: 0, bestJump: 0, bestFlips: 0, dist: 0, topSpeed: 0 }
 };
@@ -5393,7 +5731,8 @@ var Store = RR.Store = {
   set: function (k, v) { mem[k] = v; try { root.localStorage.setItem(k, v); return true; } catch (e) { return false; } },
   del: function (k) { delete mem[k]; try { root.localStorage.removeItem(k); } catch (e) {} },
   load: function () {
-    var raw = Store.get(KEY), d = JSON.parse(JSON.stringify(DEF)), k, i, old = false;
+    var raw = Store.get(KEY), d = JSON.parse(JSON.stringify(DEF)), k, i, old = false, revs = {};
+    Store.rebuilt = 0;
     Store.other = {};
     if (raw) {
       try {
@@ -5405,6 +5744,7 @@ var Store = RR.Store = {
         if (o.times) {
           for (k in o.times) { i = RR.trackIndex(k); if (i >= 0) d.best[i] = o.times[k]; else Store.other[k] = o.times[k]; }
           i = RR.trackIndex(o.lastId || ''); d.last = i >= 0 ? i : 0;
+          revs = o.revs || {};
         } else if (o.best) {
           old = true;
           for (k in o.best) { i = RR.trackIndex(v1id(k)); if (i >= 0) d.best[i] = o.best[k]; }
@@ -5415,7 +5755,18 @@ var Store = RR.Store = {
     }
     if (!RR.BIKE[d.bike]) d.bike = 'scrapper';
     d.owned.scrapper = 1;
+    /* Tracks that have been rebuilt since this save was written: the old best time was set on a
+       different track, so it and its ghost go. The stars it earned are kept, so nothing that was
+       unlocked gets locked again. */
+    for (k in d.best) {
+      var id = RR.trackId(+k), rb = RR.REBUILT && RR.REBUILT[id];
+      if (!rb || !d.best[k] || (revs[id] || 0) >= rb[0]) continue;
+      var st = d.best[k] <= rb[1] ? 3 : d.best[k] <= rb[2] ? 2 : 1;
+      if (st > (d.kept[id] || 0)) d.kept[id] = st;
+      delete d.best[k]; Store.del(KEY + '.ghost.' + id); Store.rebuilt++;
+    }
     Store.data = d;
+    if (Store.rebuilt && !old) Store.save();
     if (old) {
       // move the ghost recordings to their new names as well
       for (k = 0; k < V1.length; k++) { var g = Store.get(KEY + '.ghost.' + k); if (g) { Store.set(KEY + '.ghost.' + v1id(k), g); Store.del(KEY + '.ghost.' + k); } }
@@ -5427,7 +5778,8 @@ var Store = RR.Store = {
     for (k in d) if (k !== 'best') out[k] = d[k];
     out.times = {};
     for (k in Store.other) out.times[k] = Store.other[k];
-    for (k in d.best) if (d.best[k]) out.times[RR.trackId(+k)] = d.best[k];
+    out.revs = {};
+    for (k in d.best) if (d.best[k]) { out.times[RR.trackId(+k)] = d.best[k]; if (RR.REBUILT && RR.REBUILT[RR.trackId(+k)]) out.revs[RR.trackId(+k)] = RR.REBUILT[RR.trackId(+k)][0]; }
     out.lastId = RR.trackId(d.last || 0);
     var ok = Store.set(KEY, JSON.stringify(out));
     if (!ok && !Store.warned) { Store.warned = true; if (RR.UI && RR.UI.toast) RR.UI.toast('This browser is not letting the game save. Progress lasts until you close the page.'); }
@@ -5443,21 +5795,23 @@ var Store = RR.Store = {
 
 var P = RR.Progress = {
   starsFor: function (i) {
-    var b = Store.data.best[i];
-    if (!b) return 0;
-    var st = RR.STAR_TIMES[i];
-    return b <= st[0] ? 3 : b <= st[1] ? 2 : 1;
+    var b = Store.data.best[i], kept = Store.data.kept[RR.trackId(i)] || 0;
+    if (!b) return kept;
+    var st = RR.STAR_TIMES[i], n = b <= st[0] ? 3 : b <= st[1] ? 2 : 1;
+    return n > kept ? n : kept;
   },
+  /* finished at least once, on this layout or the one before it */
+  done: function (i) { return !!Store.data.best[i] || !!Store.data.kept[RR.trackId(i)]; },
   starsForTime: function (i, t) { var st = RR.STAR_TIMES[i]; return t <= st[0] ? 3 : t <= st[1] ? 2 : 1; },
   total: function () { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) n += P.starsFor(i); return n; },
-  worldDone: function (w) { for (var i = w * 8; i < w * 8 + 8; i++) if (!Store.data.best[i]) return false; return true; },
-  worldCount: function (w) { var n = 0; for (var i = w * 8; i < w * 8 + 8; i++) if (Store.data.best[i]) n++; return n; },
+  worldDone: function (w) { for (var i = w * 8; i < w * 8 + 8; i++) if (!P.done(i)) return false; return true; },
+  worldCount: function (w) { var n = 0; for (var i = w * 8; i < w * 8 + 8; i++) if (P.done(i)) n++; return n; },
   worldOpen: function (w) { return Store.data.settings.unlockAll || P.total() >= RR.WORLDS[w].need; },
   trackOpen: function (i) {
     if (Store.data.settings.unlockAll) return true;
     var w = Math.floor(i / 8);
     if (!P.worldOpen(w)) return false;
-    return i % 8 === 0 || !!Store.data.best[i - 1] || !!Store.data.best[i];
+    return i % 8 === 0 || P.done(i - 1) || P.done(i);
   },
   worldStars: function (w) { var n = 0; for (var i = w * 8; i < w * 8 + 8; i++) n += P.starsFor(i); return n; },
   bikeMet: function (d) {
@@ -6264,7 +6618,7 @@ UI.title = function () {
   UI.show('title');
 };
 var toastT = 0;
-UI.toast = function (text) { var t = $('toast'); t.textContent = text; t.className = 'plate on'; clearTimeout(toastT); toastT = setTimeout(function () { t.className = 'plate'; }, 2800); };
+UI.toast = function (text) { var t = $('toast'); t.textContent = text; t.className = 'plate on'; clearTimeout(toastT); toastT = setTimeout(function () { t.className = "plate"; }, Math.max(2800, text.length * 60)); };
 UI.toastBikes = function (list) { Au.unlocked(); UI.toast('New bike in the garage: ' + list.map(function (d) { return d.name; }).join(', ')); Store.save(); };
 
 /* ------------------------------------------------------------------ */
@@ -6581,8 +6935,15 @@ UI.onReset = function () {
 UI.onStart = function () { $('howto').className = 'howto'; };
 UI.onCrash = function (cause) {
   var words = { head: 'Wiped out', water: 'Splash', ice: 'Ice bath', lava: 'Toasted', fall: 'Long way down', bus: 'Parked it' };
-  $('wipeT').textContent = words[cause] || 'Wiped out';
-  $('wipeS').textContent = 'ontouchstart' in root ? 'Tap to go again' : 'Press R to go again';
+  var again = 'ontouchstart' in root ? 'Tap to go again' : 'Press R to go again', why = '', title = words[cause] || 'Wiped out';
+  // if it happened at one of the places where speed matters, say which way it went wrong
+  var s = G.sim, f = G.track.feats, i;
+  for (i = 0; i < f.length && s; i++) {
+    if (cause === 'head' && (f[i].t === 'roof' || f[i].t === 'beam') && s.x > f[i].x0 - 2.5 && s.x < f[i].x1 + 2.5) { title = 'Headroom'; why = 'Too fast through there\n'; break; }
+    if (cause !== 'head' && f[i].t === 'zone' && s.x > f[i].x0 && s.x < f[i].x1 + 2) { why = 'Not enough speed for that one\n'; break; }
+  }
+  $('wipeT').textContent = title;
+  $('wipeS').textContent = why + again;
   setTimeout(function () { if (G.state === 'crash') $('wipe').className = 'wipe plate on'; }, 420);
 };
 UI.onFinish = function () {};
@@ -6642,6 +7003,7 @@ RR.boot = function () {
   G.menu();
   UI.title();
   if (owed.nuggets || owed.geodes.length) setTimeout(function () { UI.toast('New: paint jobs and riders. You have ' + Store.data.nuggets + ' nuggets' + (owed.geodes.length ? ' and ' + owed.geodes.length + ' prize geode' + (owed.geodes.length > 1 ? 's' : '') : '') + ' waiting in the Garage.'); }, 900);
+  if (Store.rebuilt) setTimeout(function () { UI.toast(Store.rebuilt + ' track' + (Store.rebuilt > 1 ? 's have' : ' has') + ' been rebuilt and now bite back. You keep your stars on them. Best times start again.'); }, owed.nuggets || owed.geodes.length ? 6500 : 900);
   root.requestAnimationFrame(G.frame);
 };
 })(typeof window !== 'undefined' ? window : globalThis);

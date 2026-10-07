@@ -31,11 +31,11 @@ RR.BIKES = [
   },
   {
     id: 'mosquito', name: 'Mosquito 50', kind: 'mini', tag: 'Tiny, twitchy, flips for fun', wipe: 'pop',
-    blurb: 'A pit bike with wheels the size of dinner plates. Spins like a coin, hates big bumps.',
+    blurb: 'A pit bike with wheels the size of dinner plates. Spins like a coin, hates big bumps, fits under most things.',
     mass: 126, kgyr: 0.37, wb: 1.02, rr: 0.225, rf: 0.225, com: [0.45, 0.68], wheelMass: [5.5, 5], rake: 25, swing: 8,
     sus: [{ travel: 0.13, freq: 2.7, sag: 0.3, zc: 0.45, zr: 0.9 }, { travel: 0.13, freq: 2.7, sag: 0.3, zc: 0.42, zr: 0.9 }],
-    accel: 0.60, vp: 7.5, vmax: 13.6, grip: 0.96, brake: 0.8, leanAcc: 23, spin: 8.4, cda: 0.5,
-    rider: { seat: [0.28, 0.70], peg: [0.40, 0.30], grip: [0.74, 0.96], scale: 0.96, torso: 0.30 },
+    accel: 0.60, vp: 7.5, vmax: 14.4, grip: 0.96, brake: 0.8, leanAcc: 23, spin: 8.4, cda: 0.5,
+    rider: { seat: [0.28, 0.73], peg: [0.40, 0.30], grip: [0.74, 0.98], scale: 1, torso: 0.26 },
     col: ['#e8483a', '#20242e', '#ffe9a8'], suit: ['#3a7be8', '#ffffff', '#20242e'],
     snd: { type: 'mini', pitch: 1.45, gears: 4 },
     unlock: { type: 'stars', n: 6 }
@@ -75,12 +75,12 @@ RR.BIKES = [
   },
   {
     id: 'penny', name: 'Penny Dreadful', kind: 'penny', tag: 'One huge wheel, one afterthought', wipe: 'paper',
-    blurb: 'A motorised penny-farthing. The big front wheel rolls over anything. You sit a long way up, and it knows it.',
+    blurb: 'A motorised penny-farthing. The big wheel rolls over anything. You sit a long way up, so mind your head.',
     mass: 150, kgyr: 0.56, wb: 1.08, rr: 0.20, rf: 0.56, com: [0.68, 1.00], wheelMass: [7.5, 13], rake: 10, swing: 8,
     sus: [{ travel: 0.08, freq: 2.7, sag: 0.3, zc: 0.45, zr: 0.9 }, { travel: 0.11, freq: 2.4, sag: 0.3, zc: 0.42, zr: 0.9 }],
     accel: 0.50, vp: 7, vmax: 13.4, grip: 0.98, brake: 0.5, leanAcc: 14.5, spin: 5.7, cda: 0.7,
-    rider: { seat: [0.60, 1.26], peg: [1.00, 0.64], grip: [1.02, 1.52], scale: 1, torso: 0.16 },
-    body: [[0.5, 0.42, 0.1], [0.2, 1.15, 0.09], [0.86, 1.34, 0.09], [0.6, 1.2, 0.1]],
+    rider: { seat: [0.60, 1.21], peg: [1.00, 0.62], grip: [1.02, 1.46], scale: 0.95, torso: 0.2 },
+    body: [[0.5, 0.42, 0.1], [0.2, 1.12, 0.09], [0.86, 1.3, 0.09], [0.6, 1.16, 0.1]],
     col: ['#1f3d36', '#c9a24a', '#f1e6cc'], suit: ['#5a3a2a', '#c9b98a', '#2a2118'],
     snd: { type: 'scoot', pitch: 0.72, gears: 0 },
     unlock: { type: 'dist', n: 20000, text: 'Ride 20 km in total' }

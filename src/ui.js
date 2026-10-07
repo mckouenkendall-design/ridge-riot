@@ -298,7 +298,7 @@ UI.title = function () {
   UI.show('title');
 };
 var toastT = 0;
-UI.toast = function (text) { var t = $('toast'); t.textContent = text; t.className = 'plate on'; clearTimeout(toastT); toastT = setTimeout(function () { t.className = 'plate'; }, 2800); };
+UI.toast = function (text) { var t = $('toast'); t.textContent = text; t.className = 'plate on'; clearTimeout(toastT); toastT = setTimeout(function () { t.className = "plate"; }, Math.max(2800, text.length * 60)); };
 UI.toastBikes = function (list) { Au.unlocked(); UI.toast('New bike in the garage: ' + list.map(function (d) { return d.name; }).join(', ')); Store.save(); };
 
 /* ------------------------------------------------------------------ */
@@ -615,8 +615,15 @@ UI.onReset = function () {
 UI.onStart = function () { $('howto').className = 'howto'; };
 UI.onCrash = function (cause) {
   var words = { head: 'Wiped out', water: 'Splash', ice: 'Ice bath', lava: 'Toasted', fall: 'Long way down', bus: 'Parked it' };
-  $('wipeT').textContent = words[cause] || 'Wiped out';
-  $('wipeS').textContent = 'ontouchstart' in root ? 'Tap to go again' : 'Press R to go again';
+  var again = 'ontouchstart' in root ? 'Tap to go again' : 'Press R to go again', why = '', title = words[cause] || 'Wiped out';
+  // if it happened at one of the places where speed matters, say which way it went wrong
+  var s = G.sim, f = G.track.feats, i;
+  for (i = 0; i < f.length && s; i++) {
+    if (cause === 'head' && (f[i].t === 'roof' || f[i].t === 'beam') && s.x > f[i].x0 - 2.5 && s.x < f[i].x1 + 2.5) { title = 'Headroom'; why = 'Too fast through there\n'; break; }
+    if (cause !== 'head' && f[i].t === 'zone' && s.x > f[i].x0 && s.x < f[i].x1 + 2) { why = 'Not enough speed for that one\n'; break; }
+  }
+  $('wipeT').textContent = title;
+  $('wipeS').textContent = why + again;
   setTimeout(function () { if (G.state === 'crash') $('wipe').className = 'wipe plate on'; }, 420);
 };
 UI.onFinish = function () {};
@@ -676,6 +683,7 @@ RR.boot = function () {
   G.menu();
   UI.title();
   if (owed.nuggets || owed.geodes.length) setTimeout(function () { UI.toast('New: paint jobs and riders. You have ' + Store.data.nuggets + ' nuggets' + (owed.geodes.length ? ' and ' + owed.geodes.length + ' prize geode' + (owed.geodes.length > 1 ? 's' : '') : '') + ' waiting in the Garage.'); }, 900);
+  if (Store.rebuilt) setTimeout(function () { UI.toast(Store.rebuilt + ' track' + (Store.rebuilt > 1 ? 's have' : ' has') + ' been rebuilt and now bite back. You keep your stars on them. Best times start again.'); }, owed.nuggets || owed.geodes.length ? 6500 : 900);
   root.requestAnimationFrame(G.frame);
 };
 })(typeof window !== 'undefined' ? window : globalThis);

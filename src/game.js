@@ -13,7 +13,7 @@ function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 var KEY = 'ridgeRiot.v1';
 var DEF = {
   v: 2, best: {}, bike: 'scrapper', owned: { scrapper: 1 }, last: 0, seenHow: false,
-  nuggets: 0, paints: {}, riders: {}, fit: {}, geodes: { gold: 0, diamond: 0 }, opened: 0, pity: 0, paid: {}, got: {}, fresh: {},
+  nuggets: 0, paints: {}, riders: {}, fit: {}, geodes: { gold: 0, diamond: 0 }, opened: 0, pity: 0, paid: {}, got: {}, fresh: {}, kept: {},
   settings: { sfx: 0.8, engine: 0.7, music: 0.5, tilt: false, tiltSens: 0.8, tiltFlip: false, hints: true, ghost: true, unlockAll: false, quality: 'auto', buzz: true },
   stats: { flips: 0, bestAir: 0, crashes: 0, runs: 0, finishes: 0, bestJump: 0, bestFlips: 0, dist: 0, topSpeed: 0 }
 };
@@ -32,7 +32,8 @@ var Store = RR.Store = {
   set: function (k, v) { mem[k] = v; try { root.localStorage.setItem(k, v); return true; } catch (e) { return false; } },
   del: function (k) { delete mem[k]; try { root.localStorage.removeItem(k); } catch (e) {} },
   load: function () {
-    var raw = Store.get(KEY), d = JSON.parse(JSON.stringify(DEF)), k, i, old = false;
+    var raw = Store.get(KEY), d = JSON.parse(JSON.stringify(DEF)), k, i, old = false, revs = {};
+    Store.rebuilt = 0;
     Store.other = {};
     if (raw) {
       try {
@@ -44,6 +45,7 @@ var Store = RR.Store = {
         if (o.times) {
           for (k in o.times) { i = RR.trackIndex(k); if (i >= 0) d.best[i] = o.times[k]; else Store.other[k] = o.times[k]; }
           i = RR.trackIndex(o.lastId || ''); d.last = i >= 0 ? i : 0;
+          revs = o.revs || {};
         } else if (o.best) {
           old = true;
           for (k in o.best) { i = RR.trackIndex(v1id(k)); if (i >= 0) d.best[i] = o.best[k]; }
@@ -54,7 +56,18 @@ var Store = RR.Store = {
     }
     if (!RR.BIKE[d.bike]) d.bike = 'scrapper';
     d.owned.scrapper = 1;
+    /* Tracks that have been rebuilt since this save was written: the old best time was set on a
+       different track, so it and its ghost go. The stars it earned are kept, so nothing that was
+       unlocked gets locked again. */
+    for (k in d.best) {
+      var id = RR.trackId(+k), rb = RR.REBUILT && RR.REBUILT[id];
+      if (!rb || !d.best[k] || (revs[id] || 0) >= rb[0]) continue;
+      var st = d.best[k] <= rb[1] ? 3 : d.best[k] <= rb[2] ? 2 : 1;
+      if (st > (d.kept[id] || 0)) d.kept[id] = st;
+      delete d.best[k]; Store.del(KEY + '.ghost.' + id); Store.rebuilt++;
+    }
     Store.data = d;
+    if (Store.rebuilt && !old) Store.save();
     if (old) {
       // move the ghost recordings to their new names as well
       for (k = 0; k < V1.length; k++) { var g = Store.get(KEY + '.ghost.' + k); if (g) { Store.set(KEY + '.ghost.' + v1id(k), g); Store.del(KEY + '.ghost.' + k); } }
@@ -66,7 +79,8 @@ var Store = RR.Store = {
     for (k in d) if (k !== 'best') out[k] = d[k];
     out.times = {};
     for (k in Store.other) out.times[k] = Store.other[k];
-    for (k in d.best) if (d.best[k]) out.times[RR.trackId(+k)] = d.best[k];
+    out.revs = {};
+    for (k in d.best) if (d.best[k]) { out.times[RR.trackId(+k)] = d.best[k]; if (RR.REBUILT && RR.REBUILT[RR.trackId(+k)]) out.revs[RR.trackId(+k)] = RR.REBUILT[RR.trackId(+k)][0]; }
     out.lastId = RR.trackId(d.last || 0);
     var ok = Store.set(KEY, JSON.stringify(out));
     if (!ok && !Store.warned) { Store.warned = true; if (RR.UI && RR.UI.toast) RR.UI.toast('This browser is not letting the game save. Progress lasts until you close the page.'); }
@@ -82,21 +96,23 @@ var Store = RR.Store = {
 
 var P = RR.Progress = {
   starsFor: function (i) {
-    var b = Store.data.best[i];
-    if (!b) return 0;
-    var st = RR.STAR_TIMES[i];
-    return b <= st[0] ? 3 : b <= st[1] ? 2 : 1;
+    var b = Store.data.best[i], kept = Store.data.kept[RR.trackId(i)] || 0;
+    if (!b) return kept;
+    var st = RR.STAR_TIMES[i], n = b <= st[0] ? 3 : b <= st[1] ? 2 : 1;
+    return n > kept ? n : kept;
   },
+  /* finished at least once, on this layout or the one before it */
+  done: function (i) { return !!Store.data.best[i] || !!Store.data.kept[RR.trackId(i)]; },
   starsForTime: function (i, t) { var st = RR.STAR_TIMES[i]; return t <= st[0] ? 3 : t <= st[1] ? 2 : 1; },
   total: function () { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) n += P.starsFor(i); return n; },
-  worldDone: function (w) { for (var i = w * 8; i < w * 8 + 8; i++) if (!Store.data.best[i]) return false; return true; },
-  worldCount: function (w) { var n = 0; for (var i = w * 8; i < w * 8 + 8; i++) if (Store.data.best[i]) n++; return n; },
+  worldDone: function (w) { for (var i = w * 8; i < w * 8 + 8; i++) if (!P.done(i)) return false; return true; },
+  worldCount: function (w) { var n = 0; for (var i = w * 8; i < w * 8 + 8; i++) if (P.done(i)) n++; return n; },
   worldOpen: function (w) { return Store.data.settings.unlockAll || P.total() >= RR.WORLDS[w].need; },
   trackOpen: function (i) {
     if (Store.data.settings.unlockAll) return true;
     var w = Math.floor(i / 8);
     if (!P.worldOpen(w)) return false;
-    return i % 8 === 0 || !!Store.data.best[i - 1] || !!Store.data.best[i];
+    return i % 8 === 0 || P.done(i - 1) || P.done(i);
   },
   worldStars: function (w) { var n = 0; for (var i = w * 8; i < w * 8 + 8; i++) n += P.starsFor(i); return n; },
   bikeMet: function (d) {

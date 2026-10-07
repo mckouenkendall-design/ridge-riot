@@ -386,7 +386,7 @@ R.makeProps = function (tr) {
     if (px < 8 || px > tr.finishX - 6 && px < tr.finishX + 6) return true;
     for (i = 0; i < tr.hazards.length; i++) if (px > tr.hazards[i].x0 - 1.2 && px < tr.hazards[i].x1 + 1.2) return true;
     for (i = 0; i < tr.loops.length; i++) if (Math.abs(px - tr.loops[i].cx) < tr.loops[i].R + 1.5) return true;
-    for (i = 0; i < tr.feats.length; i++) { var f = tr.feats[i]; if (f.t === 'roof' && px > f.x0 - 1 && px < f.x1 + 1) return true; if (f.t === 'log' && Math.abs(px - f.x) < 1.2) return true; }
+    for (i = 0; i < tr.feats.length; i++) { var f = tr.feats[i]; if ((f.t === 'roof' || f.t === 'beam') && px > f.x0 - 1 && px < f.x1 + 1) return true; if (f.t === 'log' && Math.abs(px - f.x) < 1.2) return true; }
     if (Math.abs(RR.groundSlope(tr, px)) > 0.42) return true;
     if (Math.abs(RR.groundY(tr, px - 0.7) - RR.groundY(tr, px + 0.7)) > 0.9) return true;
     return false;
@@ -888,27 +888,111 @@ function drawLoop(c, lp, T) {
   c.stroke();
 }
 
+/* What the rock overhead is made of in each world: [fill, inner shade, edge, kind] */
+var ROOF = {
+  dust:   { kind: 'rock' },
+  pine:   { kind: 'roots', fill: '#4d3526', in2: '#38261b', edge: '#5fae3f' },
+  race:   { kind: 'concrete', fill: '#8a8f99', in2: '#70757f', edge: '#f2c230' },
+  frost:  { kind: 'ice', fill: '#8fb6ee', in2: '#6f97dc', edge: '#f6fbff' },
+  cinder: { kind: 'rock' },
+  orbit:  { kind: 'hull', fill: '#565b78', in2: '#43475f', edge: '#22e0c8' }
+};
 function drawRoofs(c, G, T, xl, xr, yt) {
-  var ch = G.track.chains, i, k;
+  var ch = G.track.chains, i, k, st = ROOF[T.id] || ROOF.dust, kind = st.kind;
+  var fill = st.fill || T.ground[1], in2 = st.in2 || T.ground[2], edge = st.edge || T.crust;
   for (i = 1; i < ch.length; i++) {
     if (ch[i].kind !== 'roof') continue;
-    var p = ch[i].pts;
+    var p = ch[i].pts, top = yt + 30;
     if (p[2] < xl || p[0] > xr) continue;
-    c.beginPath(); c.moveTo(p[0], Math.max(p[1], yt + 30)); c.lineTo(p[2], Math.max(p[3], yt + 30));
+    c.beginPath(); c.moveTo(p[0], top); c.lineTo(p[2], top);
     for (k = 4; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]);
-    c.closePath(); c.fillStyle = T.ground[1]; c.fill();
+    c.closePath(); c.fillStyle = fill; c.fill();
     c.save(); c.clip();
-    c.fillStyle = T.ground[2];
+    c.fillStyle = in2;
     c.beginPath(); for (k = 4; k < p.length; k += 2) c[k === 4 ? 'moveTo' : 'lineTo'](p[k], p[k + 1] + 1.4);
-    c.lineTo(p[0], p[1] + 60); c.lineTo(p[2], p[3] + 60); c.closePath(); c.fill();
+    c.lineTo(p[0], top + 30); c.lineTo(p[2], top + 30); c.closePath(); c.fill();
+    if (kind === 'concrete' || kind === 'hull') {
+      // slab joints
+      c.strokeStyle = 'rgba(0,0,0,0.22)'; c.lineWidth = 0.05; c.beginPath();
+      for (var jx = Math.ceil(Math.max(p[0], xl) / 3) * 3; jx < Math.min(p[2], xr); jx += 3) { c.moveTo(jx, top); c.lineTo(jx, p[5] - 2); }
+      c.stroke();
+    }
     c.restore();
+    // the underside
     c.beginPath(); c.moveTo(p[4], p[5]); for (k = 6; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]);
-    c.lineWidth = 0.32; c.strokeStyle = T.crust; c.stroke();
-    c.beginPath(); c.moveTo(p[2], yt + 30); c.lineTo(p[2], p[3]); for (k = 4; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]); c.lineTo(p[0], yt + 30);
+    c.lineWidth = kind === 'concrete' || kind === 'hull' ? 0.26 : 0.32; c.strokeStyle = edge; c.stroke();
+    if (kind === 'concrete') {
+      // hazard stripes along the edge you can hit
+      c.save(); c.setLineDash([0.5, 0.5]); c.lineCap = 'butt'; c.lineWidth = 0.26; c.strokeStyle = '#1c1d22';
+      c.beginPath(); c.moveTo(p[4], p[5]); for (k = 6; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]); c.stroke(); c.restore();
+    }
+    c.beginPath(); c.moveTo(p[2], top); c.lineTo(p[2], p[3]); for (k = 4; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]); c.lineTo(p[0], top);
     c.lineWidth = 0.055; c.strokeStyle = OUT; c.stroke();
-    // drips of rock
-    c.fillStyle = T.ground[1];
-    for (k = 6; k < p.length - 2; k += 6) { var hx = p[k], hy = p[k + 1], hl = 0.3 + hash(hx) * 0.5; c.beginPath(); c.moveTo(hx - 0.16, hy + 0.05); c.lineTo(hx, hy - hl); c.lineTo(hx + 0.16, hy + 0.05); c.closePath(); c.fill(); c.lineWidth = 0.045; c.stroke(); }
+    // what hangs off it
+    for (k = 6; k < p.length - 2; k += 6) {
+      var hx = p[k], hy = p[k + 1], hh = hash(hx);
+      if (hx < xl - 1 || hx > xr + 1) continue;
+      if (kind === 'rock') {
+        var hl = 0.3 + hh * 0.5; c.fillStyle = fill;
+        c.beginPath(); c.moveTo(hx - 0.16, hy + 0.05); c.lineTo(hx, hy - hl); c.lineTo(hx + 0.16, hy + 0.05); c.closePath(); c.fill(); c.lineWidth = 0.045; c.strokeStyle = OUT; c.stroke();
+      } else if (kind === 'ice') {
+        var il = 0.25 + hh * 0.45; c.fillStyle = '#dff1ff';
+        c.beginPath(); c.moveTo(hx - 0.11, hy + 0.05); c.lineTo(hx + 0.02, hy - il); c.lineTo(hx + 0.12, hy + 0.05); c.closePath(); c.fill(); c.lineWidth = 0.04; c.strokeStyle = OUT; c.stroke();
+      } else if (kind === 'roots') {
+        var rl = 0.25 + hh * 0.4; c.lineWidth = 0.06; c.strokeStyle = '#6d4a33';
+        c.beginPath(); c.moveTo(hx, hy + 0.05); c.quadraticCurveTo(hx + 0.18 * (hh - 0.5), hy - rl * 0.5, hx + 0.1 * (hh - 0.5), hy - rl); c.stroke();
+        if (hh > 0.55) A.circ(c, hx + 0.1 * (hh - 0.5), hy - rl, 0.07, '#74c24f', 0.025);
+      } else if (kind === 'concrete' && (k % 18) === 6) {
+        A.shape(c, [hx - 0.28, hy - 0.02, hx + 0.28, hy - 0.02, hx + 0.2, hy - 0.2, hx - 0.2, hy - 0.2], '#3a3d46', 0.04);
+        A.circ(c, hx, hy - 0.2, 0.09, '#fff3b8', 0.02);
+      } else if (kind === 'hull' && (k % 12) === 6) {
+        A.circ(c, hx, hy - 0.02, 0.08, (Math.floor(G.t * 2 + hx) % 2) ? '#22e0c8' : '#0f6a60', 0.02);
+      }
+    }
+  }
+}
+
+/* Something hanging over a jump. The solid part is the plain column from y0 upward; the drawing
+   stays inside it at the bottom so what you see is what you hit. */
+function drawBeams(c, G, T, xl, xr, yt) {
+  var f = G.track.feats, i, k;
+  for (i = 0; i < f.length; i++) {
+    var b = f[i];
+    if (b.t !== 'beam' || b.x1 < xl - 2 || b.x0 > xr + 2) continue;
+    var x0 = b.x0, x1 = b.x1, y0 = b.y0, top = yt + 30, w = x1 - x0, mx = (x0 + x1) * 0.5, id = T.id;
+    if (id === 'race') {
+      // lighting rig: a steel lattice coming down from above, with a striped bumper
+      c.fillStyle = 'rgba(40,44,54,0.55)'; c.fillRect(x0 + 0.1, y0 + 0.5, w - 0.2, top - y0);
+      c.lineWidth = 0.09; c.strokeStyle = '#aab1bb'; c.beginPath();
+      c.moveTo(x0 + 0.1, y0 + 0.5); c.lineTo(x0 + 0.1, top); c.moveTo(x1 - 0.1, y0 + 0.5); c.lineTo(x1 - 0.1, top);
+      for (k = 0; y0 + 0.5 + k * w < top; k++) { var ya = y0 + 0.5 + k * w; c.moveTo(k % 2 ? x1 - 0.1 : x0 + 0.1, ya); c.lineTo(k % 2 ? x0 + 0.1 : x1 - 0.1, ya + w); }
+      c.stroke();
+      A.shape(c, [x0, y0, x1, y0, x1, y0 + 0.5, x0, y0 + 0.5], '#f2c230', 0.06);
+      c.fillStyle = '#1c1d22'; for (k = 0; k < 3; k++) { var sx = x0 + 0.12 + k * (w - 0.24) / 3; c.beginPath(); c.moveTo(sx, y0 + 0.03); c.lineTo(sx + (w - 0.24) / 6, y0 + 0.03); c.lineTo(sx + (w - 0.24) / 3, y0 + 0.47); c.lineTo(sx + (w - 0.24) / 6, y0 + 0.47); c.closePath(); c.fill(); }
+      A.circ(c, mx, y0 + 0.82, 0.13, (Math.floor(G.t * 3) % 2) ? '#ff4a4a' : '#6a1f1f', 0.03);
+    } else if (id === 'orbit') {
+      // docking pylon
+      A.shape(c, [x0, y0, x1, y0, x1, top, x0, top], '#5f6483', 0.06);
+      c.fillStyle = '#494d69'; c.fillRect(x0 + w * 0.6, y0, w * 0.4 - 0.03, top - y0);
+      c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 0.05; c.beginPath(); for (k = 1; y0 + k * 1.6 < top; k++) { c.moveTo(x0, y0 + k * 1.6); c.lineTo(x1, y0 + k * 1.6); } c.stroke();
+      A.shape(c, [x0 - 0.12, y0, x1 + 0.12, y0, x1 + 0.12, y0 + 0.3, x0 - 0.12, y0 + 0.3], '#d5d8ea', 0.05);
+      A.circ(c, mx, y0 + 0.62, 0.12, (Math.floor(G.t * 2) % 2) ? '#22e0c8' : '#0f6a60', 0.03);
+    } else if (id === 'pine') {
+      // a dead trunk hung up in the canopy, broken end down
+      A.shape(c, [x0, y0 + 0.25, x0 + w * 0.2, y0, x0 + w * 0.45, y0 + 0.18, x0 + w * 0.7, y0 + 0.02, x1, y0 + 0.3, x1 + 0.08, top, x0 - 0.08, top], '#7a5236', 0.06);
+      c.fillStyle = '#5c3c27'; c.fillRect(x0 + w * 0.62, y0 + 0.3, w * 0.38, top - y0);
+      c.strokeStyle = 'rgba(0,0,0,0.28)'; c.lineWidth = 0.05; c.beginPath();
+      for (k = 0; k < 3; k++) { var bx = x0 + w * (0.22 + k * 0.24); c.moveTo(bx, y0 + 0.5 + hash(bx) * 0.6); c.lineTo(bx + 0.04, top); }
+      c.stroke();
+      A.circ(c, x0 + 0.02, y0 + 1.5, 0.3, '#5fae3f', 0.045); A.circ(c, x1 - 0.02, y0 + 2.4, 0.26, '#74c24f', 0.045); A.circ(c, x0 + 0.2, y0 + 3.3, 0.22, '#5fae3f', 0.04);
+    } else {
+      // rock fang or giant icicle: thick above, blunt end down
+      var ice = id === 'frost', col = ice ? '#bfe0ff' : T.ground[1], sh = ice ? '#8fb6ee' : T.ground[2], hot = id === 'cinder';
+      A.shape(c, [x0 + w * 0.1, y0 + 0.12, x0 + w * 0.5, y0, x1 - w * 0.1, y0 + 0.12, x1, y0 + 1.2, x1 + 0.5, y0 + 5, x1 + 0.9, top, x0 - 0.9, top, x0 - 0.5, y0 + 5, x0, y0 + 1.2], col, 0.06);
+      A.shape(c, [x0 + w * 0.62, y0 + 0.14, x1 - w * 0.1, y0 + 0.12, x1, y0 + 1.2, x1 + 0.5, y0 + 5, x1 + 0.9, top, x0 + w * 0.7, top], sh, 0);
+      A.line(c, [x0 + w * 0.28, y0 + 0.5, x0 + w * 0.2, y0 + 2.4], 0.07, ice ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.14)');
+      A.line(c, [x0 + w * 0.1, y0 + 0.12, x0 + w * 0.5, y0, x1 - w * 0.1, y0 + 0.12], 0.14, hot ? '#ff7a1f' : ice ? '#ffffff' : T.crust);
+    }
   }
 }
 
@@ -952,6 +1036,13 @@ function drawFeats(c, G, T, xl, xr, behind) {
     } else if (ft.t === 'sign' && behind) {
       if (ft.x < xl - 2 || ft.x > xr + 2) continue;
       A.tube(c, [ft.x, ft.y - 0.1, ft.x, ft.y + 1.7], 0.1, '#7a5236', 0.05);
+      if (ft.kind === 'slow') {
+        // warning triangle: something ahead does not want full gas
+        A.shape(c, [ft.x - 0.66, ft.y + 1.22, ft.x + 0.66, ft.y + 1.22, ft.x, ft.y + 2.44], '#fff6e0', 0.06);
+        c.beginPath(); c.moveTo(ft.x - 0.5, ft.y + 1.31); c.lineTo(ft.x + 0.5, ft.y + 1.31); c.lineTo(ft.x, ft.y + 2.25); c.closePath(); c.lineWidth = 0.1; c.strokeStyle = '#e2402f'; c.stroke();
+        A.line(c, [ft.x, ft.y + 1.96, ft.x, ft.y + 1.68], 0.11, OUT); A.circ(c, ft.x, ft.y + 1.5, 0.055, OUT, 0);
+        continue;
+      }
       A.shape(c, [ft.x - 0.6, ft.y + 1.3, ft.x + 0.6, ft.y + 1.3, ft.x + 0.6, ft.y + 2.2, ft.x - 0.6, ft.y + 2.2], '#f2c230', 0.06);
       if (ft.kind === 'loop') { c.beginPath(); c.arc(ft.x, ft.y + 1.75, 0.25, 0, TAU); c.lineWidth = 0.09; c.strokeStyle = OUT; c.stroke(); }
       else A.shape(c, [ft.x - 0.35, ft.y + 1.5, ft.x + 0.1, ft.y + 1.5, ft.x + 0.1, ft.y + 1.42, ft.x + 0.4, ft.y + 1.75, ft.x + 0.1, ft.y + 2.08, ft.x + 0.1, ft.y + 2.0, ft.x - 0.35, ft.y + 1.9], OUT, 0);
@@ -985,8 +1076,24 @@ R.camFollow = function (cam, s, tr, dt, aspect, snap, lead) {
   var ty = s.y - vh * 0.035 + clamp(s.vy * 0.1, -1.6, 1.6);
   var gAhead = RR.groundY(tr, s.x + vw * 0.3);
   if (gAhead > tr.minY - 5) ty = lerp(ty, (ty + gAhead + vh * 0.16) * 0.5, 0.35);
+  // Anything you can hit your head on has to be on screen, clear of the timer, before you get to it:
+  // pull back and tilt up when there is a roof or something hanging in the stretch ahead.
+  if (tr.over === undefined) tr.over = tr.feats.filter(function (f) { return f.t === 'roof' || f.t === 'beam'; });
+  var need = -1e9, x0v = s.x - 3, x1v = s.x + vw * 0.95, oi, ok2;
+  for (oi = 0; oi < tr.over.length; oi++) {
+    var of = tr.over[oi];
+    if (of.x1 < x0v || of.x0 > x1v) continue;
+    if (of.t === 'beam') { if (of.y0 > need) need = of.y0; continue; }
+    for (ok2 = 0; ok2 < of.bot.length; ok2 += 2) if (of.bot[ok2] >= x0v && of.bot[ok2] <= x1v && of.bot[ok2 + 1] > need) need = of.bot[ok2 + 1];
+  }
+  if (need > -1e8) {
+    var ex = need + 0.7 + vh * 0.27 - (ty + vh * 0.5);
+    if (ex > 0) { if (ex > 7) ex = 7; vh += ex * 0.8; ty += ex * 0.5; cam.over = 1; } else cam.over = 0;
+  } else cam.over = 0;
+  {
+  }
   if (snap) { cam.x = tx; cam.y = ty; cam.vh = vh; cam.px = cam.x; cam.py = cam.y; return; }
-  var k = 1 - Math.exp(-dt * 6), kz = 1 - Math.exp(-dt * 1.7), ky = 1 - Math.exp(-dt * 4.5);
+  var k = 1 - Math.exp(-dt * 6), kz = 1 - Math.exp(-dt * (cam.over && vh > cam.vh ? 4 : 1.7)), ky = 1 - Math.exp(-dt * 4.5);
   cam.px = cam.x; cam.py = cam.y;
   cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * ky; cam.vh += (vh - cam.vh) * kz;
   // never let the bike slide off the top or bottom edge
@@ -1075,6 +1182,7 @@ R.frame = function (G, dt) {
   for (i = 0; i < tr.loops.length; i++) if (tr.loops[i].cx + tr.loops[i].R + 2 > xl && tr.loops[i].cx - tr.loops[i].R - 2 < xr) drawLoop(c, tr.loops[i], T);
   drawGround(c, G, T, xl, xr, yb);
   drawRoofs(c, G, T, xl, xr, yt);
+  drawBeams(c, G, T, xl, xr, yt);
   drawFeats(c, G, T, xl, xr, false);
 
   // ghost of the best run

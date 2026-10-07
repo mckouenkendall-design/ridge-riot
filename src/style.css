@@ -213,7 +213,7 @@ input[type=range]::-moz-range-thumb { width: 1.3rem; height: 1.3rem; background:
 .wipe { position: absolute; left: 50%; bottom: calc(1.3rem + var(--safe-b)); transform: translateX(-50%) rotate(-3deg) skewX(-8deg); padding: 0.3rem 1.3rem 0.25rem; text-align: center; display: none; pointer-events: none; background: var(--red); color: var(--plate); }
 .wipe.on { display: block; animation: pop 0.18s ease-out; }
 .wipe b { display: block; font-size: 1.8rem; font-weight: 900; font-style: italic; line-height: 1; white-space: nowrap; }
-.wipe span { font-size: 0.9rem; font-weight: 800; white-space: nowrap; }
+.wipe span { display: block; font-size: 0.9rem; font-weight: 800; white-space: pre; line-height: 1.15; }
 @keyframes pop { from { transform: translateX(-50%) rotate(-3deg) skewX(-8deg) scale(0.6); opacity: 0; } to { transform: translateX(-50%) rotate(-3deg) skewX(-8deg) scale(1); opacity: 1; } }
 
 /* pause and results */

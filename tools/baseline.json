@@ -1,0 +1,514 @@
+{
+ "first-gear": {
+  "print": "s48yen",
+  "stars": [
+   20.2,
+   25.5
+  ],
+  "rev": 0
+ },
+ "rolling-dunes": {
+  "print": "h11032",
+  "stars": [
+   23.6,
+   29.8
+  ],
+  "rev": 0
+ },
+ "hop-skip": {
+  "print": "ram4vj",
+  "stars": [
+   16.6,
+   21
+  ],
+  "rev": 0
+ },
+ "loop-de-dust": {
+  "print": "1h7d5w3",
+  "stars": [
+   18.7,
+   23.5
+  ],
+  "rev": 0
+ },
+ "mesa-drop": {
+  "print": "1ss804u",
+  "stars": [
+   21,
+   26.6
+  ],
+  "rev": 0
+ },
+ "washboard": {
+  "print": "8yi74g",
+  "stars": [
+   28.1,
+   35.5
+  ],
+  "rev": 1,
+  "was": [
+   22.8,
+   28.8
+  ]
+ },
+ "gulch-gap": {
+  "print": "10s7e7e",
+  "stars": [
+   25.8,
+   32.6
+  ],
+  "rev": 1,
+  "was": [
+   21.5,
+   27.1
+  ]
+ },
+ "canyon-run": {
+  "print": "mwh6ze",
+  "stars": [
+   34.9,
+   44
+  ],
+  "rev": 1,
+  "was": [
+   32.5,
+   41.1
+  ]
+ },
+ "log-jam": {
+  "print": "1e6y7n0",
+  "stars": [
+   20.9,
+   26.4
+  ],
+  "rev": 0
+ },
+ "mossy-loop": {
+  "print": "1tsf29o",
+  "stars": [
+   20.1,
+   25.4
+  ],
+  "rev": 0
+ },
+ "timber-table": {
+  "print": "3b3fkt",
+  "stars": [
+   19.5,
+   24.6
+  ],
+  "rev": 1,
+  "was": [
+   17.9,
+   22.6
+  ]
+ },
+ "sawmill": {
+  "print": "192laxv",
+  "stars": [
+   28.5,
+   36
+  ],
+  "rev": 1,
+  "was": [
+   21.4,
+   27.1
+  ]
+ },
+ "root-rage": {
+  "print": "1qs1v0w",
+  "stars": [
+   35.5,
+   44.9
+  ],
+  "rev": 1,
+  "was": [
+   26.6,
+   33.6
+  ]
+ },
+ "creek-hop": {
+  "print": "1v6way0",
+  "stars": [
+   23.5,
+   29.7
+  ],
+  "rev": 1,
+  "was": [
+   18.9,
+   23.8
+  ]
+ },
+ "beaver-dam": {
+  "print": "1av130c",
+  "stars": [
+   34.2,
+   43.1
+  ],
+  "rev": 1,
+  "was": [
+   24.9,
+   31.4
+  ]
+ },
+ "old-growth": {
+  "print": "4b0rp8",
+  "stars": [
+   39.8,
+   50.3
+  ],
+  "rev": 1,
+  "was": [
+   34.2,
+   43.2
+  ]
+ },
+ "green-flag": {
+  "print": "ivyrwj",
+  "stars": [
+   16.5,
+   20.7
+  ],
+  "rev": 0
+ },
+ "rumble-strip": {
+  "print": "lxi4l4",
+  "stars": [
+   20.6,
+   25.9
+  ],
+  "rev": 0
+ },
+ "oil-slick": {
+  "print": "xuoenv",
+  "stars": [
+   26.7,
+   33.5
+  ],
+  "rev": 1,
+  "was": [
+   21.4,
+   26.9
+  ]
+ },
+ "bus-stop": {
+  "print": "95kzlh",
+  "stars": [
+   22.2,
+   27.9
+  ],
+  "rev": 1,
+  "was": [
+   16.4,
+   20.5
+  ]
+ },
+ "pit-lane": {
+  "print": "1abut93",
+  "stars": [
+   28.4,
+   35.6
+  ],
+  "rev": 1,
+  "was": [
+   21.3,
+   26.7
+  ]
+ },
+ "seven-buses": {
+  "print": "4hhq3u",
+  "stars": [
+   27.6,
+   34.6
+  ],
+  "rev": 1,
+  "was": [
+   20.7,
+   25.9
+  ]
+ },
+ "stunt-show": {
+  "print": "1veivfy",
+  "stars": [
+   31.4,
+   39.4
+  ],
+  "rev": 1,
+  "was": [
+   19.6,
+   24.6
+  ]
+ },
+ "chequered-flag": {
+  "print": "1j4vprm",
+  "stars": [
+   36.7,
+   46.1
+  ],
+  "rev": 1,
+  "was": [
+   28.9,
+   36.2
+  ]
+ },
+ "black-ice": {
+  "print": "1p97k3u",
+  "stars": [
+   19.5,
+   24.4
+  ],
+  "rev": 0
+ },
+ "glacier-loop": {
+  "print": "1qhjq73",
+  "stars": [
+   22.3,
+   27.9
+  ],
+  "rev": 0
+ },
+ "slip-road": {
+  "print": "15e4tku",
+  "stars": [
+   24,
+   30
+  ],
+  "rev": 1,
+  "was": [
+   19.3,
+   24.2
+  ]
+ },
+ "whiteout": {
+  "print": "103mv62",
+  "stars": [
+   32.3,
+   40.4
+  ],
+  "rev": 1,
+  "was": [
+   22.5,
+   28.1
+  ]
+ },
+ "aurora": {
+  "print": "1jvcj08",
+  "stars": [
+   36.2,
+   45.3
+  ],
+  "rev": 1,
+  "was": [
+   30.6,
+   38.3
+  ]
+ },
+ "powder-keg": {
+  "print": "1iuupww",
+  "stars": [
+   31.8,
+   39.8
+  ],
+  "rev": 1,
+  "was": [
+   24.2,
+   30.3
+  ]
+ },
+ "crevasse": {
+  "print": "j346qp",
+  "stars": [
+   27.4,
+   34.3
+  ],
+  "rev": 1,
+  "was": [
+   20.4,
+   25.5
+  ]
+ },
+ "avalanche": {
+  "print": "1d3h763",
+  "stars": [
+   39.1,
+   48.8
+  ],
+  "rev": 1,
+  "was": [
+   20.2,
+   25.3
+  ]
+ },
+ "hot-start": {
+  "print": "2pc1ef",
+  "stars": [
+   18.8,
+   23.7
+  ],
+  "rev": 0
+ },
+ "caldera": {
+  "print": "1pa02s0",
+  "stars": [
+   24.2,
+   30.4
+  ],
+  "rev": 0
+ },
+ "magma-hop": {
+  "print": "1lfiqiu",
+  "stars": [
+   19.3,
+   24.2
+  ],
+  "rev": 1,
+  "was": [
+   15.4,
+   19.4
+  ]
+ },
+ "the-chimney": {
+  "print": "qd7iw7",
+  "stars": [
+   28.5,
+   35.9
+  ],
+  "rev": 0
+ },
+ "fire-walk": {
+  "print": "epvu3n",
+  "stars": [
+   33.8,
+   42.5
+  ],
+  "rev": 1,
+  "was": [
+   20.1,
+   25.3
+  ]
+ },
+ "ash-loop": {
+  "print": "9p97rd",
+  "stars": [
+   29.1,
+   36.6
+  ],
+  "rev": 1,
+  "was": [
+   21.9,
+   27.5
+  ]
+ },
+ "ember-steps": {
+  "print": "3tpv2s",
+  "stars": [
+   28.8,
+   36.3
+  ],
+  "rev": 1,
+  "was": [
+   21.1,
+   26.5
+  ]
+ },
+ "eruption": {
+  "print": "s16338",
+  "stars": [
+   38.2,
+   48.1
+  ],
+  "rev": 1,
+  "was": [
+   28.9,
+   36.3
+  ]
+ },
+ "one-small-hop": {
+  "print": "1oeg1kp",
+  "stars": [
+   21.1,
+   26.7
+  ],
+  "rev": 0
+ },
+ "double-loop": {
+  "print": "91lqof",
+  "stars": [
+   22.2,
+   28
+  ],
+  "rev": 0
+ },
+ "crater-maker": {
+  "print": "14gh17s",
+  "stars": [
+   28.6,
+   36.1
+  ],
+  "rev": 1,
+  "was": [
+   23.2,
+   29.2
+  ]
+ },
+ "slow-float": {
+  "print": "xzzdi3",
+  "stars": [
+   29.7,
+   37.6
+  ],
+  "rev": 1,
+  "was": [
+   26.4,
+   33.4
+  ]
+ },
+ "regolith": {
+  "print": "1tko6bd",
+  "stars": [
+   33.8,
+   42.7
+  ],
+  "rev": 1,
+  "was": [
+   25.9,
+   32.8
+  ]
+ },
+ "dark-side": {
+  "print": "ix1sex",
+  "stars": [
+   38.6,
+   48.8
+  ],
+  "rev": 1,
+  "was": [
+   29,
+   36.6
+  ]
+ },
+ "escape-velocity": {
+  "print": "td0lnl",
+  "stars": [
+   37.1,
+   46.8
+  ],
+  "rev": 1,
+  "was": [
+   26.4,
+   33.4
+  ]
+ },
+ "riot-run": {
+  "print": "1garrk0",
+  "stars": [
+   46.9,
+   59.3
+  ],
+  "rev": 1,
+  "was": [
+   44.9,
+   56.7
+  ]
+ }
+}

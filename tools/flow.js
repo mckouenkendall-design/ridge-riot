@@ -13,13 +13,17 @@ const V1 = { best: { 0: 19.5, 1: 22.0, 2: 23.0, 8: 21, 16: 20.4, 39: 60 }, bike:
   await t.ev(v1 => { localStorage.clear(); localStorage.setItem('ridgeRiot.v1', JSON.stringify(v1)); localStorage.setItem('ridgeRiot.v1.ghost.16', 'scrapper|AAAA'); }, V1);
   await t.page.reload(); await t.wait(500);
   let d = await t.ev(() => { const D = RR.Store.data, o = {}; for (const k in D.best) o[RR.trackInfo(+k).name] = D.best[k]; return { best: o, last: RR.trackInfo(D.last).name, bike: D.bike, owned: Object.keys(D.owned), nug: D.nuggets, stars: RR.Progress.total(), sens: D.settings.tiltSens, flip: D.settings.tiltFlip, sfx: D.settings.sfx, crashes: D.stats.crashes, ghostNew: !!localStorage.getItem('ridgeRiot.v1.ghost.black-ice'), ghostOld: !!localStorage.getItem('ridgeRiot.v1.ghost.16'), raw: JSON.parse(localStorage.getItem('ridgeRiot.v1')) }; });
-  ok(d.best['First Gear'] === 19.5 && d.best['Log Jam'] === 21 && d.best['Black Ice'] === 20.4 && d.best['Riot Run'] === 60, 'old best times land on the same tracks by name', d.best);
+  ok(d.best['First Gear'] === 19.5 && d.best['Log Jam'] === 21 && d.best['Black Ice'] === 20.4, 'old best times land on the same tracks by name', d.best);
+  // Washboard and Riot Run have been rebuilt since: the old times go, the stars they earned stay
+  const kept = await t.ev(() => ({ wash: RR.Progress.starsFor(RR.trackIndex('washboard')), riot: RR.Progress.starsFor(RR.trackIndex('riot-run')), kept: RR.Store.data.kept, rebuilt: RR.Store.rebuilt, ghost: localStorage.getItem('ridgeRiot.v1.ghost.riot-run') }));
+  ok(!('Washboard' in d.best) && !('Riot Run' in d.best), 'best times set on a rebuilt track are dropped', Object.keys(d.best));
+  ok(kept.wash === 3 && kept.riot === 1 && kept.ghost === null, 'the stars earned on the old layout are kept', kept);
   ok(d.last === 'Black Ice', 'the last track played carries over', d.last);
   ok(d.bike === 'mosquito' && d.owned.includes('mosquito'), 'chosen bike and owned bikes carry over');
   ok(d.nug === d.stars * 30 && d.stars > 0, 'old stars are paid in nuggets (30 each)', { stars: d.stars, nuggets: d.nug });
   ok(d.sens === 0.8 && d.flip === true && d.sfx === 0.5, 'settings carry over, tilt gets the calmer default');
   ok(d.ghostNew && !d.ghostOld, 'ghost recording moved to its new name');
-  ok(d.raw.times && d.raw.times['black-ice'] === 20.4 && !d.raw.best, 'save is rewritten in the new form');
+  ok(d.raw.times && d.raw.times['black-ice'] === 20.4 && !d.raw.best && !d.raw.times['riot-run'], 'save is rewritten in the new form');
   ok(d.owned.includes('marsh') === false && d.crashes === 99, 'not yet 100 crashes: no Marshmallow');
   // crash once more: that makes 100
   await t.ev(() => { RR.UI.show('hud'); RR.Game.play(0); const k = RR.Game.input; k.kG = true; k.kL = true; });
@@ -30,6 +34,11 @@ const V1 = { best: { 0: 19.5, 1: 22.0, 2: 23.0, 8: 21, 16: 20.4, 39: 60 }, bike:
   await t.page.reload(); await t.wait(500);
   d = await t.ev(() => ({ owned: Object.keys(RR.Store.data.owned), nug: RR.Store.data.nuggets, stars: RR.Progress.total(), dist: RR.Store.data.stats.dist }));
   ok(d.owned.includes('marsh') && d.nug === d.stars * 30, 'survives a reload, and stars are not paid twice', d);
+  // a new time on a rebuilt track is kept across reloads and is not thrown away as an old one
+  await t.ev(() => { const i = RR.trackIndex('washboard'); RR.Store.data.best[i] = 99; RR.Store.save(); });
+  await t.page.reload(); await t.wait(500);
+  d = await t.ev(() => { const i = RR.trackIndex('washboard'); return { t: RR.Store.data.best[i], stars: RR.Progress.starsFor(i), rebuilt: RR.Store.rebuilt, nug: RR.Store.data.nuggets, tot: RR.Progress.total() }; });
+  ok(d.t === 99 && d.stars === 3 && d.rebuilt === 0 && d.nug === d.tot * 30, 'a new time on a rebuilt track stays, and the kept stars still count', d);
   await t.close();
 
   // ---- 2. a fresh player: finish, get paid, crack geodes ----

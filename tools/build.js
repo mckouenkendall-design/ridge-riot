@@ -2,7 +2,7 @@
    usage: node tools/build.js [--bare <file>] */
 const fs = require('fs'), path = require('path');
 const root = path.join(__dirname, '..'), src = f => fs.readFileSync(path.join(root, 'src', f), 'utf8');
-const order = ['physics.js', 'builder.js', 'bikes.js', 'collect.js', 'tracks.js', 'startimes.js', 'bot.js', 'art-bike.js', 'art-skins.js', 'render.js', 'wipeouts.js', 'audio.js', 'game.js', 'ui.js'];
+const order = ['physics.js', 'builder.js', 'bikes.js', 'collect.js', 'tracks.js', 'startimes.js', 'revs.js', 'bot.js', 'art-bike.js', 'art-skins.js', 'render.js', 'wipeouts.js', 'audio.js', 'game.js', 'ui.js'];
 (async () => {
   // the small tab icon is carried inside the page; the home-screen icon is a picture file beside it (see tools/icon.js)
   const fav = fs.existsSync(path.join(root, 'src', 'favicon.txt')) ? fs.readFileSync(path.join(root, 'src', 'favicon.txt'), 'utf8').trim() : '';
