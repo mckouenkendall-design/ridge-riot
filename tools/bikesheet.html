@@ -1,0 +1,24 @@
+<!doctype html><html><body style="margin:0;background:#8fb7c9">
+<canvas id="c" width="1800" height="1500"></canvas>
+<script src="../src/physics.js"></script><script src="../src/builder.js"></script><script src="../src/bikes.js"></script><script src="../src/art-bike.js"></script>
+<script>
+var cv = document.getElementById('c'), ctx = cv.getContext('2d');
+var q = new URLSearchParams(location.search), only = q.get('bike'), lp = +(q.get('lp') || 0), S = +(q.get('s') || 150);
+var list = RR.BIKES.filter(function (d) { return !only || d.id === only; });
+var cols = only ? 3 : 3, cw = 600, ch = only ? 500 : 375;
+if (only) { list = [list[0], list[0], list[0]]; }
+list.forEach(function (d, i) {
+  var x = (i % cols) * cw, y = Math.floor(i / cols) * ch;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = i % 2 ? '#a9cbd9' : '#9cc2d2'; ctx.fillRect(x, y, cw, ch);
+  ctx.fillStyle = '#6b4a35'; ctx.fillRect(x, y + ch - 40, cw, 40);
+  ctx.fillStyle = '#123'; ctx.font = 'bold 18px sans-serif'; ctx.fillText(d.name + '  (' + d.kind + ')', x + 10, y + 24);
+  ctx.setTransform(S, 0, 0, -S, x + 130, y + ch - 40);
+  var b = RR.prepBike(d), l = only ? [-1, 0, 1][i] : lp;
+  RR.Art.bike(ctx, d, { lp: l, stand: 0, spinR: 0.4, spinF: 1.1 });
+  // debug: physics head circle
+  if (q.get('dbg')) { var po = {}; RR.riderPose(d, l, 0, po); ctx.beginPath(); ctx.arc(po.headX, po.headY, b.headR, 0, 7); ctx.lineWidth = 0.01; ctx.strokeStyle = '#f0f'; ctx.stroke();
+    d.body.forEach(function (p) { ctx.beginPath(); ctx.arc(p[0], p[1], p[2], 0, 7); ctx.stroke(); }); ctx.beginPath(); ctx.arc(d.com[0], d.com[1], 0.03, 0, 7); ctx.fillStyle = '#f0f'; ctx.fill(); }
+});
+document.title = 'done';
+</script></body></html>
