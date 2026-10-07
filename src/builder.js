@@ -139,6 +139,26 @@ P.steps = function (count, run, h) {
 };
 /* stretch of a different surface */
 P.surface = function (mat) { this.mat = mat == null ? this.baseMat : RR.MAT[mat]; return this; };
+/* raceway pieces */
+P.boost = function (len) { var m = this.mat; this.to(0); this.mat = RR.MAT.boost; this.line(len); this.mat = m; this.feats.push({ t: 'boost', x0: this.x - len, x1: this.x, y: this.y }); return this; };
+P.oil = function (len) { var m = this.mat; this.mat = RR.MAT.oil; this.line(len); this.mat = m; return this; };
+/* rumble strip: red and white kerbing with small teeth you can feel through the bars */
+P.kerb = function (len, amp) {
+  this.to(0);
+  var m = this.mat, n = Math.max(2, Math.round(len / 0.25)), x0 = this.x, y0 = this.y; amp = amp == null ? 0.045 : amp;
+  this.mat = RR.MAT.kerb;
+  for (var i = 1; i <= n; i++) this.push(x0 + len * i / n, y0 + (i < n && i % 2 ? amp : 0));
+  this.mat = m;
+  return this;
+};
+/* a row of parked buses to clear */
+P.buses = function (count, o) {
+  o = o || {};
+  var w = count * 3.5 + 0.5;
+  this.gap(w, { type: 'bus', rise: o.rise || 0, depth: 3.1, level: 0.25 });
+  this.hazards[this.hazards.length - 1].count = count;
+  return this;
+};
 /* full loop standing on flat ground */
 P.loop = function (R) {
   this.to(0); this.line(1);

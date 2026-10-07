@@ -12,39 +12,70 @@ function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 /* ------------------------------------------------------------------ */
 var KEY = 'ridgeRiot.v1';
 var DEF = {
-  best: {}, bike: 'scrapper', owned: { scrapper: 1 }, last: 0, seenHow: false,
-  settings: { sfx: 0.8, engine: 0.7, music: 0.5, tilt: false, tiltSens: 1, tiltFlip: false, hints: true, ghost: true, unlockAll: false, quality: 'auto', buzz: true },
-  stats: { flips: 0, bestAir: 0, crashes: 0, runs: 0, finishes: 0, bestJump: 0, bestFlips: 0, time: 0 }
+  v: 2, best: {}, bike: 'scrapper', owned: { scrapper: 1 }, last: 0, seenHow: false,
+  nuggets: 0, paints: {}, riders: {}, fit: {}, geodes: { gold: 0, diamond: 0 }, opened: 0, pity: 0, paid: {}, got: {}, fresh: {},
+  settings: { sfx: 0.8, engine: 0.7, music: 0.5, tilt: false, tiltSens: 0.8, tiltFlip: false, hints: true, ghost: true, unlockAll: false, quality: 'auto', buzz: true },
+  stats: { flips: 0, bestAir: 0, crashes: 0, runs: 0, finishes: 0, bestJump: 0, bestFlips: 0, dist: 0, topSpeed: 0 }
 };
+/* The first version filed best times by position in this running order. They are now
+   filed by track name, so this list is only here to read old saves. */
+var V1 = ['First Gear', 'Washboard', 'Rolling Dunes', 'Hop Skip', 'Loop de Dust', 'Mesa Drop', 'Gulch Gap', 'Canyon Run',
+  'Log Jam', 'Mossy Loop', 'Timber Table', 'Sawmill', 'Root Rage', 'Creek Hop', 'Beaver Dam', 'Old Growth',
+  'Black Ice', 'Whiteout', 'Glacier Loop', 'Slip Road', 'Powder Keg', 'Avalanche', 'Crevasse', 'Aurora',
+  'Hot Start', 'The Chimney', 'Ash Loop', 'Caldera', 'Magma Hop', 'Fire Walk', 'Ember Steps', 'Eruption',
+  'One Small Hop', 'Double Loop', 'Crater Maker', 'Slow Float', 'Dark Side', 'Escape Velocity', 'Regolith', 'Riot Run'];
+function v1id(k) { return V1[k] ? V1[k].toLowerCase().replace(/[^a-z0-9]+/g, '-') : ''; }
 var mem = {};
 var Store = RR.Store = {
-  data: JSON.parse(JSON.stringify(DEF)),
+  data: JSON.parse(JSON.stringify(DEF)), other: {},
   get: function (k) { try { var v = root.localStorage.getItem(k); return v == null ? (mem[k] || null) : v; } catch (e) { return mem[k] || null; } },
   set: function (k, v) { mem[k] = v; try { root.localStorage.setItem(k, v); return true; } catch (e) { return false; } },
   del: function (k) { delete mem[k]; try { root.localStorage.removeItem(k); } catch (e) {} },
   load: function () {
-    var raw = Store.get(KEY), d = JSON.parse(JSON.stringify(DEF)), k;
+    var raw = Store.get(KEY), d = JSON.parse(JSON.stringify(DEF)), k, i, old = false;
+    Store.other = {};
     if (raw) {
       try {
         var o = JSON.parse(raw);
-        for (k in o) if (k !== 'settings' && k !== 'stats' && k in d) d[k] = o[k];
+        for (k in o) if (k !== 'settings' && k !== 'stats' && k !== 'best' && k !== 'geodes' && k !== 'v' && k in d) d[k] = o[k];
         for (k in o.settings || {}) if (k in d.settings) d.settings[k] = o.settings[k];
         for (k in o.stats || {}) if (k in d.stats) d.stats[k] = o.stats[k];
+        for (k in o.geodes || {}) if (k in d.geodes) d.geodes[k] = o.geodes[k];
+        if (o.times) {
+          for (k in o.times) { i = RR.trackIndex(k); if (i >= 0) d.best[i] = o.times[k]; else Store.other[k] = o.times[k]; }
+          i = RR.trackIndex(o.lastId || ''); d.last = i >= 0 ? i : 0;
+        } else if (o.best) {
+          old = true;
+          for (k in o.best) { i = RR.trackIndex(v1id(k)); if (i >= 0) d.best[i] = o.best[k]; }
+          i = RR.trackIndex(v1id(o.last || 0)); d.last = i >= 0 ? i : 0;
+          if (!('tiltSens' in (o.settings || {})) || o.settings.tiltSens === 1) d.settings.tiltSens = 0.8;
+        }
       } catch (e) {}
     }
     if (!RR.BIKE[d.bike]) d.bike = 'scrapper';
     d.owned.scrapper = 1;
     Store.data = d;
+    if (old) {
+      // move the ghost recordings to their new names as well
+      for (k = 0; k < V1.length; k++) { var g = Store.get(KEY + '.ghost.' + k); if (g) { Store.set(KEY + '.ghost.' + v1id(k), g); Store.del(KEY + '.ghost.' + k); } }
+      Store.save();
+    }
   },
   save: function () {
-    var ok = Store.set(KEY, JSON.stringify(Store.data));
+    var d = Store.data, out = {}, k;
+    for (k in d) if (k !== 'best') out[k] = d[k];
+    out.times = {};
+    for (k in Store.other) out.times[k] = Store.other[k];
+    for (k in d.best) if (d.best[k]) out.times[RR.trackId(+k)] = d.best[k];
+    out.lastId = RR.trackId(d.last || 0);
+    var ok = Store.set(KEY, JSON.stringify(out));
     if (!ok && !Store.warned) { Store.warned = true; if (RR.UI && RR.UI.toast) RR.UI.toast('This browser is not letting the game save. Progress lasts until you close the page.'); }
     return ok;
   },
   reset: function () {
     var s = Store.data.settings;
-    Store.data = JSON.parse(JSON.stringify(DEF)); Store.data.settings = s; Store.data.settings.unlockAll = false;
-    for (var i = 0; i < RR.TRACK_COUNT; i++) Store.del(KEY + '.ghost.' + i);
+    Store.data = JSON.parse(JSON.stringify(DEF)); Store.data.settings = s; Store.data.settings.unlockAll = false; Store.other = {};
+    for (var i = 0; i < RR.TRACK_COUNT; i++) Store.del(KEY + '.ghost.' + RR.trackId(i));
     Store.save();
   }
 };
@@ -67,29 +98,86 @@ var P = RR.Progress = {
     if (!P.worldOpen(w)) return false;
     return i % 8 === 0 || !!Store.data.best[i - 1] || !!Store.data.best[i];
   },
+  worldStars: function (w) { var n = 0; for (var i = w * 8; i < w * 8 + 8; i++) n += P.starsFor(i); return n; },
   bikeMet: function (d) {
     var u = d.unlock, s = Store.data.stats;
     if (u.type === 'free') return true;
     if (u.type === 'stars') return P.total() >= u.n;
-    if (u.type === 'world') return P.worldDone(u.n - 1);
+    if (u.type === 'world') return P.worldDone(RR.WORLD[u.w].index);
     if (u.type === 'flips') return s.flips >= u.n;
     if (u.type === 'air') return s.bestAir >= u.n;
+    if (u.type === 'dist') return s.dist >= u.n;
+    if (u.type === 'crashes') return s.crashes >= u.n;
+    if (u.type === 'speed') return s.topSpeed >= u.n;
     return false;
   },
   bikeOpen: function (d) { return Store.data.settings.unlockAll || !!Store.data.owned[d.id]; },
+  /* what a locked bike still needs: the rule, where you are now, and 0..1 for the bar */
   bikeNeed: function (d) {
-    var u = d.unlock, s = Store.data.stats;
-    if (u.type === 'stars') return { text: 'Earn ' + u.n + ' stars', have: P.total(), need: u.n, unit: 'stars' };
-    if (u.type === 'world') return { text: u.text, have: P.worldCount(u.n - 1), need: 8, unit: 'tracks' };
-    if (u.type === 'flips') return { text: u.text, have: Math.min(s.flips, u.n), need: u.n, unit: 'flips' };
-    if (u.type === 'air') return { text: u.text, have: Math.min(s.bestAir, u.n), need: u.n, unit: 's', dec: 1 };
-    return { text: 'Yours from the start', have: 1, need: 1, unit: '' };
+    var u = d.unlock, s = Store.data.stats, have, need = u.n, now;
+    if (u.type === 'stars') { have = P.total(); return { text: 'Earn ' + u.n + ' stars', now: have + ' of ' + need + ' stars', k: have / need }; }
+    if (u.type === 'world') { have = P.worldCount(RR.WORLD[u.w].index); return { text: u.text, now: have + ' of 8 tracks', k: have / 8 }; }
+    if (u.type === 'flips') { have = Math.min(s.flips, need); return { text: u.text, now: have + ' of ' + need + ' flips', k: have / need }; }
+    if (u.type === 'air') { have = Math.min(s.bestAir, need); return { text: u.text, now: 'Best so far ' + have.toFixed(1), k: have / need }; }
+    if (u.type === 'dist') { have = Math.min(s.dist, need); return { text: u.text, now: (have / 1000).toFixed(1) + ' of ' + (need / 1000) + ' km', k: have / need }; }
+    if (u.type === 'crashes') { have = Math.min(s.crashes, need); return { text: u.text, now: have + ' of ' + need + ' crashes', k: have / need }; }
+    if (u.type === 'speed') { have = Math.min(s.topSpeed, need); return { text: u.text, now: 'Fastest so far ' + Math.round(have * 3.6) + ' km/h', k: have / need }; }
+    return { text: 'Yours from the start', now: '', k: 1 };
   },
   /* hand over anything newly earned; returns the list so the game can announce it */
   claim: function () {
     var out = [];
     RR.BIKES.forEach(function (d) { if (!Store.data.owned[d.id] && P.bikeMet(d)) { Store.data.owned[d.id] = 1; out.push(d); } });
     return out;
+  },
+
+  /* ---- the collection: nuggets, geodes, paint jobs and riders ---- */
+  owns: function (it) { return Store.data.settings.unlockAll || !!Store.data[it.kind === 'paint' ? 'paints' : 'riders'][it.id]; },
+  reallyOwns: function (it) { return !!Store.data[it.kind === 'paint' ? 'paints' : 'riders'][it.id]; },
+  ownedCount: function () { var n = 0; RR.ITEMS.forEach(function (it) { if (P.reallyOwns(it)) n++; }); return n; },
+  /* what a bike is wearing: { paint, rider }, either may be null for the stock look */
+  look: function (bikeId) {
+    var f = Store.data.fit[bikeId] || {}, p = RR.PAINT[f.p], r = RR.RIDER[f.r];
+    return { paint: p && P.owns(p) ? p : null, rider: r && P.owns(r) ? r : null };
+  },
+  wear: function (bikeId, kind, id) {
+    var f = Store.data.fit[bikeId] || (Store.data.fit[bikeId] = {});
+    f[kind === 'paint' ? 'p' : 'r'] = id || '';
+  },
+  /* Pay out anything owed for stars and finished worlds. Stars pay once each; finishing every
+     track in a world gives a gold geode, and three stars on all of them a diamond one.
+     Old saves are owed for everything they already did, which this also covers. */
+  settle: function () {
+    var d = Store.data, out = { stars: 0, nuggets: 0, geodes: [] }, i, w;
+    for (i = 0; i < RR.TRACK_COUNT; i++) {
+      var id = RR.trackId(i), n = P.starsFor(i), was = d.paid[id] || 0;
+      if (n > was) { out.stars += n - was; d.paid[id] = n; }
+    }
+    out.nuggets = out.stars * RR.ECON.star; d.nuggets += out.nuggets;
+    for (w = 0; w < RR.WORLDS.length; w++) {
+      var W = RR.WORLDS[w];
+      if (!d.got['done:' + W.id] && P.worldDone(w)) { d.got['done:' + W.id] = 1; d.geodes.gold++; out.geodes.push({ kind: 'gold', why: 'Every ' + W.name + ' track finished' }); }
+      if (!d.got['aced:' + W.id] && P.worldStars(w) >= 24) { d.got['aced:' + W.id] = 1; d.geodes.diamond++; out.geodes.push({ kind: 'diamond', why: 'Three stars on every ' + W.name + ' track' }); }
+    }
+    return out;
+  },
+  itemsLeft: function () { var n = 0; RR.ITEMS.forEach(function (it) { if (!P.reallyOwns(it)) n++; }); return n; },
+  freeGeodes: function () { return Store.data.geodes.gold + Store.data.geodes.diamond; },
+  canCrack: function () { return P.itemsLeft() > 0 && (P.freeGeodes() > 0 || Store.data.nuggets >= RR.ECON.geode); },
+  /* open one geode: prize geodes first (best first), otherwise pay for an ordinary one */
+  crack: function () {
+    var d = Store.data, kind = 'any';
+    if (P.itemsLeft() <= 0) return null;
+    if (d.geodes.diamond > 0) kind = 'diamond'; else if (d.geodes.gold > 0) kind = 'gold'; else if (d.nuggets < RR.ECON.geode) return null;
+    var pity = kind === 'any' && d.pity >= RR.ECON.pity;
+    var it = RR.rollGeode(kind, P.reallyOwns, Math.random, pity);
+    if (!it) return null;
+    if (kind === 'any') d.nuggets -= RR.ECON.geode; else d.geodes[kind]--;
+    d[it.kind === 'paint' ? 'paints' : 'riders'][it.id] = 1;
+    d.fresh[it.id] = 1; d.opened++;
+    d.pity = RR.TIER[it.tier].rank >= 2 ? 0 : d.pity + 1;
+    Store.save();
+    return { item: it, kind: kind };
   }
 };
 
@@ -110,11 +198,11 @@ var Ghost = {
   },
   load: function (i) {
     Ghost.play = null;
-    var raw = Store.get(KEY + '.ghost.' + i);
+    var raw = Store.get(KEY + '.ghost.' + RR.trackId(i));
     if (!raw) return;
     try { var k = raw.indexOf('|'); Ghost.play = { bike: raw.slice(0, k), d: Ghost.decode(raw.slice(k + 1)) }; } catch (e) { Ghost.play = null; }
   },
-  store: function (i, bike) { Store.set(KEY + '.ghost.' + i, bike + '|' + Ghost.encode(Ghost.rec)); },
+  store: function (i, bike) { Store.set(KEY + '.ghost.' + RR.trackId(i), bike + '|' + Ghost.encode(Ghost.rec)); },
   sample: function (s) { Ghost.rec.push(Math.round(s.x * 50), Math.round(s.y * 50), Math.round((s.a - TAU * Math.floor(s.a / TAU)) * 5000)); },
   pose: function (t, out) {
     var g = Ghost.play; if (!g) return null;
@@ -192,6 +280,7 @@ G.load = function (trackIndex, bikeId, attract) {
   G.props = R.makeProps(tr);
   G.cam = G.cam || R.newCamera();
   G.attract = !!attract;
+  G.look = P.look(bikeId);
   Au.setWorld(tr.worldIndex);
   if (!attract) { Au.engineStart(def); Au.layersStart(); }
   G.reset(true);
@@ -200,9 +289,9 @@ G.reset = function (snapCam) {
   var s = G.sim;
   RR.resetSim(s);
   R.clearParts(); R.clearPopups();
-  G.rag = null; G.sunk = false; G.camHold = false; G.stuckT = 0; G.stuckSaid = false; G.flash = 0; G.boostGlow = 0; G.timeScale = 1; G.endT = 0; G.resultShown = false;
+  G.wipe = null; G.sunk = false; G.camHold = false; G.banked = false; G.runPay = 0; G.flipPaid = 0; G.bonked = false; G.stuckT = 0; G.stuckSaid = false; G.flash = 0; G.boostGlow = 0; G.timeScale = 1; G.endT = 0; G.resultShown = false;
   vis.noRider = false; vis.stand = 0; vis.crouch = 0;
-  Ghost.rec.length = 0; tickN = 0; acc = 0;
+  Ghost.rec.length = 0; tickN = 0; acc = 0; if (G.trail) G.trail.length = 0;
   if (!G.attract) Ghost.load(G.track.index);
   copyPrev();
   R.camFollow(G.cam, s, G.track, 0, R.size().w / R.size().h, true, G.attract ? 0.06 : null);
@@ -215,14 +304,26 @@ G.play = function (trackIndex) {
   Au.music(false);
   G.load(trackIndex, Store.data.bike, false);
 };
+/* add this run's distance and top speed to the lifetime totals (some bikes unlock on them) */
+function bank() {
+  var s = G.sim, st = Store.data.stats;
+  if (!s || G.attract || G.banked || !s.started) return;
+  G.banked = true;
+  st.dist = Math.round(st.dist + Math.max(0, s.x - G.track.start[0] - G.bike.com[0]));
+  if (s.maxSpeed > st.topSpeed) st.topSpeed = Math.round(s.maxSpeed * 10) / 10;
+  var got = P.claim(); if (got.length && RR.UI) RR.UI.toastBikes(got);
+}
+G.bank = bank;
 G.retry = function () {
   if (!G.sim || G.attract) return;
+  bank();
   Store.data.stats.runs++;
   if (G.bikeDef.id !== Store.data.bike) { G.load(G.track.index, Store.data.bike, false); return; }
   Au.engineStart(G.bikeDef);
   G.reset(true);
 };
 G.menu = function () {
+  bank();
   Au.engineStop(); Au.layersQuiet();
   var open = [], i; for (i = 0; i < RR.TRACK_COUNT; i++) if (P.trackOpen(i)) open.push(i);
   var pick = open[Math.floor(Math.random() * Math.min(open.length, 16))] || 0;
@@ -240,19 +341,26 @@ function copyPrev() {
 }
 
 function finishRun() {
-  var s = G.sim, i = G.track.index, t = Math.round(s.finishTime * 100) / 100, d = Store.data;
-  var old = d.best[i], isBest = !old || t < old, before = P.starsFor(i);
+  var s = G.sim, i = G.track.index, t = Math.round(s.finishTime * 100) / 100, d = Store.data, E = RR.ECON;
+  var old = d.best[i], isBest = !old || t < old, before = P.starsFor(i), totBefore = P.total();
   d.stats.finishes++;
   if (isBest) { d.best[i] = t; Ghost.store(i, G.bikeDef.id); }
   var st = d.stats;
   if (s.bestAir > st.bestAir) st.bestAir = Math.round(s.bestAir * 100) / 100;
   if (s.bestJump > st.bestJump) st.bestJump = Math.round(s.bestJump * 10) / 10;
   if (s.flips > st.bestFlips) st.bestFlips = s.flips;
+  bank();
   var bikes = P.claim();
-  var worlds = [];
-  for (var w = 1; w < RR.WORLDS.length; w++) { var need = RR.WORLDS[w].need, tot = P.total(); if (tot >= need && tot - (P.starsFor(i) - before) < need) worlds.push(RR.WORLDS[w]); }
+  var worlds = [], tot = P.total();
+  for (var w = 1; w < RR.WORLDS.length; w++) { var need = RR.WORLDS[w].need; if (tot >= need && totBefore < need) worlds.push(RR.WORLDS[w]); }
+  // nuggets: a little for finishing, more for each new star, a bit for beating your own time
+  var pay = { finish: E.finish, best: isBest && old ? E.best : 0, flips: G.runPay, stars: 0, total: 0 };
+  d.nuggets += pay.finish + pay.best;
+  var owed = P.settle();
+  pay.stars = owed.nuggets; pay.total = pay.finish + pay.best + pay.flips + pay.stars;
   Store.save();
-  G.result = { time: t, old: old || 0, best: isBest, stars: P.starsForTime(i, t), starsBefore: before, bikes: bikes, worlds: worlds, flips: s.flips, air: s.bestAir, track: i };
+  G.result = { time: t, old: old || 0, best: isBest, stars: P.starsForTime(i, t), starsBefore: before, bikes: bikes, worlds: worlds, flips: s.flips, air: s.bestAir, track: i,
+    pay: pay, geodes: owed.geodes };
 }
 
 /* ------------------------------------------------------------------ */
@@ -262,6 +370,7 @@ function rnd(a, b) { return a + Math.random() * (b - a); }
 function dustBurst(x, y, n, col, sp) {
   for (var i = 0; i < n; i++) R.emit(0, x + rnd(-0.3, 0.3), y + rnd(0, 0.2), rnd(-sp, sp), rnd(0.2, sp * 0.7), rnd(0.35, 0.8), rnd(0.12, 0.26), col, { gr: rnd(0.5, 1.2), a: 0.55, drag: 2.5 });
 }
+function sparkDraw(c, p, k) { var sz = p.r * (1 - k * 0.5); c.globalCompositeOperation = 'lighter'; RR.Art.star4(c, 0, 0, sz, p.col); c.globalCompositeOperation = 'source-over'; }
 function buzz(ms) { try { if (Store.data.settings.buzz && navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
 var FLIPNAME = ['', '', 'DOUBLE ', 'TRIPLE ', 'QUAD '];
 
@@ -284,24 +393,44 @@ function onEvents() {
       R.popup(nm, 'BOOST!', e.n > 1 ? '#ffd24a' : '#ffffff');
       Au.flip(e.n); Au.boost(); buzz(30);
       Store.data.stats.flips += e.n;
+      var fp = Math.max(0, Math.min(e.n, RR.ECON.flipCap - G.flipPaid)); G.flipPaid += fp;
+      if (fp) { Store.data.nuggets += fp * RR.ECON.flip; G.runPay += fp * RR.ECON.flip; }
       if (e.air > Store.data.stats.bestAir) Store.data.stats.bestAir = Math.round(e.air * 100) / 100;
       for (k = 0; k < 3; k++) R.emit(5, s.x, s.y, 0, 0, 0.5 + k * 0.12, 0.6, '#ffe07a', { gr: 5 + k * 2, a: 0.8, front: 1, w: 0.09 });
       var got = P.claim(); if (got.length && RR.UI) RR.UI.toastBikes(got);
     } else if (e.t === 'air') {
       if (e.air >= 1.8 * Math.sqrt(9.81 / s.g)) { R.popup('BIG AIR', e.air.toFixed(1) + ' s', '#9fe8ff'); Au.air(); }
       if (e.air > Store.data.stats.bestAir) { Store.data.stats.bestAir = Math.round(e.air * 100) / 100; var g2 = P.claim(); if (g2.length && RR.UI) RR.UI.toastBikes(g2); }
+    } else if (e.t === 'pad') {
+      Au.pad();
+      for (k = 0; k < 8; k++) R.emit(2, e.x + rnd(-0.3, 0.3), e.y - G.bike.wh[0].r + 0.05, s.vx * 0.4 + rnd(-3, 1), rnd(1, 5), rnd(0.15, 0.35), 0.05, k % 2 ? '#ffe23d' : '#ff8a1f', { g: 1, front: 1 });
+    } else if (e.t === 'bonk') {
+      G.bonked = true;
+      Au.bonk(); buzz(40);
+      R.popup('BONK!', 'The hoop saved you. That was the only one.', '#ffb3d6');
+      G.cam.shake = Math.max(G.cam.shake, 0.5);
+      for (k = 0; k < 9; k++) R.emit(6, e.x + rnd(-0.4, 0.4), e.y + 0.6, rnd(-4, 4) + s.vx * 0.3, rnd(2, 7), rnd(0.5, 0.9), rnd(0.1, 0.16), k % 2 ? '#ffe23d' : '#ffffff', { g: 0.6, vr: rnd(-8, 8), front: 1 });
     } else if (e.t === 'crash') {
       Store.data.stats.crashes++;
       Au.engineStop(); buzz(80);
       G.state = 'crash'; G.endT = 0; G.timeScale = 0.3;
+      bank();
       if (e.cause === 'head') {
         Au.crash(e.v);
-        G.rag = R.makeRag(s, G.bikeDef); vis.noRider = true;
+        G.wipe = RR.Wipe.start(G.bikeDef.wipe, G, e); vis.noRider = true;
         G.cam.shake = 1; G.flash = 0.35;
         dustBurst(e.x, RR.groundY(G.track, e.x) + 0.2, 16, T.dust, 3);
         for (k = 0; k < 10; k++) R.emit(1, e.x, e.y, rnd(-5, 5) + s.vx * 0.4, rnd(2, 8), rnd(0.6, 1.2), rnd(0.04, 0.08), k % 2 ? G.bikeDef.col[0] : '#ffffff', { g: 1, vr: rnd(-12, 12), front: 1 });
       } else if (e.cause === 'fall') {
         Au.fall(); G.camHold = true;
+      } else if (e.cause === 'bus') {
+        Au.crunch(); G.sunk = true; G.cam.shake = 1; G.flash = 0.3;
+        var bz = null;
+        for (k = 0; k < G.track.hazards.length; k++) if (s.x > G.track.hazards[k].x0 && s.x < G.track.hazards[k].x1) bz = G.track.hazards[k];
+        var by = bz ? bz.y : s.y;
+        for (k = 0; k < 26; k++) R.emit(k % 3 ? 1 : 2, s.x + rnd(-1.2, 1.2), by, rnd(-6, 6) + s.vx * 0.3, rnd(3, 10), rnd(0.6, 1.3), k % 3 ? rnd(0.05, 0.12) : 0.05, ['#ffd24a', '#cfd6de', '#9fe8ff', '#e2402f'][k % 4], { g: 1, a: 1, front: 1, vr: rnd(-12, 12) });
+        for (k = 0; k < 10; k++) R.emit(0, s.x + rnd(-1, 1), by + 0.2, rnd(-1.5, 1.5), rnd(1, 3), rnd(0.8, 1.5), rnd(0.3, 0.5), '#55585f', { gr: 0.9, a: 0.45, drag: 1.2, front: 1 });
+        for (k = 0; k < 2; k++) R.emit(7, s.x + rnd(-0.5, 0.5), by + 0.2, rnd(-4, 4) + s.vx * 0.3, rnd(5, 9), 2.2, G.bike.wh[k].r, '#1c1d22', { g: 1, vr: rnd(-10, 10), front: 1 });
       } else {
         Au.splash(e.cause); G.sunk = true; G.cam.shake = 0.6;
         var col = e.cause === 'lava' ? '#ff8a2a' : e.cause === 'ice' ? '#bfe6ff' : '#8fd6f5', hz = null;
@@ -310,6 +439,7 @@ function onEvents() {
         for (k = 0; k < 34; k++) R.emit(e.cause === 'lava' ? 3 : 1, s.x + rnd(-0.9, 0.9), ly, rnd(-4, 4) + s.vx * 0.2, rnd(4, 11), rnd(0.6, 1.3), rnd(0.06, 0.16), k % 3 ? col : (e.cause === 'lava' ? '#ffd24a' : '#ffffff'), { g: 1, a: 1, front: 1, vr: rnd(-8, 8) });
         for (k = 0; k < 12; k++) R.emit(0, s.x + rnd(-1, 1), ly + 0.2, rnd(-1.5, 1.5), rnd(1, 3.5), rnd(0.8, 1.6), rnd(0.3, 0.5), e.cause === 'lava' ? '#3a2a2a' : '#ffffff', { gr: 0.9, a: 0.5, drag: 1.2, front: 1 });
       }
+      var gotC = P.claim(); if (gotC.length && RR.UI) RR.UI.toastBikes(gotC);
       if (RR.UI) RR.UI.onCrash(e.cause);
     } else if (e.t === 'finish') {
       G.state = 'finish'; G.endT = 0; G.flash = 0.5;
@@ -335,7 +465,7 @@ function trailFx() {
     if (amt > 0 && Math.random() < amt * 1.6) {
       var nx = s.nrmX[0], ny = s.nrmY[0], tx = ny, ty = -nx, cx = s.wx[0] - nx * b.wh[0].r, cy = s.wy[0] - ny * b.wh[0].r;
       var back = s.slip[0] < 0 ? -1 : 1, v0 = rnd(2, 4 + slip * 1.6);
-      var col = mat === 2 ? '#dff4ff' : mat === 6 ? '#ffffff' : mat === 4 ? '#b47c48' : mat === 5 ? '#ffd98a' : (Math.random() < 0.5 ? T.ground[0] : T.dust);
+      var col = mat === 2 ? '#dff4ff' : mat === 6 ? '#ffffff' : mat === 4 ? '#b47c48' : mat === 5 ? '#ffd98a' : mat === 10 ? '#20222a' : mat >= 8 ? (Math.random() < 0.5 ? '#d9dbe0' : '#8a8d96') : (Math.random() < 0.5 ? T.ground[0] : T.dust);
       if (mat === 5) R.emit(2, cx, cy, tx * back * v0 + s.vx * 0.3, ty * back * v0 + ny * 2, rnd(0.12, 0.25), 0.04, col, { g: 1 });
       else R.emit(1, cx, cy, tx * back * v0 + nx * rnd(0.5, 3) + s.vx * 0.25, ty * back * v0 + ny * rnd(0.8, 3.5) + s.vy * 0.25, rnd(0.35, 0.7), rnd(0.035, 0.075), col, { g: 1, vr: rnd(-10, 10) });
       if (Math.random() < 0.35) R.emit(0, cx, cy + 0.05, tx * back * 1.2 + rnd(-0.4, 0.4), rnd(0.3, 1.2), rnd(0.4, 0.8), rnd(0.1, 0.2), T.dust, { gr: 0.8, a: 0.4, drag: 2 });
@@ -395,7 +525,7 @@ function tickOnce() {
   tickN++;
   onEvents();
   trailFx();
-  if (G.rag) R.stepRag(G.rag, G.track, s.g, DT);
+  if (G.wipe) G.wipe.step(DT);
   if (G.state === 'crash' || G.state === 'finish') {
     G.endT += DT;
     if (G.state === 'crash' && G.endT > 0.22) G.timeScale = Math.min(1, G.timeScale + DT * 3);
@@ -429,12 +559,19 @@ G.frame = function (ts) {
   vis.headTilt = clamp(-s.w * 0.03, -0.2, 0.2);
   if (G.state !== 'pause') {
     var fs = { x: vis.x, y: vis.y, vx: s.vx, vy: s.vy };
-    if (G.rag && G.state === 'crash') { fs.x = (vis.x + G.rag.pts[2].x) * 0.5; fs.y = (vis.y + G.rag.pts[2].y) * 0.5; fs.vx *= 0.3; fs.vy *= 0.3; }
+    if (G.wipe && G.state === 'crash') { fs.x = (vis.x + G.wipe.fx) * 0.5; fs.y = (vis.y + G.wipe.fy) * 0.5; fs.vx *= 0.3; fs.vy *= 0.3; }
     if (G.sunk) { fs.vx = 0; fs.vy = 0; fs.y = Math.max(fs.y, RR.groundY(G.track, s.x - 6)); }
     if (!G.camHold) R.camFollow(G.cam, fs, G.track, dt, R.size().w / R.size().h, false, G.attract ? 0.06 : null);
     else { G.cam.px = G.cam.x; G.cam.py = G.cam.y; }
-    R.stepParts(dt * G.timeScale, s.g);
+    R.stepParts(dt * G.timeScale, s.g, G.track);
   }
+  if (G.look && G.look.paint && G.look.paint.trail && G.state !== 'pause') {
+    var tr0 = G.trail || (G.trail = []), ca2 = Math.cos(vis.a), sa2 = Math.sin(vis.a), lx2 = -b.com[0], ly2 = b.wh[0].r * 0.9 - b.com[1], spd2 = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
+    tr0.push({ x: vis.x + ca2 * lx2 - sa2 * ly2, y: vis.y + sa2 * lx2 + ca2 * ly2 });
+    if (tr0.length > 22) tr0.shift();
+    G.trailAmt = (G.trailAmt || 0) + ((spd2 > 5 && !s.crashed ? Math.min(1, (spd2 - 5) / 6) : 0) - (G.trailAmt || 0)) * Math.min(1, dt * 6);
+    if (G.look.paint.trail.spark && spd2 > 8 && !s.crashed && Math.random() < dt * 14) R.emit(8, tr0[tr0.length - 1].x + rnd(-0.2, 0.2), tr0[tr0.length - 1].y + rnd(-0.1, 0.3), s.vx * 0.2 + rnd(-0.5, 0.5), rnd(0.2, 1.2), rnd(0.3, 0.6), rnd(0.05, 0.1), G.look.paint.trail.spark, { draw: sparkDraw, fade: 0.6 });
+  } else if (G.trail) G.trail.length = 0;
   G.ghostPose = (G.state === 'run' || G.state === 'ready') && Store.data.settings.ghost && Ghost.play ? Ghost.pose(s.time, gp) : null;
   G.flash = Math.max(0, G.flash - dt * 1.6);
   G.boostGlow += ((s.boost > 0 ? 1 : 0) - G.boostGlow) * (1 - Math.exp(-dt * 8));
@@ -446,8 +583,9 @@ G.frame = function (ts) {
     var sp = Math.sqrt(s.vx * s.vx + s.vy * s.vy), run = G.state === 'run';
     Au.engineUpdate({ v: -s.ww[0] * b.wh[0].r, vmax: G.bikeDef.vmax, gas: run && inp.gas ? 1 : 0, air: s.airW[0] > 0.12, boost: s.boost > 0, dt: dt });
     var sl = Math.abs(s.slip[0]) * (s.gnd[0] ? 1 : 0), sf = Math.abs(s.slip[1]) * (s.gnd[1] ? 1 : 0);
-    var hard = s.mat[0] === 1 || s.mat[0] === 5 || s.mat[0] === 2 || s.mat[0] === 4;
+    var hard = s.mat[0] === 1 || s.mat[0] === 5 || s.mat[0] === 2 || s.mat[0] === 4 || s.mat[0] >= 8;
     Au.layersUpdate({
+      kerb: s.gnd[0] && s.mat[0] === 9 || s.gnd[1] && s.mat[1] === 9 ? clamp(sp / 12, 0.2, 1) : 0,
       skid: clamp(((hard ? sl : sl * 0.3) + sf * 0.6 - 0.6) / 6, 0, 1), dirt: clamp((hard ? 0 : sl - 0.3) / 4, 0, 1) + (s.gnd[0] && !hard ? clamp(sp / 60, 0, 0.25) : 0),
       wind: G.track.airless ? 0 : clamp((sp - 4) / 26, 0, 1) * (s.air ? 1 : 0.55), scrape: clamp(s.scrape / 30000, 0, 1), boost: s.boost > 0 || (G.bikeDef.rocket && run && inp.gas) ? 1 : 0
     });

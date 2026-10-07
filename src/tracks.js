@@ -9,10 +9,13 @@ var M = RR.MAT;
 RR.WORLDS = [
   { id: 'dust',   name: 'Dustbowl',    sub: 'Red rock and warm-up hills',      gravity: 9.81, mat: M.dirt, pit: 'fall',  logMat: M.rock, need: 0 },
   { id: 'pine',   name: 'Pinewood',    sub: 'Logs, creeks and bigger air',     gravity: 9.81, mat: M.dirt, pit: 'water', logMat: M.wood, need: 9 },
+  { id: 'race',   name: 'Raceway',     sub: 'Smooth tarmac, boost strips, bus jumps', gravity: 9.81, mat: M.tarmac, pit: 'bus', logMat: M.rubber, need: 16 },
   { id: 'frost',  name: 'Frostbite',   sub: 'Snow drags, ice does not grip',   gravity: 9.81, mat: M.snow, pit: 'ice',   logMat: M.ice,  need: 24 },
   { id: 'cinder', name: 'Cinder Peak', sub: 'Lava below, rock above',          gravity: 9.81, mat: M.rock, pit: 'lava',  logMat: M.rock, need: 42 },
   { id: 'orbit',  name: 'Low Orbit',   sub: 'A third of the gravity, no air',  gravity: 3.9,  mat: M.dust, pit: 'fall',  logMat: M.rock, need: 62, airless: true }
 ];
+RR.WORLD = {};
+RR.WORLDS.forEach(function (w, i) { w.index = i; RR.WORLD[w.id] = w; });
 
 /* safe jump: curve up, a straight lip so the bike leaves level, hole, downslope */
 function jump(b, deg, w, landDeg, landLen, o) {
@@ -30,6 +33,9 @@ function kick(b, deg, w, landDeg, landLen, o) {
 }
 /* hop onto a flat island (no downslope to save a short jump) */
 function hop(b, deg, w, o) { o = o || {}; b.kicker(deg, o.R || 8, o.lip == null ? 1.0 : o.lip); b.gap(w, o); return b; }
+
+/* steel launch ramp (raceway): same shape as a kicker, bolted on top of the tarmac */
+function ramp(b, deg, R, lip) { b.surface('steel').kicker(deg, R || 8, lip == null ? 1.2 : lip).surface(); return b; }
 
 /* [name, tip shown before the start, recipe] */
 var T = [
@@ -158,6 +164,57 @@ var T = [
   b.kicker(21, 8).gap(4.5, { rise: 1.1 }).flat(10).drop(2).flat(12);
   kick(b, 19, 8, 17, 9, { rise: -1, R: 6 });
   b.flat(14);
+}],
+
+/* ----------------------------- RACEWAY ------------------------------ */
+['Green Flag', 'Yellow arrows on the road are boost strips. Ride over them with the gas open.', function (b) {
+  b.flat(18).kerb(6).flat(8).boost(6).flat(22).table(12, 1.4, 7, 10).flat(14).ease(24, -3).flat(8)
+   .kerb(5).flat(6).boost(6).flat(16).hill(1.6, 20).flat(12);
+  ramp(b, 13, 9, 1.6); b.buses(1, { rise: -0.5 }).land(11, 8).flat(18);
+}],
+['Bus Stop', 'Clear the buses. Come up short and you park on a roof.', function (b) {
+  b.flat(22);
+  ramp(b, 15, 9, 1.5); b.buses(1, { rise: -0.6 }).land(13, 8).flat(14).boost(6).flat(12);
+  ramp(b, 17, 9, 1.5); b.buses(2, { rise: -1 }).land(15, 9).flat(16).kerb(6).flat(8).hill(1.8, 18).flat(8).boost(7).flat(10);
+  ramp(b, 18, 9, 1.4); b.buses(3, { rise: -1.4 }).land(17, 11).flat(18);
+}],
+['Rumble Strip', 'Kerbs shake the bike. Stay loose and keep the gas on.', function (b) {
+  b.flat(14).kerb(10).flat(6).bumps(4, 4.4, 0.26).flat(8).kerb(8).flat(6);
+  ramp(b, 14, 8, 1.2); b.drop(0.9).flat(12);
+  ramp(b, 14, 8, 1.2); b.drop(0.9).flat(12);
+  ramp(b, 16, 8, 1.2); b.drop(1.2).flat(10).logs(3, 6, 0.2).flat(8).ease(22, -3.5).flat(6).kerb(8).flat(6).boost(6).flat(10)
+   .table(18, 2.0, 5, 8).flat(8).logs(2, 6, 0.2).flat(14);
+}],
+['Oil Slick', 'Oil is as slippery as ice. Get your speed first, then coast across it.', function (b) {
+  b.flat(20).oil(8).flat(10).hill(1.6, 18).flat(6).oil(8).flat(4).ease(20, -2.5).flat(10).boost(6).flat(6).oil(10).flat(8);
+  ramp(b, 16, 9, 1.4); b.buses(2, { rise: -0.9 }).land(14, 9).flat(8).oil(8).flat(10).waves(2, 18, 1.0).flat(6).oil(6).flat(12)
+   .table(16, 1.7, 6, 9).flat(14);
+}],
+['Stunt Show', 'A boost strip straight into a loop. Hold the gas all the way round.', function (b) {
+  b.flat(20).boost(7).flat(14).loop(4.6).flat(14).kerb(6).flat(8);
+  ramp(b, 18, 8, 1.3); b.buses(2, { rise: -1 }).land(16, 9).flat(12).boost(6).flat(12).loop(4.0).flat(6).loop(4.0).flat(16);
+  ramp(b, 19, 8, 1.2); b.buses(3, { rise: -1.3 }).land(17, 10).flat(16);
+}],
+['Pit Lane', '', function (b) {
+  b.flat(14).steps(3, 7, 0.8).flat(8).logs(3, 5.5, 0.22).flat(8).oil(7).flat(6).up(18, 12, 10).flat(10, 13).drop(2.4).flat(14)
+   .kerb(8).flat(4).boost(6).flat(8);
+  b.surface('steel').kicker(18, 6.5, 0).surface(); b.buses(2, { rise: -1 }).land(16, 9);
+  b.flat(8).logs(2, 6, 0.24).flat(6).steps(2, 7, 1.0).flat(8).oil(6).flat(8);
+  ramp(b, 19, 8, 1.2); b.buses(2, { rise: -1.1 }).land(17, 9).flat(14);
+}],
+['Seven Buses', 'One long run-up. Hit every boost strip and do not lift.', function (b) {
+  b.flat(16).kerb(6).flat(8).table(16, 1.8, 6, 9).flat(10);
+  ramp(b, 17, 9, 1.4); b.buses(2, { rise: -0.9 }).land(15, 9).flat(10).oil(6).flat(8).hill(2, 18).flat(10)
+   .boost(8).flat(14).down(13, 26, 16).flat(6, 14).boost(8).flat(8);
+  ramp(b, 21, 10, 1.6); b.buses(7, { rise: -4 }).land(21, 14, 10).flat(24);
+}],
+['Chequered Flag', '', function (b) {
+  b.flat(18).boost(7).flat(12).loop(4.4).flat(10).kerb(6).flat(6);
+  ramp(b, 18, 8, 1.3); b.buses(3, { rise: -1.3 }).land(16, 10).flat(8).oil(8).flat(6).ease(24, -4.5).flat(8).logs(3, 5.5, 0.22).flat(8)
+   .up(20, 12, 10).flat(8, 12).drop(2.6).flat(12).boost(7).flat(10);
+  b.surface('steel').kicker(19, 6, 0).surface(); b.buses(2, { rise: -1.2 }).land(17, 10);
+  b.flat(8).kerb(8).flat(4).oil(6).flat(8).boost(7).flat(10).loop(4.2).flat(12);
+  ramp(b, 20, 9, 1.3); b.buses(4, { rise: -2 }).land(18, 11).flat(16);
 }],
 
 /* ----------------------------- FROSTBITE ---------------------------- */
@@ -381,29 +438,38 @@ var T = [
 var ORDER = [
   ['First Gear', 'Washboard', 'Rolling Dunes', 'Hop Skip', 'Loop de Dust', 'Mesa Drop', 'Gulch Gap', 'Canyon Run'],
   ['Log Jam', 'Mossy Loop', 'Timber Table', 'Sawmill', 'Root Rage', 'Creek Hop', 'Beaver Dam', 'Old Growth'],
+  ['Green Flag', 'Bus Stop', 'Rumble Strip', 'Oil Slick', 'Stunt Show', 'Pit Lane', 'Seven Buses', 'Chequered Flag'],
   ['Black Ice', 'Whiteout', 'Glacier Loop', 'Slip Road', 'Powder Keg', 'Avalanche', 'Crevasse', 'Aurora'],
   ['Hot Start', 'The Chimney', 'Ash Loop', 'Caldera', 'Magma Hop', 'Fire Walk', 'Ember Steps', 'Eruption'],
   ['One Small Hop', 'Double Loop', 'Crater Maker', 'Slow Float', 'Dark Side', 'Escape Velocity', 'Regolith', 'Riot Run']
 ];
+function slug(n) { return n.toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
+function hashStr(n) { var h = 2166136261; for (var i = 0; i < n.length; i++) { h ^= n.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+var IDX = {};
 (function () {
   var by = {}, out = [];
   T.forEach(function (t) { by[t[0]] = t; });
-  ORDER.forEach(function (w) { w.forEach(function (n) { out.push(by[n]); }); });
+  ORDER.forEach(function (w) { w.forEach(function (n) { if (!by[n]) throw new Error('no such track: ' + n); out.push(by[n]); }); });
   T = out;
+  T.forEach(function (t, i) { IDX[slug(t[0])] = i; });
 })();
 
+/* Saved progress is filed under the track's name, not its position, so the running
+   order can change without anybody's best times moving to a different track. */
+RR.trackId = function (i) { return slug(T[i][0]); };
+RR.trackIndex = function (id) { return id in IDX ? IDX[id] : -1; };
 RR.TRACK_COUNT = T.length;
 RR.trackInfo = function (i) {
-  return { index: i, world: Math.floor(i / 8), num: i % 8, name: T[i][0], tip: T[i][1], id: 't' + i };
+  return { index: i, world: Math.floor(i / 8), num: i % 8, name: T[i][0], tip: T[i][1], id: slug(T[i][0]) };
 };
 var cache = {};
 RR.getTrack = function (i) {
   if (cache[i]) return cache[i];
-  var w = RR.WORLDS[Math.floor(i / 8)];
-  var b = new RR.TB(w, 1000 + i * 77);
+  var w = RR.WORLDS[Math.floor(i / 8)], id = slug(T[i][0]);
+  var b = new RR.TB(w, hashStr(id) % 100000 + 7);
   T[i][2](b);
-  var tr = b.finish(T[i][0], 't' + i);
-  tr.index = i; tr.worldIndex = Math.floor(i / 8); tr.airless = !!w.airless;
+  var tr = b.finish(T[i][0], id);
+  tr.index = i; tr.worldIndex = Math.floor(i / 8); tr.airless = !!w.airless; tr.seed = hashStr(id) % 9973;
   cache[i] = tr;
   return tr;
 };

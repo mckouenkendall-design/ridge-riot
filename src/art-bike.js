@@ -49,6 +49,7 @@ function circ(ctx, x, y, r, fill, lw, stroke) {
   if (lw !== 0) { ctx.lineWidth = lw || 0.028; ctx.strokeStyle = stroke || OUT; ctx.stroke(); }
 }
 function shade(hex, f) {                   // darker (f<1) or lighter (f>1) version of a colour
+  if (typeof hex !== 'string') hex = hex.flat || '#888888';   // a pattern or gradient: use its plain stand-in
   var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
   if (f <= 1) { r *= f; g *= f; b *= f; } else { var k = f - 1; r += (255 - r) * k; g += (255 - g) * k; b += (255 - b) * k; }
   return 'rgb(' + (r | 0) + ',' + (g | 0) + ',' + (b | 0) + ')';
@@ -96,7 +97,7 @@ A.wheel = function (ctx, x, y, r, ang, st, rate) {
     if (st.type === 'glow') { ctx.beginPath(); ctx.arc(0, 0, ri * 0.62, 0, TAU); ctx.lineWidth = 0.022; ctx.strokeStyle = st.glow; ctx.stroke(); }
     for (i = 0; i < 3; i++) { ctx.rotate(TAU / 3); ctx.beginPath(); ctx.arc(ri * 0.36, 0, ri * 0.13, 0, TAU); ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fill(); }
   } else {
-    var n = st.type === 'alloy3' ? 3 : st.type === 'alloy5' ? 5 : (r > 0.3 ? 14 : 10);
+    var n = st.spokes || (st.type === 'alloy3' ? 3 : st.type === 'alloy5' ? 5 : (r > 0.3 ? 14 : 10));
     var sw = st.type === 'spoke' ? 0.011 : r * 0.13;
     if (fast) { ctx.beginPath(); ctx.arc(0, 0, ri - 0.03, 0, TAU); ctx.fillStyle = st.type === 'spoke' ? 'rgba(200,205,215,0.13)' : 'rgba(60,64,75,0.5)'; ctx.fill(); }
     ctx.globalAlpha = fast ? 0.4 : 1;
@@ -107,6 +108,11 @@ A.wheel = function (ctx, x, y, r, ang, st, rate) {
     ctx.globalAlpha = 1;
   }
   if (st.brake !== 0) { ctx.beginPath(); ctx.arc(0, 0, Math.min(ri * 0.5, 0.13), 0, TAU); ctx.lineWidth = 0.02; ctx.strokeStyle = '#8d939d'; ctx.stroke(); }
+  if (st.glow2) {
+    // a ring of light inside the rim, and a soft halo round it
+    ctx.beginPath(); ctx.arc(0, 0, ri * 0.66, 0, TAU); ctx.strokeStyle = st.glow2; ctx.globalAlpha = 0.28; ctx.lineWidth = 0.13; ctx.stroke(); ctx.globalAlpha = 1; ctx.lineWidth = 0.045; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, ri - 0.012, 0, TAU); ctx.lineWidth = 0.02; ctx.stroke();
+  }
   circ(ctx, 0, 0, 0.045, st.hub || '#4a4f5a', 0.018);
   ctx.restore();
   // fixed sidewall highlight
@@ -161,7 +167,7 @@ function chain(ctx, g) {
 }
 function plate(ctx, p, col, num) { shape(ctx, p, col, 0.022); }
 
-/* ------------------------------ the twelve bodies ------------------------------ */
+/* ------------------------------ the bodies ------------------------------ */
 /* each painter has two passes: under (frame, engine, pipes) and over (bodywork) */
 var KIND = {};
 
@@ -473,6 +479,103 @@ KIND.rocket = {
   },
   wheel: [{ tyre: 0.24, knob: 0, type: 'disc', fill: '#2a3550' }, { tyre: 0.24, knob: 0, type: 'disc', fill: '#2a3550' }], forkLower: 0.3, clamp: 0.1, bars: 0 };
 
+/* penny-farthing with a little engine hung under the saddle */
+KIND.penny = {
+  under: function (c, d, g) {
+    var k = d.col;
+    // belt down to the back wheel, then the backbone sweeping from the head down to the rear axle
+    line(c, [0.4, 0.9, g.RA[0] + 0.02, g.RA[1] + 0.09], 0.02, '#30333c'); line(c, [0.36, 0.78, g.RA[0] - 0.02, g.RA[1] - 0.08], 0.02, '#30333c');
+    curve(c, [g.HT[0] - 0.02, g.HT[1] - 0.04, 0.72, 1.44, 0.36, 1.12, 0.12, 0.6, g.RA[0], g.RA[1]], 0.06, k[0]);
+    tube(c, [g.RA[0], g.RA[1], g.RA[0] + 0.02, g.RA[1] + 0.34, 0.16, 0.72], 0.03, k[0]);
+    cases(c, 0.42, 0.86, 0.085, k[1]);
+    fins(c, 0.47, 0.93, 0.56, 1.08, 0.05, 4);
+    curve(c, [0.38, 0.8, 0.2, 0.74, 0.02, 0.84, -0.14, 0.98], 0.035, k[1]);
+    circ(c, g.RA[0], g.RA[1], 0.08, null, 0.014, '#6a707b');
+    circ(c, 0.14, 0.5, 0.03, CHROME, 0.014); line(c, [0.14, 0.5, 0.24, 0.5], 0.03, RUB);   // mounting step
+  },
+  over: function (c, d, g) {
+    var k = d.col, sx = d.rider.seat[0], sy = d.rider.seat[1];
+    // sprung leather saddle
+    shock(c, sx - 0.1, sy - 0.16, sx - 0.14, sy + 0.02, CHROME);
+    blob(c, [sx - 0.24, sy + 0.1, sx + 0.04, sy + 0.12, sx + 0.3, sy + 0.06, sx + 0.3, sy - 0.02, sx - 0.02, sy - 0.02, sx - 0.24, sy + 0.02], '#6b3f22');
+    // brass lamp
+    tube(c, [g.HT[0] + 0.02, g.HT[1] - 0.08, g.HT[0] + 0.12, g.HT[1] - 0.12], 0.02, k[1]);
+    blob(c, [g.HT[0] + 0.1, g.HT[1] - 0.02, g.HT[0] + 0.24, g.HT[1] - 0.03, g.HT[0] + 0.25, g.HT[1] - 0.22, g.HT[0] + 0.1, g.HT[1] - 0.22], k[1], 0.022);
+    circ(c, g.HT[0] + 0.22, g.HT[1] - 0.12, 0.05, '#fff3b8', 0.016);
+    // pedal crank on the hub
+    circ(c, g.FA[0], g.FA[1], 0.07, k[1], 0.02);
+    tube(c, [g.FA[0], g.FA[1], d.rider.peg[0], d.rider.peg[1] + 0.02], 0.026, CHROME, 0.02);
+  },
+  wheel: [{ tyre: 0.3, knob: 0, type: 'spoke', spokes: 8 }, { tyre: 0.085, knob: 0, type: 'spoke', spokes: 22 }], forkLower: 0.5, clamp: 0.08, bars: 0.2, chromeFork: true };
+
+/* soft, padded and wearing a roll hoop */
+KIND.bumper = {
+  under: function (c, d, g) {
+    var k = d.col;
+    mxUnder(c, d, g, 0.02, {});
+    // the roll hoop goes up behind the seat, over the rider and down to the bars (it comes off in a crash)
+    if (g.wrecked) return;
+    curve(c, [-0.16, 0.9, -0.34, 1.6, -0.1, 2.24, 0.62, 2.42, 1.2, 2.16, 1.36, 1.6, g.HT[0] + 0.02, g.HT[1] + 0.06], 0.07, k[2]);
+    var pads = [[-0.3, 1.4, -0.3, 1.74], [0.16, 2.36, 0.56, 2.42], [1.04, 2.26, 1.26, 2.02]], i;
+    for (i = 0; i < pads.length; i++) tube(c, pads[i], 0.14, k[1], 0.04);
+  },
+  over: function (c, d, g) {
+    var k = d.col, sy = d.rider.seat[1] - 0.93;
+    // everything is a cushion
+    blob(c, [0.3, 0.98 + sy, -0.16, 1.06 + sy, -0.44, 1.02 + sy, -0.4, 0.86 + sy, 0.0, 0.84 + sy, 0.3, 0.84 + sy], k[0]);
+    blob(c, [-0.5, 1.06 + sy, -0.36, 1.12 + sy, -0.3, 0.9 + sy, -0.46, 0.84 + sy], k[1], 0.022);
+    blob(c, [0.04, 1.03 + sy, 0.42, 1.0 + sy, 0.74, 1.0 + sy, 0.76, 0.92 + sy, 0.42, 0.9 + sy, 0.06, 0.94 + sy], k[1]);
+    blob(c, [0.62, 0.96 + sy, 0.82, 1.14 + sy, 1.1, 1.12 + sy, 1.14, 0.9 + sy, 1.0, 0.66, 0.84, 0.6, 0.72, 0.78 + sy], k[0]);
+    blob(c, [0.8, 1.0 + sy, 1.04, 0.98 + sy, 0.98, 0.76, 0.86, 0.74], k[1], 0.018);
+    circ(c, 0.92, 0.9 + sy, 0.05, k[2], 0.016);
+    // fat mudguards and a bumper on the nose
+    c.beginPath(); c.arc(g.RA[0], g.RA[1], d.rr + 0.08, 0.7, 2.3); c.lineWidth = 0.12; c.strokeStyle = OUT; c.stroke();
+    c.beginPath(); c.arc(g.RA[0], g.RA[1], d.rr + 0.08, 0.72, 2.28); c.lineWidth = 0.085; c.strokeStyle = k[0]; c.stroke();
+    c.beginPath(); c.arc(g.FA[0], g.FA[1], d.rf + 0.08, 0.6, 2.2); c.lineWidth = 0.12; c.strokeStyle = OUT; c.stroke();
+    c.beginPath(); c.arc(g.FA[0], g.FA[1], d.rf + 0.08, 0.62, 2.18); c.lineWidth = 0.085; c.strokeStyle = k[0]; c.stroke();
+    blob(c, [g.HT[0] + 0.0, g.HT[1] + 0.16, g.HT[0] + 0.16, g.HT[1] + 0.12, g.HT[0] + 0.2, g.HT[1] - 0.12, g.HT[0] + 0.04, g.HT[1] - 0.16], k[1]);
+  },
+  wheel: [{ tyre: 0.4, knob: 1, type: 'disc', fill: '#fff8ee' }, { tyre: 0.4, knob: 1, type: 'disc', fill: '#fff8ee' }], forkLower: 0.36, clamp: 0.17, bars: 0.4 };
+
+/* drag bike: long, low, a slick the size of a barrel and a wheelie bar out the back */
+KIND.drag = {
+  under: function (c, d, g) {
+    var k = d.col;
+    // wheelie bar
+    tube(c, [g.RA[0], g.RA[1], -0.46, 0.14], 0.026, CHROME, 0.022); tube(c, [0.1, g.RA[1] + 0.2, -0.46, 0.14], 0.02, CHROME, 0.02);
+    circ(c, -0.46, 0.13, 0.07, RUB, 0.02); circ(c, -0.46, 0.13, 0.025, CHROME, 0);
+    // frame rails
+    tube(c, [g.HT[0] - 0.02, g.HT[1] - 0.1, 1.4, 0.36, 0.5, 0.34, g.RA[0], g.RA[1]], 0.045, FRAME);
+    tube(c, [g.HT[0] - 0.03, g.HT[1] - 0.02, 1.2, 0.74, 0.44, 0.68, g.RA[0], g.RA[1] + 0.04], 0.04, FRAME);
+    chain(c, { SP: [0.86, 0.44], RA: g.RA });
+    // big twin with a blower sitting on top
+    cases(c, 1.0, 0.44, 0.15);
+    fins(c, 0.96, 0.54, 0.88, 0.72, 0.07, 5); fins(c, 1.12, 0.54, 1.24, 0.7, 0.07, 5);
+    shape(c, [0.94, 0.74, 1.26, 0.74, 1.3, 0.86, 0.9, 0.86], '#30333c');
+    shape(c, [0.98, 0.86, 1.2, 0.86, 1.3, 0.98, 1.14, 0.98], CHROME, 0.02);
+    // four short pipes
+    var i; for (i = 0; i < 4; i++) tube(c, [0.82 + i * 0.1, 0.4, 0.6 + i * 0.1, 0.24, 0.46 + i * 0.1, 0.2], 0.035, i % 2 ? CHROME : '#c9a56a', 0.022);
+  },
+  over: function (c, d, g) {
+    var k = d.col;
+    // tail hump with the parachute pack on the back
+    blob(c, [0.16, 0.74, 0.14, 0.98, 0.34, 1.0, 0.52, 0.86, 0.66, 0.84, 0.66, 0.74], k[0]);
+    shape(c, [0.06, 0.78, 0.18, 0.78, 0.18, 0.94, 0.06, 0.92], k[2], 0.02);
+    line(c, [0.2, 0.86, 0.5, 0.8], 0.03, k[1]);
+    // long seat and tank
+    blob(c, [0.6, 0.78, 0.9, 0.86, 1.3, 0.88, 1.66, 0.84, 1.72, 0.74, 1.3, 0.72, 0.62, 0.72], k[0]);
+    blob(c, [0.62, 0.8, 0.92, 0.84, 0.94, 0.78, 0.64, 0.75], '#2a2118', 0.018);
+    line(c, [1.0, 0.8, 1.64, 0.79], 0.028, k[1]);
+    // bullet nose
+    blob(c, [g.HT[0] - 0.18, g.HT[1] + 0.02, g.HT[0] - 0.06, g.HT[1] + 0.22, g.HT[0] + 0.18, g.HT[1] + 0.12, g.HT[0] + 0.2, g.HT[1] - 0.1, g.HT[0] - 0.04, g.HT[1] - 0.16], k[0]);
+    shape(c, [g.HT[0] - 0.04, g.HT[1] + 0.2, g.HT[0] + 0.08, g.HT[1] + 0.16, g.HT[0] - 0.02, g.HT[1] + 0.36, g.HT[0] - 0.1, g.HT[1] + 0.34], 'rgba(120,190,255,0.5)', 0.016);
+    circ(c, g.HT[0] + 0.14, g.HT[1], 0.045, '#fff3b8', 0.014);
+    // the slick wears a hugging mudguard
+    c.beginPath(); c.arc(g.RA[0], g.RA[1], d.rr + 0.05, 1.0, 2.5); c.lineWidth = 0.08; c.strokeStyle = OUT; c.stroke();
+    c.beginPath(); c.arc(g.RA[0], g.RA[1], d.rr + 0.05, 1.02, 2.48); c.lineWidth = 0.05; c.strokeStyle = k[0]; c.stroke();
+  },
+  wheel: [{ tyre: 0.46, knob: 0, type: 'disc', fill: '#2b2f3a' }, { tyre: 0.2, knob: 0, type: 'spoke', spokes: 12 }], forkLower: 0.24, clamp: 0.08, bars: 0, chromeFork: true };
+
 /* ------------------------------ geometry ------------------------------ */
 var pose = {}, J = [0, 0, 0, 0];
 A.geom = function (d, RA, FA) {
@@ -493,6 +596,7 @@ function limb(ctx, x0, y0, x1, y1, x2, y2, w1, w2, col) {
   ctx.lineWidth = w2; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
 }
 A.helmet = function (ctx, x, y, r, ang, d, kind) {
+  if (d._skin) { A.head(ctx, x, y, r, ang, d._skin, d._t); return; }
   var s = d.suit, c = d.col;
   ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(r, r);
   var lw = 0.028 / r;
@@ -529,60 +633,90 @@ A.helmet = function (ctx, x, y, r, ang, d, kind) {
 };
 
 /* layer 0 = the far arm and leg (behind the bike), 1 = body, 2 = near leg and arm */
+function bone(ctx, J, w) { line(ctx, [J[0] * 0.15 + J[2] * 0.85, J[1] * 0.15 + J[3] * 0.85, J[0], J[1]], w, '#f1ecdc'); }
 A.rider = function (ctx, d, v, layer) {
-  var R = d.rider, sc = R.scale || 1, s = d.suit;
+  var R = d.rider, sc = R.scale || 1, s = d.suit, sk = d._skin || null, t = d._t || 0;
   RR.riderPose(d, v.lp || 0, v.stand || 0, pose);
   var hx = pose.hipX, hy = pose.hipY - (v.crouch || 0) * 0.06, sx = pose.shX, sy = pose.shY - (v.crouch || 0) * 0.07;
   var gx = R.grip[0], gy = R.grip[1] + 0.02, px = R.peg[0], py = R.peg[1] + 0.07;
+  if (sk && sk.ghost) ctx.globalAlpha = 0.7;
   if (layer === 0) {
     var dk = shade(s[1], 0.62), dj = shade(s[0], 0.62);
     ik(hx + 0.03, hy, px + 0.05, py + 0.03, 0.44 * sc, 0.46 * sc, 1, J);
     limb(ctx, hx + 0.03, hy, J[0], J[1], J[2], J[3], 0.13 * sc, 0.105 * sc, dk);
     ik(sx + 0.03, sy - 0.02, gx + 0.03, gy, 0.30 * sc, 0.29 * sc, -1, J);
     limb(ctx, sx + 0.03, sy - 0.02, J[0], J[1], J[2], J[3], 0.085 * sc, 0.075 * sc, dj);
+    ctx.globalAlpha = 1;
     return;
   }
+  var tx = sx - hx, ty = sy - hy, tl = Math.sqrt(tx * tx + ty * ty) || 1, nx = -ty / tl, ny = tx / tl;
   if (layer === 1) {
-    // torso
-    var tx = sx - hx, ty = sy - hy, tl = Math.sqrt(tx * tx + ty * ty) || 1, nx = -ty / tl, ny = tx / tl;
     var w0 = 0.11 * sc, w1 = 0.125 * sc;
+    if (sk && sk.cape) {
+      // a cape off the shoulders, flapping behind
+      var wv = Math.sin(t * 9) * 0.06, wv2 = Math.sin(t * 9 + 1.3) * 0.08;
+      blob(ctx, [sx + nx * w1, sy + ny * w1, sx - 0.02, sy + 0.04, hx - 0.5 * sc, hy + 0.34 * sc + wv, hx - 0.86 * sc, hy + 0.1 * sc + wv2, hx - 0.6 * sc, hy - 0.16 * sc - wv, hx + nx * w0, hy + ny * w0], sk.cape);
+    }
+    if (sk && sk.pack) blob(ctx, [hx + nx * 0.1 + tx * 0.25, hy + ny * 0.1 + ty * 0.25, hx + nx * 0.3 + tx * 0.3, hy + ny * 0.3 + ty * 0.3, hx + nx * 0.3 + tx * 0.95, hy + ny * 0.3 + ty * 0.95, hx + nx * 0.1 + tx * 0.98, hy + ny * 0.1 + ty * 0.98], sk.pack);
+    // torso
     blob(ctx, [hx + nx * w0 - tx / tl * 0.06, hy + ny * w0 - ty / tl * 0.06, sx + nx * w1 + tx / tl * 0.05, sy + ny * w1 + ty / tl * 0.05,
       sx - nx * w1 + tx / tl * 0.07, sy - ny * w1 + ty / tl * 0.07, hx - nx * w0 - tx / tl * 0.07, hy - ny * w0 - ty / tl * 0.07], s[0]);
-    // chest stripe
-    ctx.lineWidth = 0.035 * sc; ctx.strokeStyle = s[1];
-    ctx.beginPath(); ctx.moveTo(hx + tx * 0.5 + nx * w0 * 0.85, hy + ty * 0.5 + ny * w0 * 0.85); ctx.lineTo(hx + tx * 0.62 - nx * w0 * 0.85, hy + ty * 0.62 - ny * w0 * 0.85); ctx.stroke();
+    if (sk && sk.bones) {
+      for (var rb = 0; rb < 3; rb++) { var f = 0.42 + rb * 0.2; line(ctx, [hx + tx * f + nx * w0 * 0.7, hy + ty * f + ny * w0 * 0.7, hx + tx * (f + 0.06) - nx * w0 * 0.75, hy + ty * (f + 0.06) - ny * w0 * 0.75], 0.03 * sc, '#f1ecdc'); }
+      line(ctx, [hx + tx * 0.2, hy + ty * 0.2, hx + tx * 0.95, hy + ty * 0.95], 0.03 * sc, '#f1ecdc');
+    } else if (sk && sk.stars) {
+      for (var st = 0; st < 5; st++) { var fs = 0.15 + st * 0.18, tw = 0.5 + 0.5 * Math.sin(t * 5 + st * 2.1), o2 = (RR.Render.hash(st * 7.7) - 0.5) * 1.4;
+        ctx.globalAlpha = 0.35 + 0.65 * tw; circ(ctx, hx + tx * fs + nx * w0 * o2, hy + ty * fs + ny * w0 * o2, 0.014 + 0.012 * tw, st % 2 ? '#ffffff' : '#9fe8ff', 0); }
+      ctx.globalAlpha = 1;
+    } else {
+      // chest stripe
+      ctx.lineWidth = 0.035 * sc; ctx.strokeStyle = s[1];
+      ctx.beginPath(); ctx.moveTo(hx + tx * 0.5 + nx * w0 * 0.85, hy + ty * 0.5 + ny * w0 * 0.85); ctx.lineTo(hx + tx * 0.62 - nx * w0 * 0.85, hy + ty * 0.62 - ny * w0 * 0.85); ctx.stroke();
+    }
     // neck and helmet
     tube(ctx, [sx, sy, pose.headX, pose.headY], 0.07 * sc, '#2b2f38', 0.03);
     A.helmet(ctx, pose.headX, pose.headY, 0.15 * sc, -(pose.headA - 0.22) * 0.6 + (v.headTilt || 0), d, d.kind);
+    ctx.globalAlpha = 1;
     return;
   }
   // near leg, boot, near arm, glove
   ik(hx, hy, px, py, 0.44 * sc, 0.46 * sc, 1, J);
   limb(ctx, hx, hy, J[0], J[1], J[2], J[3], 0.14 * sc, 0.115 * sc, s[1]);
+  if (sk && sk.bones) { line(ctx, [hx, hy, J[0], J[1]], 0.035 * sc, '#f1ecdc'); bone(ctx, J, 0.03 * sc); }
   circ(ctx, J[0], J[1], 0.06 * sc, s[2], 0.02);                                   // knee guard
   blob(ctx, [px - 0.1 * sc, py + 0.1 * sc, px + 0.02 * sc, py + 0.12 * sc, px + 0.2 * sc, py - 0.02 * sc, px + 0.21 * sc, py - 0.09 * sc, px - 0.1 * sc, py - 0.1 * sc], s[2]);
   ik(sx, sy - 0.03, gx, gy, 0.30 * sc, 0.29 * sc, -1, J);
   limb(ctx, sx, sy - 0.03, J[0], J[1], J[2], J[3], 0.095 * sc, 0.08 * sc, s[0]);
+  if (sk && sk.bones) { line(ctx, [sx, sy - 0.03, J[0], J[1]], 0.03 * sc, '#f1ecdc'); bone(ctx, J, 0.026 * sc); }
   circ(ctx, sx, sy - 0.02, 0.07 * sc, s[1], 0.022);                                // shoulder pad
   circ(ctx, gx, gy, 0.05 * sc, s[2], 0.02);                                        // glove
+  ctx.globalAlpha = 1;
 };
 
 /* ------------------------------ whole bike ------------------------------ */
-/* v: { RA, FA, spinR, spinF, rateR, rateF, lp, stand, crouch, rider (bool), boost, t } */
-A.bike = function (ctx, d, v) {
+/* v: { RA, FA, spinR, spinF, rateR, rateF, lp, stand, crouch, rider (bool), look: { paint, rider }, t } */
+A.bike = function (ctx, d0, v) {
+  var d = v.look && A.dress ? A.dress(ctx, d0, v.look, v.t || 0) : d0, p = d._paint || null;
   var K = KIND[d.kind], g = A.geom(d, v.RA, v.FA), c = d.col;
+  g.wrecked = v.rider === false && v.wrecked;
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   if (v.rider !== false) A.rider(ctx, d, v, 0);
   var w0 = K.wheel[0], w1 = K.wheel[1];
-  w0.rim = w0.rim || (d.kind === 'electric' ? '#3a4050' : CHROME); w1.rim = w1.rim || w0.rim;
-  if (d.kind === 'mx' || d.kind === 'trials' || d.kind === 'enduro' || d.kind === 'climber') { w0.rim = w1.rim = '#2b2f38'; }
-  if (d.kind === 'sport') { w0.rim = w1.rim = '#e0b23a'; }
-  if (d.kind === 'fat' || d.kind === 'mini') { w0.rim = w1.rim = c[2]; }
+  var rim = d.kind === 'electric' ? '#3a4050' : CHROME;
+  if (d.kind === 'mx' || d.kind === 'trials' || d.kind === 'enduro' || d.kind === 'climber') rim = '#2b2f38';
+  if (d.kind === 'sport') rim = '#e0b23a';
+  if (d.kind === 'fat' || d.kind === 'mini') rim = typeof c[2] === 'string' ? c[2] : CHROME;
+  if (d.kind === 'penny') rim = typeof c[1] === 'string' ? c[1] : CHROME;
+  if (d.kind === 'drag') rim = typeof c[1] === 'string' ? c[1] : CHROME;
+  if (p && p.rim) rim = p.rim;
+  w0.rim = w1.rim = rim;
+  w0.glow2 = w1.glow2 = p ? A.paintGlow(p, v.t || 0) : null;
   A.wheel(ctx, g.RA[0], g.RA[1], d.rr, v.spinR || 0, w0, v.rateR || 0);
   A.wheel(ctx, g.FA[0], g.FA[1], d.rf, v.spinF || 0, w1, v.rateF || 0);
   K.under(ctx, d, g);
   fork(ctx, g, K.chromeFork ? CHROME : '#2b2f38', K.guard ? c[0] : null, K.goldFork ? '#e0b23a' : CHROME);
   K.over(ctx, d, g);
+  if (p && p.glint && A.glints) A.glints(ctx, d, p, v.t || 0);
   bars(ctx, g, K.chromeFork ? CHROME : '#2b2f38', K.bars);
   if (v.rider !== false) { A.rider(ctx, d, v, 1); A.rider(ctx, d, v, 2); }
 };
@@ -600,6 +734,9 @@ A.exhaust = function (d) {
     case 'electric': return null;
     case 'climber': return [0.5, 0.9];
     case 'fat': return [0.0, 0.98];
+    case 'penny': return [-0.16, 1.0];
+    case 'drag': return [0.44, 0.2];
+    case 'bumper': return [0.0, 0.95];
     default: return [0.0, 0.88];
   }
 };

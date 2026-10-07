@@ -167,11 +167,11 @@ if (require.main === module) (async () => {
   if (args.includes('--json')) fs.writeFileSync(arg('--json'), JSON.stringify(table));
   if (args.includes('--write')) {
     // Star times come from the robot's clean, no-flips run on the starter bike.
-    const f3 = [1.07, 1.03, 1.0, 0.97, 0.95], f2 = [1.35, 1.3, 1.25, 1.22, 1.2], rows = [];
+    const F3 = { dust: 1.07, pine: 1.03, race: 1.02, frost: 1.0, cinder: 0.97, orbit: 0.95 }, F2 = { dust: 1.35, pine: 1.3, race: 1.28, frost: 1.25, cinder: 1.22, orbit: 1.2 }, rows = [];
     for (let t = 0; t < RR.TRACK_COUNT; t++) {
       const base = table[t].scrapper, w = Math.floor(t / 8);
       if (!base) throw new Error('starter bike cannot finish track ' + t);
-      const s3 = Math.round(base * f3[w] * 10) / 10, s2 = Math.round(base * f2[w] * 10) / 10;
+      const wid = RR.WORLDS[w].id, s3 = Math.round(base * F3[wid] * 10) / 10, s2 = Math.round(base * F2[wid] * 10) / 10;
       const can = Object.keys(table[t]).filter(id => table[t][id] && table[t][id] <= s3).length;
       rows.push(`  [${s3.toFixed(1)}, ${s2.toFixed(1)}]${t < RR.TRACK_COUNT - 1 ? ',' : ' '}   // ${String(t + 1).padStart(2)} ${RR.getTrack(t).name}: robot on starter ${base.toFixed(1)}s, ${can} of ${Object.keys(table[t]).length} bikes beat three stars without a single flip`);
     }

@@ -26,9 +26,14 @@ RR.MATS = [
   { id: 'wood',  mu: 0.95, roll: 0.012 },
   { id: 'steel', mu: 1.15, roll: 0.010 },
   { id: 'snow',  mu: 0.62, roll: 0.030 },
-  { id: 'dust',  mu: 0.92, roll: 0.020 }
+  { id: 'dust',  mu: 0.92, roll: 0.020 },
+  { id: 'tarmac', mu: 1.12, roll: 0.008 },
+  { id: 'kerb',  mu: 1.00, roll: 0.014 },
+  { id: 'oil',   mu: 0.13, roll: 0.004 },
+  { id: 'boost', mu: 1.20, roll: 0.006 },    // boost strip: see tick()
+  { id: 'rubber', mu: 1.05, roll: 0.02 }
 ];
-RR.MAT = { dirt: 0, rock: 1, ice: 2, sand: 3, wood: 4, steel: 5, snow: 6, dust: 7 };
+RR.MAT = { dirt: 0, rock: 1, ice: 2, sand: 3, wood: 4, steel: 5, snow: 6, dust: 7, tarmac: 8, kerb: 9, oil: 10, boost: 11, rubber: 12 };
 
 /* ------------------------------------------------------------------ */
 /* Collision geometry: directed line segments, solid on the right-hand */
@@ -170,6 +175,12 @@ RR.queryCircle = query;
 /* Bike set-up: turns a readable bike description into physics numbers */
 /* ------------------------------------------------------------------ */
 var G0 = 9.81;
+var LEAN_SPIN = 0.86;      // top flip rate, as a share of the bike's listed figure
+var LEAN_AIR = 1.5;        // how much harder the rider can heave in the air than on the ground
+var LEAN_FLOOR = 0.55;     // share of full strength available the instant the button goes down
+var LEAN_RATE = 8;         // how fast the rest arrives (per second)
+var LEAN_STOP = 9;         // after letting go in the air the spin is braked this hard (per second)...
+var LEAN_STOP_T = 0.3;     // ...for this long, so the bike stays where it was put
 RR.prepBike = function (def) {
   var b = { def: def, id: def.id };
   var mw = [def.wheelMass[0], def.wheelMass[1]];
@@ -209,7 +220,9 @@ RR.prepBike = function (def) {
   var Isys = b.I + mw[0] * (def.com[0] * def.com[0] + 0.2) + mw[1] * (Math.pow(def.wb - def.com[0], 2) + 0.2);
   b.Isys = Isys;
   b.leanTq = def.leanAcc * Isys;
-  b.spin = def.spin; b.groundSpin = def.groundSpin || 2.3;
+  // In the air the rider gets going quickly but tops out at a calmer flip rate, and the
+  // bike stops turning soon after the lean is let go (see LEAN_* below).
+  b.spin = def.spin * LEAN_SPIN; b.groundSpin = def.groundSpin || 2.3;
   b.airDamp = def.airDamp == null ? 1.1 : def.airDamp;
   b.leanGround = def.leanGround == null ? 0.75 : def.leanGround;
   b.reaction = def.reaction == null ? 1 : def.reaction;
@@ -217,6 +230,7 @@ RR.prepBike = function (def) {
   b.rocket = (def.rocket || 0) * b.Mtot * G0; b.rocketV = def.rocketV || 24;
   b.tip = Math.atan2(def.com[0], def.com[1] - rr) + 0.08;   // pitch where the bike balances on the rear wheel
   b.ebrake = def.ebrake == null ? 0.05 : def.ebrake;
+  b.bonk = def.bonk || 0;
   b.pts = [];
   for (i = 0; i < def.body.length; i++) b.pts.push([def.body[i][0] - def.com[0], def.body[i][1] - def.com[1], def.body[i][2]]);
   b.headR = 0.15 * (def.rider.scale || 1);
@@ -290,7 +304,7 @@ RR.resetSim = function (s) {
   }
   for (i = 0; i < s.gates.length; i++) s.gates[i] = 0;
   s.time = 0; s.started = false; s.crashed = false; s.finished = false; s.crashCause = '';
-  s.lp = 0; s.air = false; s.airT = 0; s.rot = 0; s.boost = 0; s.scrape = 0; s.thr = 0;
+  s.lp = 0; s.pl = 0; s.relT = 0; s.padT = 0; s.bonks = 0; s.bonkT = 0; s.air = false; s.airT = 0; s.rot = 0; s.boost = 0; s.scrape = 0; s.thr = 0;
   s.flips = 0; s.bestAir = 0; s.jumpX = 0; s.bestJump = 0; s.maxSpeed = 0; s.wheelieT = 0;
   s.finishTime = 0; s.sinceCrash = 0; s.driveF = 0; s.body = false;
   s._pvx = [0, 0]; s._pvy = [0, 0]; s.pendFlip = null;
@@ -414,16 +428,33 @@ function substep(s, inp, dt) {
   if (!s.crashed && !s.finished) {
     RR.riderPose(b.def, s.lp, 0, pose);
     var hx = pose.headX - b.com[0], hy = pose.headY - b.com[1];
-    var hwx = s.x + ca * hx - sa * hy, hwy = s.y + sa * hx + ca * hy;
-    if (query(col, hwx, hwy, b.headR, s.gates, C) > 0) {
-      for (k = 0; k < C.n; k++) if (C.pen[k] > 0.015) { s._crash = 'head'; break; }
+    var hrx = ca * hx - sa * hy, hry = sa * hx + ca * hy, hpen = 0, hnx = 0, hny = 1;
+    if (query(col, s.x + hrx, s.y + hry, b.headR, s.gates, C) > 0) {
+      for (k = 0; k < C.n; k++) if (C.pen[k] > 0.015 && C.pen[k] > hpen) { hpen = C.pen[k]; hnx = C.nx[k]; hny = C.ny[k]; }
     }
     // shoulders and back count too: landing on your back is not a save
-    if (!s._crash) {
+    if (!hpen) {
       var bx2 = pose.shX - b.com[0] - 0.04, by2 = pose.shY - b.com[1] - 0.05;
-      if (query(col, s.x + ca * bx2 - sa * by2, s.y + sa * bx2 + ca * by2, b.headR * 1.05, s.gates, C) > 0) {
-        for (k = 0; k < C.n; k++) if (C.pen[k] > 0.03) { s._crash = 'head'; break; }
+      hrx = ca * bx2 - sa * by2; hry = sa * bx2 + ca * by2;
+      if (query(col, s.x + hrx, s.y + hry, b.headR * 1.05, s.gates, C) > 0) {
+        for (k = 0; k < C.n; k++) if (C.pen[k] > 0.03 && C.pen[k] > hpen) { hpen = C.pen[k]; hnx = C.nx[k]; hny = C.ny[k]; }
       }
+    }
+    if (hpen) {
+      var hvx = s.vx - s.w * hry, hvy = s.vy + s.w * hrx, hvn = hvx * hnx + hvy * hny, hcr = hrx * hny - hry * hnx;
+      if (s.bonkT > 0) {
+        // still bouncing off the roll hoop: it pushes like the frame does
+        var HN = KB * hpen - CB * hvn;
+        if (HN > 0) { if (HN > 60000) HN = 60000; fx += HN * hnx; fy += HN * hny; tq += hcr * HN; }
+      } else if (b.bonk > s.bonks) {
+        // a bike with a roll hoop gets a free bounce off its head, once a run
+        s.bonks++; s.bonkT = 0.5; s._bonk = 1;
+        var want = -0.55 * hvn; if (want < 3.4) want = 3.4;
+        var hj = (want - hvn) / (1 / b.Mtot + hcr * hcr / b.Isys), hdv = hj / b.Mtot, hdw = hcr * hj / b.Isys;
+        if (hdw > 6) hdw = 6; else if (hdw < -6) hdw = -6;
+        s.vx += hnx * hdv; s.vy += hny * hdv; s.w += hdw;
+        for (i = 0; i < 2; i++) { s.wvx[i] += hnx * hdv; s.wvy[i] += hny * hdv; }
+      } else s._crash = 'head';
     }
   }
 
@@ -438,14 +469,14 @@ function substep(s, inp, dt) {
         tl = dw * b.Isys * 14;
         // the rider has to shift their weight first, so a quick tap is a nudge and a hold is a full heave
         var ramp = L < 0 ? -s.lp : s.lp; ramp = ramp < 0 ? 0 : ramp > 1 ? 1 : ramp;
-        var tm = b.leanTq * (L < 0 ? -L : L) * (0.3 + 0.7 * ramp);
+        var tm = b.leanTq * (grounded ? 1 : LEAN_AIR) * (L < 0 ? -L : L) * (LEAN_FLOOR + (1 - LEAN_FLOOR) * ramp);
         if (tl > tm) tl = tm; else if (tl < -tm) tl = -tm;
       }
       // Leaning forward pulls a wheelie back down at full strength, but once the front tyre is on
       // the ground the rider cannot lever the bike over its own front wheel, so it does much less.
       if (grounded) tl *= L > 0 ? (s.airW[1] > 0.03 ? Math.max(1, b.leanGround) : 0.3) : b.leanGround;
       tq += tl;
-    } else if (!grounded) tq -= s.w * b.airDamp * b.Isys;
+    } else if (!grounded) tq -= s.w * (s.relT > 0 ? LEAN_STOP : b.airDamp) * b.Isys;
     if (b.rocket && gas) {
       var rk = b.rocket * (boost ? 1.3 : 1), fwd = s.vx * ca + s.vy * sa;
       var rl = (b.rocketV * (boost ? 1.15 : 1) - fwd) / 4;
@@ -481,7 +512,8 @@ function substep(s, inp, dt) {
 /* One 120th of a second of game time. */
 function tick(s, inp, settling) {
   var b = s.b, i, tr = s.track;
-  s._gnd = [0, 0]; s._load = [0, 0]; s._slip = [0, 0]; s._cn = [0, 0]; s._scrape = 0; s._body = 0; s._crash = '';
+  s._gnd = [0, 0]; s._load = [0, 0]; s._slip = [0, 0]; s._cn = [0, 0]; s._scrape = 0; s._body = 0; s._crash = ''; s._bonk = 0;
+  if (s.bonkT > 0) s.bonkT -= DT;
   // loop gates: the half of a loop you are not on is switched off so you can ride through it
   for (i = 0; i < tr.loops.length; i++) {
     var lp = tr.loops[i];
@@ -489,7 +521,10 @@ function tick(s, inp, settling) {
     else if (s.x < lp.cx - lp.R - 1.5) s.gates[i] = 0;
   }
   var tgt = (s.crashed || s.finished) ? 0 : inp.lean;
-  s.lp += clamp(tgt - s.lp, -DT * 5.5, DT * 5.5);
+  s.lp += clamp(tgt - s.lp, -DT * LEAN_RATE, DT * LEAN_RATE);
+  if (tgt === 0 && s.pl !== 0) s.relT = LEAN_STOP_T;
+  if (s.relT > 0) s.relT -= DT;
+  s.pl = tgt;
   for (i = 0; i < NSUB; i++) substep(s, inp, H);
 
   var wasAir = s.air;
@@ -506,6 +541,7 @@ function tick(s, inp, settling) {
     s.slip[i] = s._cn[i] ? s._slip[i] / s._cn[i] : 0;
   }
   s.scrape = s._scrape / NSUB;
+  if (s._bonk && !settling) s.events.push({ t: 'bonk', x: s.x, y: s.y });
   s.body = s._body === 1;
   if (settling) return;
   var air = !s.gnd[0] && !s.gnd[1] && !s.body;
@@ -534,6 +570,12 @@ function tick(s, inp, settling) {
     }
   }
   if (s.boost > 0) s.boost -= DT;
+  // boost strip under the driven wheel: the same shove a landed flip gives, for as long as you are on it and a bit after
+  if (s.padT > 0) s.padT -= DT;
+  if (s.gnd[0] && s.mat[0] === 11 && !s.crashed && !s.finished) {
+    if (s.padT <= 0) s.events.push({ t: 'pad', x: s.wx[0], y: s.wy[0] });
+    s.padT = 0.5; if (s.boost < 1.25) s.boost = 1.25;
+  }
   if (!s.crashed && s.gnd[0] && !s.gnd[1] && s.airW[1] > 0.25) s.wheelieT += DT;
 
   if (s.started && !s.finished && !s.crashed) s.time += DT;
@@ -570,7 +612,7 @@ function tick(s, inp, settling) {
 RR.tick = function (s, inp) { tick(s, inp, false); };
 
 /* Copy of everything that changes, so the test bot can rewind. */
-var NUMS = ['x', 'y', 'a', 'vx', 'vy', 'w', 'time', 'lp', 'airT', 'rot', 'boost', 'flips', 'bestAir', 'jumpX', 'bestJump', 'maxSpeed', 'wheelieT', 'finishTime', 'sinceCrash', 'driveF'];
+var NUMS = ['x', 'y', 'a', 'vx', 'vy', 'w', 'time', 'lp', 'airT', 'rot', 'boost', 'flips', 'bestAir', 'jumpX', 'bestJump', 'maxSpeed', 'wheelieT', 'finishTime', 'sinceCrash', 'driveF', 'pl', 'relT', 'padT', 'bonks', 'bonkT'];
 var ARRS = ['wx', 'wy', 'wvx', 'wvy', 'wa', 'ww', 'comp', 'compV', 'gnd', 'load', 'slip', 'mat', 'nrmX', 'nrmY', 'bot', 'airW', '_pvx', '_pvy'];
 RR.snapshot = function (s) {
   var o = {}, i;

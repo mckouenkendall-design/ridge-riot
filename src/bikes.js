@@ -19,7 +19,7 @@ function body(com, rr, wb, top) {
 
 RR.BIKES = [
   {
-    id: 'scrapper', name: 'Scrapper 125', kind: 'mx', tag: 'The honest starter',
+    id: 'scrapper', name: 'Scrapper 125', kind: 'mx', tag: 'The honest starter', wipe: 'stars',
     blurb: 'Light two-stroke dirt bike. Does everything well enough and nothing badly.',
     mass: 172, kgyr: 0.46, wb: 1.44, rr: 0.33, rf: 0.345, com: [0.63, 0.80], wheelMass: [11, 9], rake: 27, swing: 10,
     sus: [{ travel: 0.27, freq: 2.0, sag: 0.3, zc: 0.42, zr: 0.95 }, { travel: 0.28, freq: 1.95, sag: 0.28, zc: 0.40, zr: 0.90 }],
@@ -30,7 +30,7 @@ RR.BIKES = [
     unlock: { type: 'free' }
   },
   {
-    id: 'mosquito', name: 'Mosquito 50', kind: 'mini', tag: 'Tiny, twitchy, flips for fun',
+    id: 'mosquito', name: 'Mosquito 50', kind: 'mini', tag: 'Tiny, twitchy, flips for fun', wipe: 'pop',
     blurb: 'A pit bike with wheels the size of dinner plates. Spins like a coin, hates big bumps.',
     mass: 126, kgyr: 0.37, wb: 1.02, rr: 0.225, rf: 0.225, com: [0.45, 0.68], wheelMass: [5.5, 5], rake: 25, swing: 8,
     sus: [{ travel: 0.13, freq: 2.7, sag: 0.3, zc: 0.45, zr: 0.9 }, { travel: 0.13, freq: 2.7, sag: 0.3, zc: 0.42, zr: 0.9 }],
@@ -41,7 +41,7 @@ RR.BIKES = [
     unlock: { type: 'stars', n: 6 }
   },
   {
-    id: 'dune', name: 'Dune Runner 450', kind: 'enduro', tag: 'More power, softer legs',
+    id: 'dune', name: 'Dune Runner 450', kind: 'enduro', tag: 'More power, softer legs', wipe: 'tumble',
     blurb: 'A big single-cylinder thumper with long, forgiving suspension. Soaks up bad landings.',
     mass: 200, kgyr: 0.48, wb: 1.50, rr: 0.34, rf: 0.36, com: [0.66, 0.84], wheelMass: [12, 10], rake: 27.5, swing: 10,
     sus: [{ travel: 0.31, freq: 1.75, sag: 0.3, zc: 0.45, zr: 1.0 }, { travel: 0.32, freq: 1.7, sag: 0.28, zc: 0.42, zr: 0.95 }],
@@ -52,7 +52,7 @@ RR.BIKES = [
     unlock: { type: 'stars', n: 14 }
   },
   {
-    id: 'goat', name: 'Billy Goat', kind: 'trials', tag: 'Climbs anything, slowly',
+    id: 'goat', name: 'Billy Goat', kind: 'trials', tag: 'Climbs anything, slowly', wipe: 'goat',
     blurb: 'Trials bike. Glue for tyres, huge low-down pull and it turns on a coin. Runs out of puff early.',
     mass: 148, kgyr: 0.42, wb: 1.32, rr: 0.34, rf: 0.35, com: [0.61, 0.72], wheelMass: [9, 8], rake: 24, swing: 9,
     sus: [{ travel: 0.19, freq: 2.2, sag: 0.3, zc: 0.4, zr: 0.9 }, { travel: 0.20, freq: 2.2, sag: 0.3, zc: 0.4, zr: 0.9 }],
@@ -60,10 +60,10 @@ RR.BIKES = [
     rider: { seat: [0.36, 0.86], peg: [0.50, 0.36], grip: [0.92, 1.12], scale: 1, torso: 0.34, stand: 0.5 },
     col: ['#3fb56b', '#f5f1e6', '#20242e'], suit: ['#20242e', '#3fb56b', '#f5f1e6'],
     snd: { type: 'trial', pitch: 0.9, gears: 4 },
-    unlock: { type: 'world', n: 1, text: 'Finish every Dustbowl track' }
+    unlock: { type: 'world', w: 'dust', text: 'Finish every Dustbowl track' }
   },
   {
-    id: 'biscotti', name: 'Biscotti 50', kind: 'scooter', tag: 'It should not be here',
+    id: 'biscotti', name: 'Biscotti 50', kind: 'scooter', tag: 'It should not be here', wipe: 'birds',
     blurb: 'A town scooter. Tiny wheels, all the weight at the back, wheelies if you look at it. Surprisingly fun.',
     mass: 176, kgyr: 0.44, wb: 1.27, rr: 0.215, rf: 0.215, com: [0.50, 0.62], wheelMass: [6.5, 5.5], rake: 26, swing: 5,
     sus: [{ travel: 0.10, freq: 2.6, sag: 0.3, zc: 0.45, zr: 0.9 }, { travel: 0.10, freq: 2.5, sag: 0.3, zc: 0.45, zr: 0.9 }],
@@ -74,7 +74,19 @@ RR.BIKES = [
     unlock: { type: 'flips', n: 15, text: 'Land 15 flips in total' }
   },
   {
-    id: 'mule', name: 'Iron Mule', kind: 'chopper', tag: 'Heavy metal, never in a hurry',
+    id: 'penny', name: 'Penny Dreadful', kind: 'penny', tag: 'One huge wheel, one afterthought', wipe: 'paper',
+    blurb: 'A motorised penny-farthing. The big front wheel rolls over anything. You sit a long way up, and it knows it.',
+    mass: 150, kgyr: 0.56, wb: 1.08, rr: 0.20, rf: 0.56, com: [0.68, 1.00], wheelMass: [7.5, 13], rake: 10, swing: 8,
+    sus: [{ travel: 0.08, freq: 2.7, sag: 0.3, zc: 0.45, zr: 0.9 }, { travel: 0.11, freq: 2.4, sag: 0.3, zc: 0.42, zr: 0.9 }],
+    accel: 0.50, vp: 7, vmax: 13.4, grip: 0.98, brake: 0.5, leanAcc: 14.5, spin: 5.7, cda: 0.7,
+    rider: { seat: [0.60, 1.26], peg: [1.00, 0.64], grip: [1.02, 1.52], scale: 1, torso: 0.16 },
+    body: [[0.5, 0.42, 0.1], [0.2, 1.15, 0.09], [0.86, 1.34, 0.09], [0.6, 1.2, 0.1]],
+    col: ['#1f3d36', '#c9a24a', '#f1e6cc'], suit: ['#5a3a2a', '#c9b98a', '#2a2118'],
+    snd: { type: 'scoot', pitch: 0.72, gears: 0 },
+    unlock: { type: 'dist', n: 20000, text: 'Ride 20 km in total' }
+  },
+  {
+    id: 'mule', name: 'Iron Mule', kind: 'chopper', tag: 'Heavy metal, never in a hurry', wipe: 'tomb',
     blurb: 'A long, low chopper. Rock steady and nearly impossible to tip over. Flipping it takes commitment.',
     mass: 318, kgyr: 0.62, wb: 1.86, rr: 0.33, rf: 0.37, com: [0.80, 0.66], wheelMass: [16, 11], rake: 40, swing: 6,
     sus: [{ travel: 0.11, freq: 2.2, sag: 0.3, zc: 0.5, zr: 1.0 }, { travel: 0.17, freq: 2.0, sag: 0.3, zc: 0.45, zr: 0.95 }],
@@ -85,7 +97,7 @@ RR.BIKES = [
     unlock: { type: 'stars', n: 30 }
   },
   {
-    id: 'bandit', name: 'Cafe Bandit', kind: 'cafe', tag: 'Fast, stiff, unforgiving',
+    id: 'bandit', name: 'Cafe Bandit', kind: 'cafe', tag: 'Fast, stiff, unforgiving', wipe: 'shatter',
     blurb: 'A road-going twin with clip-on bars. Quick in a straight line. Lands like a dropped toolbox.',
     mass: 262, kgyr: 0.50, wb: 1.42, rr: 0.32, rf: 0.32, com: [0.69, 0.74], wheelMass: [14, 11], rake: 25, swing: 8,
     sus: [{ travel: 0.12, freq: 2.6, sag: 0.3, zc: 0.5, zr: 1.0 }, { travel: 0.13, freq: 2.5, sag: 0.3, zc: 0.5, zr: 1.0 }],
@@ -96,7 +108,7 @@ RR.BIKES = [
     unlock: { type: 'stars', n: 42 }
   },
   {
-    id: 'volt', name: 'Volt Wraith', kind: 'electric', tag: 'Silent, instant shove',
+    id: 'volt', name: 'Volt Wraith', kind: 'electric', tag: 'Silent, instant shove', wipe: 'zap',
     blurb: 'Electric. No gears, no noise, all the pull from a standstill, and it slows itself when you brake.',
     mass: 215, kgyr: 0.44, wb: 1.40, rr: 0.33, rf: 0.33, com: [0.73, 0.70], wheelMass: [11, 9], rake: 26, swing: 9,
     sus: [{ travel: 0.23, freq: 2.1, sag: 0.3, zc: 0.45, zr: 1.0 }, { travel: 0.24, freq: 2.05, sag: 0.3, zc: 0.42, zr: 0.95 }],
@@ -104,10 +116,10 @@ RR.BIKES = [
     rider: { seat: [0.42, 0.90], peg: [0.52, 0.40], grip: [0.98, 1.12], scale: 1, torso: 0.42 },
     col: ['#e9edf2', '#22e0c8', '#1b1d24'], suit: ['#1b1d24', '#22e0c8', '#e9edf2'],
     snd: { type: 'electric', pitch: 1.0, gears: 0 },
-    unlock: { type: 'world', n: 3, text: 'Finish every Frostbite track' }
+    unlock: { type: 'world', w: 'frost', text: 'Finish every Frostbite track' }
   },
   {
-    id: 'hoss', name: 'Big Hoss', kind: 'fat', tag: 'Monster tyres roll over it all',
+    id: 'hoss', name: 'Big Hoss', kind: 'fat', tag: 'Monster tyres roll over it all', wipe: 'ball',
     blurb: 'Balloon tyres nearly a metre tall. Bumps disappear, grip is silly, and it bounces like a space hopper.',
     mass: 246, kgyr: 0.56, wb: 1.64, rr: 0.47, rf: 0.47, com: [0.75, 1.0], wheelMass: [21, 19], rake: 28, swing: 9,
     sus: [{ travel: 0.22, freq: 1.7, sag: 0.3, zc: 0.3, zr: 0.55 }, { travel: 0.22, freq: 1.7, sag: 0.3, zc: 0.3, zr: 0.55 }],
@@ -115,10 +127,21 @@ RR.BIKES = [
     rider: { seat: [0.50, 1.12], peg: [0.62, 0.62], grip: [1.12, 1.40], scale: 1, torso: 0.34 },
     col: ['#f08a24', '#20242e', '#f5f1e6'], suit: ['#20242e', '#f08a24', '#f5f1e6'],
     snd: { type: 'thump', pitch: 0.66, gears: 4 },
-    unlock: { type: 'air', n: 2.2, text: 'Stay airborne for 2.2 seconds in one jump' }
+    unlock: { type: 'air', n: 2.2, text: 'Stay in the air for 2.2 seconds' }
   },
   {
-    id: 'razor', name: 'Razorback RR', kind: 'sport', tag: 'Far too fast for dirt',
+    id: 'marsh', name: 'Marshmallow', kind: 'bumper', tag: 'One free bonk on the head', wipe: 'mallows',
+    blurb: 'Padded all over, with a roll hoop. The first time your helmet hits the ground each run, it bounces instead.',
+    mass: 236, kgyr: 0.52, wb: 1.50, rr: 0.38, rf: 0.38, com: [0.70, 0.84], wheelMass: [14, 13], rake: 26, swing: 9,
+    sus: [{ travel: 0.26, freq: 1.75, sag: 0.3, zc: 0.38, zr: 0.75 }, { travel: 0.26, freq: 1.75, sag: 0.3, zc: 0.38, zr: 0.75 }],
+    accel: 0.66, vp: 9, vmax: 15.8, grip: 1.12, brake: 0.9, leanAcc: 12.5, spin: 5.4, cda: 0.65, bonk: 1,
+    rider: { seat: [0.44, 1.00], peg: [0.56, 0.48], grip: [1.02, 1.24], scale: 1, torso: 0.32 },
+    col: ['#ffb3d6', '#fff8ee', '#7ad3ff'], suit: ['#fff8ee', '#ffb3d6', '#7ad3ff'],
+    snd: { type: 'thump', pitch: 0.9, gears: 4 },
+    unlock: { type: 'crashes', n: 100, text: 'Crash 100 times' }
+  },
+  {
+    id: 'razor', name: 'Razorback RR', kind: 'sport', tag: 'Far too fast for dirt', wipe: 'twinkle',
     blurb: 'A four-cylinder superbike. Nothing else gets near its top speed. Braking is not optional.',
     mass: 276, kgyr: 0.48, wb: 1.42, rr: 0.33, rf: 0.31, com: [0.74, 0.72], wheelMass: [14, 11], rake: 24, swing: 8,
     sus: [{ travel: 0.13, freq: 2.7, sag: 0.3, zc: 0.5, zr: 1.0 }, { travel: 0.12, freq: 2.7, sag: 0.3, zc: 0.5, zr: 1.0 }],
@@ -129,7 +152,7 @@ RR.BIKES = [
     unlock: { type: 'stars', n: 72 }
   },
   {
-    id: 'longlegs', name: 'Longlegs 500', kind: 'climber', tag: 'Cannot be flipped by a hill',
+    id: 'longlegs', name: 'Longlegs 500', kind: 'climber', tag: 'Cannot be flipped by a hill', wipe: 'noodle',
     blurb: 'A hill-climb special: stretched swingarm, paddle tyre, weight way up front. Goes up walls. Lazy in the air.',
     mass: 212, kgyr: 0.60, wb: 1.98, rr: 0.36, rf: 0.36, com: [1.10, 0.84], wheelMass: [13, 9], rake: 27, swing: 6,
     sus: [{ travel: 0.34, freq: 1.6, sag: 0.3, zc: 0.45, zr: 1.0 }, { travel: 0.33, freq: 1.6, sag: 0.3, zc: 0.42, zr: 0.95 }],
@@ -137,11 +160,23 @@ RR.BIKES = [
     rider: { seat: [0.92, 0.97], peg: [1.04, 0.43], grip: [1.50, 1.22], scale: 1, torso: 0.44 },
     col: ['#8a4fd6', '#f2c230', '#1b1d24'], suit: ['#f2c230', '#8a4fd6', '#1b1d24'],
     snd: { type: 'thump', pitch: 1.0, gears: 4 },
-    unlock: { type: 'world', n: 4, text: 'Finish every Cinder Peak track' }
+    unlock: { type: 'world', w: 'cinder', text: 'Finish every Cinder Peak track' }
   },
   {
-    id: 'comet', name: 'Comet-9', kind: 'rocket', tag: 'A jet engine with a seat',
-    blurb: 'Turbine thrust that keeps pushing in mid-air, so where you point it is where you go. The last prize.',
+    id: 'sling', name: 'Slingshot', kind: 'drag', tag: 'A quarter mile of bad ideas', wipe: 'chute',
+    blurb: 'A drag bike as long as a sofa. Cannot wheelie, barely flips, and leaves everything else standing.',
+    mass: 300, kgyr: 0.66, wb: 2.20, rr: 0.36, rf: 0.27, com: [1.24, 0.54], wheelMass: [20, 8], rake: 37, swing: 4,
+    sus: [{ travel: 0.08, freq: 2.9, sag: 0.3, zc: 0.5, zr: 1.0 }, { travel: 0.11, freq: 2.7, sag: 0.3, zc: 0.5, zr: 1.0 }],
+    accel: 1.25, vp: 17, vmax: 29, grip: 1.25, brake: 1.1, leanAcc: 8.5, spin: 4.3, cda: 0.3,
+    rider: { seat: [0.74, 0.70], peg: [0.50, 0.36], grip: [1.42, 0.80], scale: 1, torso: 1.0 },
+    body: [[1.2, 0.33, 0.1], [-0.42, 0.14, 0.07], [1.95, 0.58, 0.09], [0.55, 0.78, 0.09], [1.5, 0.74, 0.09]],
+    col: ['#16181e', '#ff2d6f', '#ffd24a'], suit: ['#16181e', '#ff2d6f', '#ffd24a'],
+    snd: { type: 'drag', pitch: 1.0, gears: 3 },
+    unlock: { type: 'speed', n: 25, text: 'Hit 90 km/h' }
+  },
+  {
+    id: 'comet', name: 'Comet-9', kind: 'rocket', tag: 'A jet engine with a seat', wipe: 'firework',
+    blurb: 'Turbine thrust that keeps pushing in mid-air, so where you point it is where you go. The top of the star ladder.',
     mass: 228, kgyr: 0.50, wb: 1.56, rr: 0.31, rf: 0.31, com: [0.78, 0.70], wheelMass: [10, 9], rake: 29, swing: 7,
     sus: [{ travel: 0.20, freq: 2.2, sag: 0.3, zc: 0.48, zr: 1.0 }, { travel: 0.20, freq: 2.2, sag: 0.3, zc: 0.45, zr: 1.0 }],
     accel: 0.30, vp: 14, vmax: 23.5, grip: 1.05, brake: 1.1, leanAcc: 13.5, spin: 5.8, cda: 0.4, rocket: 0.62, rocketV: 23.5, leanGround: 1.25,
@@ -157,6 +192,7 @@ RR.BIKES.forEach(function (d, i) {
   d.index = i;
   var top = d.rider.seat[1];
   if (!d.body) d.body = body(d.com, Math.min(d.rr, 0.36), d.wb, top);
+  if (!d.wipe) d.wipe = 'stars';
   RR.BIKE[d.id] = d;
 });
 
@@ -164,8 +200,8 @@ RR.BIKES.forEach(function (d, i) {
 RR.bikeStats = function (d) {
   function n(v, a, b) { return Math.max(0.06, Math.min(1, (v - a) / (b - a))); }
   return {
-    Speed: n(d.vmax, 11, 26),
-    Launch: n(d.accel + (d.rocket || 0) * 0.8, 0.45, 1.1),
+    Speed: n(d.vmax, 11, 29),
+    Launch: n(d.accel + (d.rocket || 0) * 0.8, 0.42, 1.25),
     Grip: n(d.grip, 0.85, 1.4),
     Suspension: n((d.sus[0].travel + d.sus[1].travel) / 2, 0.06, 0.34),
     Agility: n(d.leanAcc * d.spin, 35, 190),
