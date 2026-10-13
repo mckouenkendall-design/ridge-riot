@@ -298,6 +298,28 @@ input[type=range]::-moz-range-thumb { width: 1.3rem; height: 1.3rem; background:
 .pk.down { filter: brightness(0.86); }
 .pickbox .btns { flex: none; display: flex; gap: 0.6rem; justify-content: center; }
 
+/* Phase 2: the three stars, the gear and the challenge */
+.stars.sb .star:nth-child(2)::after, .stars.sb .star:nth-child(3)::after { content: none; }
+.gm { display: inline-flex; gap: 0.15rem; margin-left: 0.3rem; vertical-align: middle; }
+.gm i { width: 0.95rem; height: 0.95rem; display: inline-block; color: rgba(23, 26, 34, 0.22); }
+.gm i svg { width: 100%; height: 100%; display: block; }
+.gm i.g.on { color: #c8962a; filter: drop-shadow(0.05em 0.05em 0 var(--ink)); }
+.gm i.c.on { color: #e0409a; filter: drop-shadow(0.05em 0.05em 0 var(--ink)); }
+.howto .goals { display: flex; gap: 0.7rem; justify-content: center; flex-wrap: wrap; font-size: 0.82rem; font-weight: 800; margin-top: 0.35rem; }
+.howto .goals span, .howto .chal { display: inline-flex; align-items: center; gap: 0.25rem; }
+.howto .goals svg, .howto .chal svg { width: 1em; height: 1em; }
+.howto .chal { display: flex; justify-content: center; font-size: 0.82rem; font-weight: 800; margin-top: 0.25rem; color: #ffb8e6; }
+.howto .chal.done { opacity: 0.6; }
+#goal .hg { display: inline-flex; align-items: center; gap: 0.18rem; margin: 0 0.25rem; opacity: 0.55; font-variant-numeric: tabular-nums; }
+#goal .hg.on { opacity: 1; }
+#goal .hg svg { width: 0.95em; height: 0.95em; }
+#goal .hg.c.on { color: #e0409a; }
+.res .big .sg { display: inline-flex; flex-direction: column; align-items: center; }
+.res .big .sg small { font-size: 0.62rem; font-weight: 800; color: rgba(23, 26, 34, 0.5); line-height: 1; margin-top: 0.1rem; white-space: nowrap; }
+.res .big .sg small.got { color: var(--ink); }
+.res .line.chl { display: flex; align-items: center; justify-content: center; gap: 0.3rem; }
+.res .line.chl svg { width: 1em; height: 1em; color: #e0409a; }
+
 </style>
 </head>
 <body>
@@ -616,7 +638,7 @@ RR.createSim = function (bike, track) {
     wx: [0, 0], wy: [0, 0], wvx: [0, 0], wvy: [0, 0], wa: [0, 0], ww: [0, 0],
     comp: [0, 0], compV: [0, 0], gnd: [false, false], load: [0, 0], slip: [0, 0], mat: [0, 0],
     nrmX: [0, 1], nrmY: [1, 1], bot: [0, 0], airW: [0, 0],
-    gates: new Uint8Array(Math.max(1, track.loops.length)),
+    gates: new Uint8Array(track.gateN || Math.max(1, track.loops.length)),
     smash: bike.smash ? new Uint8Array(Math.max(1, track.logCount || 0)) : null,
     events: []
   };
@@ -886,6 +908,8 @@ function tick(s, inp, settling) {
     if (s.gates[i] === 0) { if (s.x < lp.cx && s.y > lp.cy && s.x > lp.cx - lp.R) s.gates[i] = 1; }
     else if (s.x < lp.cx - lp.R - 1.5) s.gates[i] = 0;
   }
+  // two routes: until you reach the fork sign, leaning back means you have chosen the high road
+  if (tr.forks) for (i = 0; i < tr.forks.length; i++) { var fk = tr.forks[i]; if (s.x < fk.x) s.gates[fk.g] = s.lp < -0.5 ? 1 : 0; }
   var tgt = (s.crashed || s.finished) ? 0 : inp.lean;
   s.lp += clamp(tgt - s.lp, -DT * LEAN_RATE, DT * LEAN_RATE);
   if (tgt === 0 && s.pl !== 0) s.relT = LEAN_STOP_T;
@@ -946,7 +970,7 @@ function tick(s, inp, settling) {
     if (s.airT > s.bestAir) s.bestAir = s.airT;
     var jd = s.x - s.jumpX; if (jd > s.bestJump) s.bestJump = jd;
     if (nf > 0 && !s.crashed && s.airT > 0.35) {
-      s.pendFlip = { n: nf, dir: s.rot > 0 ? 1 : -1, t: 0.25, air: s.airT };
+      s.pendFlip = { n: nf, dir: s.rot > 0 ? 1 : -1, t: 0.25, air: s.airT, jx: s.jumpX };
     } else if (s.airT > 0.9 && !s.crashed) s.events.push({ t: 'air', air: s.airT, dist: jd });
   }
   s.air = air;
@@ -956,7 +980,7 @@ function tick(s, inp, settling) {
     else if (s.pendFlip.t <= 0) {
       s.flips += s.pendFlip.n;
       s.boost = Math.min(3.2, s.boost + 0.9 + 0.55 * s.pendFlip.n);
-      s.events.push({ t: 'flip', n: s.pendFlip.n, dir: s.pendFlip.dir, air: s.pendFlip.air });
+      s.events.push({ t: 'flip', n: s.pendFlip.n, dir: s.pendFlip.dir, air: s.pendFlip.air, jumpX: s.pendFlip.jx });
       s.pendFlip = null;
     }
   }
@@ -1012,7 +1036,7 @@ RR.snapshot = function (s) {
   o.started = s.started; o.crashed = s.crashed; o.finished = s.finished; o.air = s.air; o.crashCause = s.crashCause;
   o.gates = Array.prototype.slice.call(s.gates);
   o.smash = s.smash ? Array.prototype.slice.call(s.smash) : null;
-  o.pendFlip = s.pendFlip ? { n: s.pendFlip.n, dir: s.pendFlip.dir, t: s.pendFlip.t, air: s.pendFlip.air } : null;
+  o.pendFlip = s.pendFlip ? { n: s.pendFlip.n, dir: s.pendFlip.dir, t: s.pendFlip.t, air: s.pendFlip.air, jx: s.pendFlip.jx } : null;
   return o;
 };
 RR.restore = function (s, o) {
@@ -1022,7 +1046,7 @@ RR.restore = function (s, o) {
   s.started = o.started; s.crashed = o.crashed; s.finished = o.finished; s.air = o.air; s.crashCause = o.crashCause;
   for (i = 0; i < o.gates.length; i++) s.gates[i] = o.gates[i];
   if (s.smash && o.smash) for (i = 0; i < o.smash.length; i++) s.smash[i] = o.smash[i];
-  s.pendFlip = o.pendFlip ? { n: o.pendFlip.n, dir: o.pendFlip.dir, t: o.pendFlip.t, air: o.pendFlip.air } : null;
+  s.pendFlip = o.pendFlip ? { n: o.pendFlip.n, dir: o.pendFlip.dir, t: o.pendFlip.t, air: o.pendFlip.air, jx: o.pendFlip.jx } : null;
   s.events.length = 0;
 };
 
@@ -1044,7 +1068,7 @@ function TB(world, seed) {
   this.mat = world.mat; this.baseMat = world.mat;
   this.pts = []; this.mats = [];
   this.x = 0; this.y = 0; this.ang = 0;
-  this.chains = []; this.loops = []; this.hazards = []; this.feats = []; this.roofs = [];
+  this.chains = []; this.loops = []; this.hazards = []; this.feats = []; this.roofs = []; this.forks = [];
   this.seed = seed || 1; this.pit = {};
   this.R = 7;
   // back wall, then the start pad
@@ -1215,6 +1239,49 @@ P.loop = function (R) {
   this.line(1);
   return this;
 };
+/* TWO ROUTES. At the fork sign (the pen, when this is called) the rider chooses: hold lean back as you pass it
+   and a ramp carries you up onto the high road over a rock arch; ride through normally and you stay on the low road
+   underneath. The ramps on and off the arch only exist for a rider who chose them, so the low road passes behind
+   them. Nothing at the split can crash you. Fall off the high road (miss its slot) and you land on the low road.
+   o: { H: height of the arch top, th: its thickness, rampLen, slab1, slot, slab2, kickH, stepH, exitLen,
+        low: function (b) building the low road (it is continued flat to the join) } */
+P.fork = function (o) {
+  var D = Math.PI / 180, x0 = this.x, y0 = this.y, g = 64 + this.forks.length, i;
+  var H = y0 + (o.H || 4.2), th = o.th || 0.8, rampLen = o.rampLen || 16, exitLen = o.exitLen || 16;
+  var a0 = x0 + rampLen, s1 = [a0, a0 + (o.slab1 || 10)], s2 = [s1[1] + (o.slot || 5), 0];
+  s2[1] = s2[0] + (o.slab2 || 10);
+  var J = s2[1] + exitLen;
+  this.sign('fork');
+  // the low road
+  if (o.low) o.low(this);
+  if (this.x < J) this.flat(J - this.x);
+  // ramp up (gated), arch slabs (always solid: they are rock), ramp down (gated)
+  function ramp(b, xa, ya, xb, yb) {
+    var pts = [], n = 16;
+    for (i = 0; i <= n; i++) { var t = i / n; pts.push(xa + (xb - xa) * t, ya + (yb - ya) * (0.5 - 0.5 * Math.cos(Math.PI * t))); }
+    b.chains.push({ pts: pts, mat: RR.MAT.wood, gate: g, side: 1, depth: 0.3, kind: 'bridge' });
+    return pts;
+  }
+  function slab(b, xa, xb, ya, yb, kick) {
+    var pts = [xa, H - th], n = Math.max(2, Math.ceil((xb - xa) / 0.8));
+    pts.push(xa, ya);
+    for (i = 1; i <= n; i++) {
+      var t = i / n, x = xa + (xb - xa) * t, y = ya + (yb - ya) * t;
+      if (kick && x > xb - kick.len) y += Math.pow((x - (xb - kick.len)) / kick.len, 1.6) * kick.h;
+      pts.push(x, y);
+    }
+    pts.push(xb, H - th);
+    for (i = n; i >= 0; i--) { var xu = xa + (xb - xa) * i / n; pts.push(xu, H - th + 0.1 * Math.sin(xu * 2.3) + 0.05 * Math.sin(xu * 5.1)); }
+    b.chains.push({ pts: pts, closed: true, mat: RR.MAT.rock, depth: 0.4, kind: 'shelf' });
+  }
+  var up = ramp(this, x0, y0, a0, H);
+  slab(this, s1[0], s1[1], H, H, { len: 2.6, h: o.kickH == null ? 0.6 : o.kickH });
+  slab(this, s2[0], s2[1], H - (o.stepH || 0.8), H, null);
+  var down = ramp(this, s2[1], H, J, y0);
+  this.forks.push({ x: x0, g: g });
+  this.feats.push({ t: 'fork', x0: x0, a0: a0, xe: s2[1], j: J, y0: y0, top: H, slot: [s1[1], s2[0]], gate: g, up: up, down: down });
+  return this;
+};
 /* rock roof over the track from here on; call roofEnd() to close it */
 P.roofStart = function (clear) { this._roof = { i: this.pts.length / 2 - 1, clear: clear }; return this; };
 P.roofEnd = function (thick) {
@@ -1247,6 +1314,12 @@ P.beam = function (dx, clear, w, h, style) {
    starter bike should hold. The robot riders use it; the player just has to find out. */
 P.slow = function (v) { this._zone = { t: 'zone', x0: this.x, v: v }; return this; };
 P.go = function () { var z = this._zone; if (z) { z.x1 = this.x; this.feats.push(z); this._zone = null; } return this; };
+/* the track's hidden gear, dx ahead of the pen and dy above it */
+/* where the gear should go, roughly: tools/gearspot.js --write rides the track and picks the exact spot in
+   [here + dx, here + dx + len] (below: under the ordinary line; minh: at least this high above the ground) */
+P.gearHint = function (o) { o = o || {}; var x0 = this.x + (o.dx || 0); this.feats.push({ t: 'gearhint', x0: x0, x1: x0 + (o.len || 40), below: o.below !== false, minh: o.minh || 0 }); return this; };
+P.gearAt = function (x, y) { this.feats.push({ t: 'gear', x: x, y: y }); return this; };
+P.gear = function (dx, dy) { this.feats.push({ t: 'gear', x: this.x + dx, y: this.y + dy }); return this; };
 P.sign = function (kind) { this.feats.push({ t: 'sign', x: this.x, y: this.y, kind: kind }); return this; };
 
 P.finish = function (name, id) {
@@ -1266,7 +1339,8 @@ P.finish = function (name, id) {
   }
   var tr = {
     id: id, name: name, world: this.world.id, gravity: this.world.gravity,
-    chains: chains, col: RR.buildCollision(chains), loops: this.loops, hazards: this.hazards, feats: this.feats,
+    chains: chains, col: RR.buildCollision(chains), loops: this.loops, hazards: this.hazards, feats: this.feats, forks: this.forks,
+    gateN: Math.max(1, this.loops.length, this.forks.length ? 64 + this.forks.length : 0),
     start: this.start, finishX: fx, killY: minY - 14, minY: minY, maxY: maxY, xs: xs, ys: ys, mats: this.mats, logCount: this.logN,
     length: fx - this.start[0]
   };
@@ -1274,6 +1348,24 @@ P.finish = function (name, id) {
 };
 RR.TB = TB;
 
+/* The top surfaces of shelves and bridges (two-route tracks), for the robot's landing guesses. */
+function tops(tr) {
+  if (tr.tops) return tr.tops;
+  tr.tops = [];
+  tr.chains.forEach(function (c) {
+    if (c.kind === 'bridge') tr.tops.push(c.pts);
+    else if (c.kind === 'shelf') { var p = c.pts, t = [], n = p.length / 2, i; for (i = 1; i < n && (i === 1 || p[i * 2] > p[i * 2 - 2]); i++) t.push(p[i * 2], p[i * 2 + 1]); tr.tops.push(t); }
+  });
+  return tr.tops;
+}
+function polyY(p, x) { for (var i = 0; i + 3 < p.length; i += 2) if (x >= p[i] && x <= p[i + 2]) { var d = p[i + 2] - p[i]; return d < 1e-9 ? Math.max(p[i + 1], p[i + 3]) : p[i + 1] + (p[i + 3] - p[i + 1]) * (x - p[i]) / d; } return null; }
+/* the highest surface at x that is still below y (the main ground, a shelf or a bridge) */
+RR.surfaceY = function (tr, x, y) {
+  var g = RR.groundY(tr, x), T = tops(tr), i;
+  for (i = 0; i < T.length; i++) { var h = polyY(T[i], x); if (h != null && h < y && h > g) g = h; }
+  return g;
+};
+RR.surfaceSlope = function (tr, x, y) { var a = RR.surfaceY(tr, x - 0.3, y), b = RR.surfaceY(tr, x + 0.3, y); return Math.atan2(b - a, 0.6); };
 /* height of the main ground at x (the top surface, ignoring loops and roofs) */
 RR.groundIndex = function (tr, x) {
   var xs = tr.xs, lo = 0, hi = xs.length - 1;
@@ -1924,7 +2016,16 @@ var TROPHY_RULES = {
   pinwheel:  { type: 'flips',    n: 500, text: 'Land 500 flips' },
   longhaul:  { type: 'dist',     n: 100000, text: 'Ride 100 km' },
   goldie:    { type: 'crashes',  n: 500, text: 'Crash 500 times' },
-  curator:   { type: 'collect',  text: 'Collect every paint job and rider from crates' }
+  curator:   { type: 'collect',  text: 'Collect every paint job and rider from crates' },
+  gearhead:  { type: 'gears',    text: 'Find all 48 hidden gears' },
+  daredevil: { type: 'chal',     text: 'Pull off all 48 track challenges' }
+};
+/* What gears and challenges pay: a paint job every 6 gears and a rider every 6 challenges (rare and up), and the two trophies above at 48.
+   If you already own the item, it becomes an epic crate instead. */
+RR.GOAL_REWARDS = {
+  every: 6,
+  gears: ['goldleaf', 'tiger', 'rosegold', 'ice', 'candy', 'amethyst', 'blackdia', 'whiteopal'],
+  chal: ['clanks', 'rex', 'baron', 'merl', 'ember', 'kraken', 'snowqueen', 'helios']
 };
 RR.TROPHIES.forEach(function (it) { it.trophy = TROPHY_RULES[it.id] || null; });
 
@@ -1982,6 +2083,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 'use strict';
 var RR = root.RR || (root.RR = {});
 var M = RR.MAT;
+if (typeof window === 'undefined' && typeof require !== 'undefined') { try { require('./gearspots.js'); } catch (e) {} }     // the tools that run without a page
 
 RR.WORLDS = [
   { id: 'dust',   name: 'Dustbowl',    sub: 'Red rock and warm-up hills',      gravity: 9.81, mat: M.dirt, pit: 'fall',  logMat: M.rock, need: 0 },
@@ -2052,6 +2154,32 @@ var PC = RR.PIECES = {
     b.gap(w, { rise: o.rise == null ? -0.6 : o.rise });
     return b.land(o.land || deg - 4, o.landLen || 8).go();
   },
+  /* MOMENTUM PIECES: wrong speed costs time, never the run.
+     Double: a kicker, a dip, then a second mound whose far side is the landing. The right speed puts you on that
+     downslope and you keep your speed. Too slow and you land in the dip or case the face of the mound and lose it;
+     too fast and you sail past the downslope and land flat. */
+  double: function (b, deg, gap, H2, landDeg, landLen, o) {
+    o = o || {}; var D = Math.PI / 180, y0 = b.y, px0 = b.x;
+    b.kicker(deg, o.R || 7, o.lip == null ? 0.8 : o.lip);
+    var xl = b.x, face = o.face || 30, back = o.back || 34;
+    b.to(-back, 1.2).line(Math.max(0.3, (b.y - y0 - 0.25) / Math.sin(back * D))); b.to(0, 1.2);
+    var upRun = (y0 + H2 - b.y) / Math.tan(face * D), trough = Math.max(1, xl + gap - b.x - upRun);
+    if (o.gear === 'trough') b.gear(trough * 0.5, 0.75);
+    b.line(trough);
+    b.to(face, 1.4).line(Math.max(0.3, (y0 + H2 - b.y - 0.3) / Math.sin(face * D)));
+    b.to(0, 1.4).line(o.crest == null ? 0.6 : o.crest);
+    b.to(-landDeg, 2).line(landLen);
+    b.to(0, o.outR || 9);
+    // the next hill comes straight after the landing: overshoot the downslope and you hit its face
+    if (o.next) { b.line(o.gapAfter == null ? 1.5 : o.gapAfter); b.hill(o.next[0], o.next[1]); }
+    b.feats.push({ t: 'piece', kind: 'double', x0: px0, x1: b.x });
+    return b;
+  },
+  /* Rollers: rounded humps. At the right speed you skim from the top of one onto the back of the next;
+     slower and you roll every one, faster and you fly the lot and land flat. */
+  rollers: function (b, n, len, h, gap) { var x0 = b.x; for (var i = 0; i < n; i++) { b.hill(h, len); if (gap) b.flat(gap); } b.feats.push({ t: 'piece', kind: 'rollers', x0: x0, x1: b.x }); return b; },
+  /* two routes: see TB.fork in builder.js. lowFloor builds the cave floor (default: flat) */
+  fork: function (b, o) { return b.fork(o || {}); },
   /* A jump inside a tunnel: the roof is why you cannot take it flat out */
   cavejump: function (b, v, clear, deg, w, o) {
     o = o || {};
@@ -2063,70 +2191,93 @@ var PC = RR.PIECES = {
 /* [name, tip shown before the start, recipe] */
 var T = [
 /* ----------------------------- DUSTBOWL ----------------------------- */
+/* Phase 2: [name, tip, recipe, challenge]. Each track has a momentum piece or two (PC.double, PC.rollers),
+   a jump big enough to flip, a hidden gear (b.gear) and a challenge (see goals.js). */
 ['First Gear', 'Right thumb: gas and brake. Left thumb: lean back and lean forward.', function (b) {
-  b.flat(18).hill(1.2, 18).flat(12).hill(1.8, 22).flat(10).ease(26, -3).flat(14)
-   .hill(1.5, 16).flat(8).bumps(4, 5, 0.3).flat(12).ease(20, 2.5).flat(12)
-   .table(11, 1.3, 6, 9).flat(16);
-}],
+  b.flat(18).hill(1.2, 18).flat(10);
+  PC.double(b, 14, 8, 1.6, 18, 7, { next: [2.2, 14], gapAfter: 1.5, face: 26 });
+  b.flat(10).ease(26, -3).flat(12).bumps(4, 5, 0.3).flat(10).ease(20, 2.5).flat(14).sign('jump');
+  b.gearHint({ len: 30 });       // at the foot of the last landing: only if you come in slow enough to land short
+  jump(b, 17, 6, 15, 12, { rise: -2.2, lip: 1.4 });
+  b.flat(16);
+}, { t: 'wheelie', sec: 2 }],
 ['Rolling Dunes', 'Front wheel coming up on a climb? Lean forward, or ease off the gas.', function (b) {
-  b.flat(14).waves(3, 24, 1.15).flat(8).ease(34, -6).flat(8).surface('sand').flat(14).surface()
-   .waves(2, 18, 0.95).flat(8).up(15, 12, 13).flat(8, 16).down(13, 14, 13).flat(12)
-   .hill(2.0, 22).flat(14);
-}],
+  b.flat(14).waves(3, 24, 1.15).flat(8).ease(34, -6).flat(8).surface('sand').flat(14).surface();
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
+  b.flat(8).up(15, 12, 13).flat(12, 16).gearHint({ len: 30 });   // past the mesa: roll off it slowly
+  jump(b, 16, 5, 14, 12, { rise: -3, lip: 1.6 });
+  b.flat(10).hill(2.0, 22).flat(14);
+}, { t: 'flip', dir: 'b', n: 1, at: 'last', where: 'off the last jump' }],
 ['Hop Skip', 'In the air, lean forward drops the nose and lean back lifts it.', function (b) {
   b.flat(24).sign('jump');
-  jump(b, 11, 3.5, 9, 7, { rise: -0.4, lip: 1.6 });
-  b.flat(18).table(14, 1.4, 6, 9).flat(16);
-  jump(b, 13, 4.5, 11, 8, { rise: -0.6, lip: 1.6 });
-  b.flat(16).hill(1.6, 20).flat(12);
-  jump(b, 15, 5.5, 13, 9, { rise: -0.8, lip: 1.4 });
+  jump(b, 13, 4, 11, 8, { rise: -0.8, lip: 1.6 });
   b.flat(14);
-}],
-['Washboard', 'Rock overhead means slow down. Brake before the hump, or it throws you into the roof.', function (b) {
-  b.flat(14).bumps(8, 3.4, 0.26).flat(8).ease(18, -2.5).flat(6).bumps(5, 5.2, 0.34).flat(8)
-   .steps(4, 6, 0.7).flat(14).sign('slow').flat(10);
-  PC.tunnel(b, 9, 3.6, [[1.1, 10]]);
-  b.flat(8).hill(-1.6, 14).flat(8).bumps(9, 2.8, 0.22).flat(10)
-   .table(17, 1.8, 4, 8).flat(8).logs(3, 6, 0.2).flat(14);
-}],
-['Mesa Drop', 'The last ramp flicks the front wheel up. Lean forward as you leave it.', function (b) {
-  b.flat(16).up(21, 20, 11).flat(20, 16).drop(3.4).flat(22);
-  jump(b, 16, 6, 15, 8, { rise: -1 });
-  b.flat(10).up(18, 12, 10).flat(10, 15).drop(1.8).flat(8).drop(1.8).flat(14)
-   .hill(2.2, 18).flat(6).surface('sand').flat(12).surface().flat(12).sign('jump');
-  kick(b, 17, 6.5, 14, 8, { rise: -0.8, R: 7 });
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
   b.flat(12);
-}],
+  b.hill(1.6, 20).flat(10).gearHint({ len: 26, minh: 1.5 });     // in mid-air over a landing, at one speed
+  jump(b, 17, 6, 15, 10, { rise: -2.2, lip: 1.6 });
+  b.flat(4);
+  jump(b, 19, 7, 17, 11, { rise: -3, lip: 1.4 });
+  b.flat(14);
+}, { t: 'combo', seq: ['b', 'f'] }],
+['Loop de Dust', 'Loops need speed. Hold the gas all the way round and do not lean.', function (b) {
+  b.flat(34).sign('loop').loop(3.6).flat(18);
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
+  b.flat(10).ease(24, -4).flat(14).loop(3.9).flat(22);
+  b.gearHint({ len: 30 });       // at the foot of the last landing: come in slow
+  kick(b, 18, 7, 16, 11, { rise: -2.4, R: 6.5 });
+  b.flat(14);
+}, { t: 'flip', dir: 'f', n: 1, at: 'last', where: 'off the last jump' }],
+['Mesa Drop', 'Two roads. Hold lean back as you pass the fork sign to take the high one over the mesa.', function (b) {
+  b.flat(16).up(21, 20, 11).flat(20, 16).drop(3.4).flat(22);
+  jump(b, 16, 6, 15, 10, { rise: -1.6 });
+  b.flat(14);
+  b.fork({ H: 3.4, rampLen: 16, slab1: 10, slot: 6, slab2: 10, stepH: 1.6, kickH: 0.7, exitLen: 16,
+    low: function (b) { b.ease(9, -1.6).flat(2); PC.rollers(b, 3, 9, 0.5); b.ease(9, 1.6); } });
+  (function () { var f = b.feats.filter(function (q) { return q.t === 'fork'; }).pop(); b.gearAt((f.slot[1] + f.xe) / 2, f.top + 0.95); })();   // on top of the mesa: the high road only
+  b.flat(14).hill(2.2, 18).flat(6).surface('sand').flat(12).surface().flat(12).sign('jump');
+  kick(b, 17, 6.5, 14, 10, { rise: -2, R: 7 });
+  b.flat(12);
+}, { t: 'flip', dir: 'f', n: 1, text: 'A frontflip anywhere' }],
+['Washboard', 'Rock overhead means slow down. Brake before the hump, or it throws you into the roof.', function (b) {
+  b.flat(14).bumps(8, 3.4, 0.26).flat(8).ease(18, -2.5).flat(6);
+  PC.rollers(b, 4, 6, 1.0, 2);
+  b.flat(8).steps(4, 6, 0.7).flat(14).sign('slow').flat(10);
+  PC.tunnel(b, 9, 3.6, [[1.1, 10]]);
+  b.flat(8).hill(-1.6, 14).flat(8).bumps(9, 2.8, 0.22).flat(10);
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
+  b.flat(8).table(17, 1.8, 4, 8).flat(8).logs(3, 6, 0.2).flat(10).gearHint({ len: 30, minh: 1.3 });   // mid-air over the last landing
+  jump(b, 18, 6, 16, 10, { rise: -2.4, lip: 1.4 });
+  b.flat(14);
+}, { t: 'nobrake' }],
 ['Gulch Gap', 'Not every ledge wants speed. Roll off the marked one gently and duck in under the rock.', function (b) {
   b.flat(22);
-  jump(b, 16, 6, 14, 9, { rise: -0.8, lip: 1.5 });
-  b.flat(14).hill(1.6, 16).flat(12);
-  kick(b, 17, 7, 15, 10, { rise: -1.1, R: 7.5 });
+  jump(b, 16, 6, 14, 9, { rise: -1.4, lip: 1.5 });
+  b.flat(14);
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
+  b.flat(10);
+  kick(b, 17, 7, 15, 10, { rise: -1.6, R: 7.5 });
   b.flat(12).ease(22, -3.5).flat(10).sign('slow').flat(10);
   PC.box(b, 9, 2.4, 3, 6.5, 3.2);
-  b.flat(12);
-  jump(b, 20, 10, 18, 11, { rise: -1.6, lip: 1.5 });
+  b.flat(12).gearHint({ len: 32, minh: 1.3 });   // mid-air over the big gap's landing
+  jump(b, 20, 10, 18, 11, { rise: -2.2, lip: 1.5 });
   b.flat(14).bumps(4, 4.6, 0.28).flat(12).table(17, 1.9, 5, 8).flat(14);
-}],
-['Loop de Dust', 'Loops need speed. Hold the gas all the way round and do not lean.', function (b) {
-  b.flat(34).sign('loop').loop(3.6).flat(20).table(17, 1.9, 6, 8).flat(10).ease(24, -4).flat(14)
-   .loop(3.9).flat(22);
-  kick(b, 18, 7, 16, 9, { rise: -1, R: 6.5 });
-  b.flat(14);
-}],
+}, { t: 'flip', dir: 'f', n: 1, at: 'last', where: 'over the big gap' }],
 ['Canyon Run', 'Hold a lean through a whole jump to flip. Land it and you get a boost. Mind the rock.', function (b) {
   b.flat(18);
-  kick(b, 18, 7, 16, 9, { rise: -1, R: 6.5 });
+  kick(b, 18, 7, 16, 9, { rise: -1.2, R: 6.5 });
   b.flat(8).up(20, 16, 10).flat(14, 14).drop(2.6).flat(16).sign('slow').flat(8);
   PC.tunnel(b, 9, 3.4, [[1.1, 10], [0.9, 9]]);
-  b.flat(14).loop(3.8).flat(16);
-  jump(b, 20, 9, 18, 10, { rise: -1.4 });
+  b.flat(14).loop(3.8).flat(14);
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
+  b.flat(8);
+  jump(b, 20, 9, 18, 10, { rise: -1.6 });
   b.flat(8).ease(26, -5).flat(12).sign('slow').flat(8);
   PC.limbo(b, 9, 22, 4.5, 4, 3.2);
-  b.flat(10).steps(3, 7, 0.9).flat(12);
-  kick(b, 20, 10, 20, 11, { rise: -2, R: 6.5 });
+  b.flat(10).steps(3, 7, 0.9).flat(12).gearHint({ len: 34, minh: 1.3 });   // mid-air over the last landing
+  kick(b, 22, 10, 22, 15, { rise: -5.5, R: 6.5 });
   b.flat(16);
-}],
+}, { t: 'combo', seq: ['f', 'f'], text: 'Two frontflips in one run' }],
 
 /* ----------------------------- PINEWOOD ----------------------------- */
 ['Log Jam', 'Logs kick the bike up. Hit them straight and stay loose.', function (b) {
@@ -2597,7 +2748,7 @@ RR.trackId = function (i) { return slug(T[i][0]); };
 RR.trackIndex = function (id) { return id in IDX ? IDX[id] : -1; };
 RR.TRACK_COUNT = T.length;
 RR.trackInfo = function (i) {
-  return { index: i, world: Math.floor(i / 8), num: i % 8, name: T[i][0], tip: T[i][1], id: slug(T[i][0]) };
+  return { index: i, world: Math.floor(i / 8), num: i % 8, name: T[i][0], tip: T[i][1], id: slug(T[i][0]), chal: T[i][3] || null };
 };
 var cache = {};
 RR.getTrack = function (i) {
@@ -2608,6 +2759,12 @@ RR.getTrack = function (i) {
   var tr = b.finish(T[i][0], id);
   tr.index = i; tr.worldIndex = Math.floor(i / 8); tr.airless = !!w.airless; tr.seed = hashStr(id) % 9973;
   // the measured speed for each slow zone replaces the rough figure in the recipe (see startimes.js)
+  // a challenge that says "at: 'last'" means taking off from the last jump on the track
+  var ch = T[i][3] ? JSON.parse(JSON.stringify(T[i][3])) : null;
+  if (ch && ch.at === 'last') { var gaps = tr.feats.filter(function (f) { return f.t === 'gap'; }), lg = gaps[gaps.length - 1]; ch.at = lg ? [lg.x0 - 14, lg.x0 + 3] : null; }
+  tr.chal = ch;
+  var gp = RR.GEAR_AT && RR.GEAR_AT[id];
+  if (gp && !tr.feats.some(function (f) { return f.t === 'gear'; })) tr.feats.push({ t: 'gear', x: gp[0], y: gp[1] });
   var zv = RR.ZONE_V && RR.ZONE_V[i], zk = 0;
   if (zv) tr.feats.forEach(function (f) { if (f.t === 'zone') { if (zk < zv.length) f.v = zv[zk]; zk++; } });
   cache[i] = tr;
@@ -2617,62 +2774,245 @@ RR.getTrack = function (i) {
 if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);
 
+/* ---- goals.js ---- */
+/* Ridge Riot: what there is to do on a track besides finishing it.
+   Three stars, each its own goal: finish, beat the time, land the flip target in one run.
+   One challenge per track: a particular trick, checked here from what the physics reports.
+   One hidden gear per track: touch it with any part of the bike or rider and it is yours.
+   No drawing and no browser APIs here, so the test robots can use exactly the same rules. */
+(function (root) {
+'use strict';
+var RR = root.RR || (root.RR = {});
+var TAU = Math.PI * 2;
+
+RR.STAR = { finish: 1, time: 2, flips: 4 };
+RR.starCount = function (bits) { return (bits & 1) + (bits >> 1 & 1) + (bits >> 2 & 1); };
+
+/* ---- challenges ----
+   A challenge is { t: type, ... }. Types:
+   combo   seq: ['b','f',...]   flips in that order in one run (others may come between)
+   flip    dir: 'b'|'f', n, at: [x0, x1]   one landing of at least n flips that way, taking off between x0 and x1
+   multi   n, at?               one landing of at least n flips, either way
+   air     sec                  one jump at least this long
+   long    m                    one jump at least this far
+   wheelie sec                  front wheel up, back wheel down, without a break
+   nobrake                      finish without touching the brake
+   clean                        finish without anything but the tyres touching the ground
+   speed   kmh                  reach this speed */
+RR.chalText = function (c) {
+  if (c.text) return c.text;
+  var nm = function (n) { return n === 1 ? '' : n === 2 ? 'double ' : n === 3 ? 'triple ' : n + 'x '; };
+  switch (c.t) {
+    case 'combo': return c.seq.map(function (d) { return d === 'b' ? 'backflip' : 'frontflip'; }).join(', then ') + ', in one run';
+    case 'flip': return 'A ' + nm(c.n || 1) + (c.dir === 'b' ? 'backflip' : 'frontflip') + (c.where ? ' ' + c.where : '');
+    case 'multi': return 'A ' + nm(c.n) + 'flip in one jump' + (c.where ? ' ' + c.where : '');
+    case 'air': return 'Stay in the air ' + c.sec + ' seconds in one jump';
+    case 'long': return 'Jump ' + c.m + ' metres in one go';
+    case 'wheelie': return 'Wheelie for ' + c.sec + ' seconds';
+    case 'nobrake': return 'Finish without touching the brake';
+    case 'clean': return 'Finish with only your tyres touching the ground';
+    case 'speed': return 'Hit ' + c.kmh + ' km/h';
+  }
+  return '';
+};
+/* a fresh tracker for one run */
+RR.chalStart = function (c) { return { c: c, done: false, k: 0, wT: 0, brake: false, body: false }; };
+/* call once per physics tick, after RR.tick and before the events are cleared */
+RR.chalTick = function (st, s, inp) {
+  var c = st.c, i, e;
+  if (!c || st.done) return st.done;
+  if (s.started && inp && inp.brake && !s.finished && !s.crashed) st.brake = true;
+  if (s.body && s.started) st.body = true;
+  for (i = 0; i < s.events.length; i++) {
+    e = s.events[i];
+    if (e.t === 'flip') {
+      var d = e.dir > 0 ? 'b' : 'f', x0 = e.jumpX;
+      if (c.t === 'combo' && st.k < c.seq.length && c.seq[st.k] === d) st.k++;
+      if (c.t === 'flip' && d === c.dir && e.n >= (c.n || 1) && (!c.at || (x0 >= c.at[0] && x0 <= c.at[1]))) st.done = true;
+      if (c.t === 'multi' && e.n >= c.n && (!c.at || (x0 >= c.at[0] && x0 <= c.at[1]))) st.done = true;
+    }
+    if ((e.t === 'flip' || e.t === 'air' || e.t === 'landed') && c.t === 'air' && e.air >= c.sec) st.done = true;
+    if (e.t === 'finish') {
+      if (c.t === 'nobrake' && !st.brake) st.done = true;
+      if (c.t === 'clean' && !st.body) st.done = true;
+    }
+  }
+  if (c.t === 'combo' && st.k >= c.seq.length) st.done = true;
+  if (c.t === 'long' && s.bestJump >= c.m && !s.crashed) st.done = true;
+  if (c.t === 'air' && s.bestAir >= c.sec && !s.crashed && !s.air) st.done = true;
+  if (c.t === 'speed' && s.maxSpeed * 3.6 >= c.kmh && !s.crashed) st.done = true;
+  if (c.t === 'wheelie') {
+    if (!s.crashed && s.gnd[0] && !s.gnd[1] && s.airW[1] > 0.1) st.wT += RR.DT; else st.wT = 0;
+    if (st.wT >= c.sec) st.done = true;
+  }
+  // a crash takes back anything that only counts once you land it
+  if (s.crashed && (c.t === 'nobrake' || c.t === 'clean')) st.done = false;
+  return st.done;
+};
+/* how far along a challenge is, for the HUD: a short string or '' */
+RR.chalProgress = function (st) {
+  var c = st && st.c; if (!c || st.done) return '';
+  if (c.t === 'combo') return st.k + ' of ' + c.seq.length;
+  if (c.t === 'wheelie' && st.wT > 0.3) return st.wT.toFixed(1) + ' s';
+  if (c.t === 'nobrake' && st.brake) return 'braked';
+  if (c.t === 'clean' && st.body) return 'touched';
+  return '';
+};
+
+/* ---- the hidden gear ---- */
+var pose = {};
+RR.GEAR_R = 0.55;
+/* is any part of the bike or rider touching the gear at (gx, gy)? */
+RR.gearTouch = function (s, gx, gy) {
+  var R = RR.GEAR_R, b = s.b, i;
+  function near(x, y, r) { var dx = x - gx, dy = y - gy; return dx * dx + dy * dy < (R + r) * (R + r); }
+  for (i = 0; i < 2; i++) if (near(s.wx[i], s.wy[i], b.wh[i].r)) return true;
+  if (near(s.x, s.y, 0.3)) return true;
+  RR.riderPose(b.def, s.lp, 0, pose);
+  var ca = Math.cos(s.a), sa = Math.sin(s.a), hx = pose.headX - b.com[0], hy = pose.headY - b.com[1];
+  if (near(s.x + ca * hx - sa * hy, s.y + sa * hx + ca * hy, b.headR)) return true;
+  for (i = 0; i < b.pts.length; i++) { var p = b.pts[i]; if (near(s.x + ca * p[0] - sa * p[1], s.y + sa * p[0] + ca * p[1], p[2])) return true; }
+  return false;
+};
+RR.gearOf = function (tr) { for (var i = 0; i < tr.feats.length; i++) if (tr.feats[i].t === 'gear') return tr.feats[i]; return null; };
+
+if (typeof module !== 'undefined' && module.exports) module.exports = RR;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+/* ---- legacy.js ---- */
+/* The star times every track had before Phase 2, when stars were three time targets ([three-star time, two-star time]).
+   Only used to convert old saves: anyone who had 1, 2 or 3 stars on a track keeps that many under the new stars. */
+(function (root) {
+var RR = root.RR || (root.RR = {});
+RR.LEGACY_STARS = {
+  'first-gear': [20.2, 25.5],
+  'rolling-dunes': [23.6, 29.8],
+  'hop-skip': [16.6, 21],
+  'loop-de-dust': [18.7, 23.5],
+  'mesa-drop': [21, 26.6],
+  'washboard': [28.1, 35.5],
+  'gulch-gap': [25.8, 32.6],
+  'canyon-run': [34.9, 44],
+  'log-jam': [20.9, 26.4],
+  'mossy-loop': [20.1, 25.4],
+  'timber-table': [19.5, 24.6],
+  'sawmill': [28.5, 36],
+  'root-rage': [35.5, 44.9],
+  'creek-hop': [23.5, 29.7],
+  'beaver-dam': [34.2, 43.1],
+  'old-growth': [39.8, 50.3],
+  'green-flag': [16.5, 20.7],
+  'rumble-strip': [20.6, 25.9],
+  'oil-slick': [26.7, 33.5],
+  'bus-stop': [22.2, 27.9],
+  'pit-lane': [28.4, 35.6],
+  'seven-buses': [27.6, 34.6],
+  'stunt-show': [31.4, 39.4],
+  'chequered-flag': [36.7, 46.1],
+  'black-ice': [19.5, 24.4],
+  'glacier-loop': [22.3, 27.9],
+  'slip-road': [24, 30],
+  'whiteout': [32.3, 40.4],
+  'aurora': [36.2, 45.3],
+  'powder-keg': [31.8, 39.8],
+  'crevasse': [27.4, 34.3],
+  'avalanche': [39.1, 48.8],
+  'hot-start': [18.8, 23.7],
+  'caldera': [24.2, 30.4],
+  'magma-hop': [19.3, 24.2],
+  'the-chimney': [28.5, 35.9],
+  'fire-walk': [33.8, 42.5],
+  'ash-loop': [29.1, 36.6],
+  'ember-steps': [28.8, 36.3],
+  'eruption': [38.2, 48.1],
+  'one-small-hop': [21.1, 26.7],
+  'double-loop': [22.2, 28],
+  'crater-maker': [28.6, 36.1],
+  'slow-float': [29.7, 37.6],
+  'regolith': [33.8, 42.7],
+  'dark-side': [38.6, 48.8],
+  'escape-velocity': [37.1, 46.8],
+  'riot-run': [46.9, 59.3]
+};
+if (typeof module !== 'undefined' && module.exports) module.exports = RR;
+})(typeof window !== 'undefined' ? window : globalThis);
+
 /* ---- startimes.js ---- */
-/* Star times: [three-star time, two-star time] per track, in seconds, and the speed the robot rider
-   holds through each slow zone. Written by: node tools/skill.js --bikes all --write   (do not edit by hand) */
+/* The stars on each track: [time target in seconds, flip target]. Three stars: finish, beat the time, land at least
+   that many flips in one run. Both targets come from one robot run on the starter bike that finished, flipping where
+   it could (see starRun in tools/skill.js), so all three can be had in a single run.
+   ZONE_V: the speed the robot rider holds through each slow zone.
+   Written by: node tools/skill.js --from <results>   (do not edit by hand) */
 (function (root) {
 var RR = root.RR || (root.RR = {});
 RR.STAR_TIMES = [
-  [20.2, 25.5],   //  1 First Gear: robot on starter 18.9s, 11 of 15 bikes beat three stars riding the same careful way
-  [23.6, 29.8],   //  2 Rolling Dunes: robot on starter 22.1s, 12 of 15 bikes beat three stars riding the same careful way
-  [16.6, 21.0],   //  3 Hop Skip: robot on starter 15.5s, 11 of 15 bikes beat three stars riding the same careful way
-  [18.7, 23.5],   //  4 Loop de Dust: robot on starter 17.4s, 11 of 15 bikes beat three stars riding the same careful way
-  [21.0, 26.6],   //  5 Mesa Drop: robot on starter 19.7s, 11 of 15 bikes beat three stars riding the same careful way
-  [28.1, 35.5],   //  6 Washboard: robot on starter 26.3s, 12 of 15 bikes beat three stars riding the same careful way
-  [25.8, 32.6],   //  7 Gulch Gap: robot on starter 24.1s, 13 of 15 bikes beat three stars riding the same careful way
-  [34.9, 44.0],   //  8 Canyon Run: robot on starter 32.6s, 14 of 15 bikes beat three stars riding the same careful way
-  [20.9, 26.4],   //  9 Log Jam: robot on starter 20.3s, 11 of 15 bikes beat three stars riding the same careful way
-  [20.1, 25.4],   // 10 Mossy Loop: robot on starter 19.5s, 11 of 15 bikes beat three stars riding the same careful way
-  [19.5, 24.6],   // 11 Timber Table: robot on starter 18.9s, 12 of 15 bikes beat three stars riding the same careful way
-  [28.5, 36.0],   // 12 Sawmill: robot on starter 27.7s, 11 of 15 bikes beat three stars riding the same careful way
-  [35.5, 44.9],   // 13 Root Rage: robot on starter 34.5s, 11 of 15 bikes beat three stars riding the same careful way
-  [23.5, 29.7],   // 14 Creek Hop: robot on starter 22.9s, 10 of 15 bikes beat three stars riding the same careful way
-  [34.2, 43.1],   // 15 Beaver Dam: robot on starter 33.2s, 13 of 15 bikes beat three stars riding the same careful way
-  [39.8, 50.3],   // 16 Old Growth: robot on starter 38.7s, 11 of 15 bikes beat three stars riding the same careful way
-  [16.5, 20.7],   // 17 Green Flag: robot on starter 16.2s, 11 of 15 bikes beat three stars riding the same careful way
-  [20.6, 25.9],   // 18 Rumble Strip: robot on starter 20.2s, 11 of 15 bikes beat three stars riding the same careful way
-  [26.7, 33.5],   // 19 Oil Slick: robot on starter 26.1s, 11 of 15 bikes beat three stars riding the same careful way
-  [22.2, 27.9],   // 20 Bus Stop: robot on starter 21.8s, 11 of 15 bikes beat three stars riding the same careful way
-  [28.4, 35.6],   // 21 Pit Lane: robot on starter 27.8s, 11 of 15 bikes beat three stars riding the same careful way
-  [27.6, 34.6],   // 22 Seven Buses: robot on starter 27.1s, 13 of 15 bikes beat three stars riding the same careful way
-  [31.4, 39.4],   // 23 Stunt Show: robot on starter 30.8s, 11 of 15 bikes beat three stars riding the same careful way
-  [36.7, 46.1],   // 24 Chequered Flag: robot on starter 36.0s, 13 of 15 bikes beat three stars riding the same careful way
-  [19.5, 24.4],   // 25 Black Ice: robot on starter 19.5s, 11 of 15 bikes beat three stars riding the same careful way
-  [22.3, 27.9],   // 26 Glacier Loop: robot on starter 22.3s, 11 of 15 bikes beat three stars riding the same careful way
-  [24.0, 30.0],   // 27 Slip Road: robot on starter 24.0s, 11 of 15 bikes beat three stars riding the same careful way
-  [32.3, 40.4],   // 28 Whiteout: robot on starter 32.3s, 10 of 15 bikes beat three stars riding the same careful way
-  [36.2, 45.3],   // 29 Aurora: robot on starter 36.2s, 9 of 15 bikes beat three stars riding the same careful way
-  [31.8, 39.8],   // 30 Powder Keg: robot on starter 31.8s, 9 of 15 bikes beat three stars riding the same careful way
-  [27.4, 34.3],   // 31 Crevasse: robot on starter 27.4s, 9 of 15 bikes beat three stars riding the same careful way
-  [39.1, 48.8],   // 32 Avalanche: robot on starter 39.1s, 10 of 15 bikes beat three stars riding the same careful way
-  [18.8, 23.7],   // 33 Hot Start: robot on starter 19.4s, 9 of 15 bikes beat three stars riding the same careful way
-  [24.2, 30.4],   // 34 Caldera: robot on starter 24.9s, 9 of 15 bikes beat three stars riding the same careful way
-  [19.3, 24.2],   // 35 Magma Hop: robot on starter 19.9s, 8 of 15 bikes beat three stars riding the same careful way
-  [28.5, 35.9],   // 36 The Chimney: robot on starter 29.8s, 9 of 15 bikes beat three stars riding the same careful way
-  [33.8, 42.5],   // 37 Fire Walk: robot on starter 34.8s, 9 of 15 bikes beat three stars riding the same careful way
-  [29.1, 36.6],   // 38 Ash Loop: robot on starter 30.0s, 9 of 15 bikes beat three stars riding the same careful way
-  [28.8, 36.3],   // 39 Ember Steps: robot on starter 29.7s, 8 of 15 bikes beat three stars riding the same careful way
-  [38.2, 48.1],   // 40 Eruption: robot on starter 39.4s, 8 of 15 bikes beat three stars riding the same careful way
-  [21.1, 26.7],   // 41 One Small Hop: robot on starter 22.2s, 7 of 15 bikes beat three stars riding the same careful way
-  [22.2, 28.0],   // 42 Double Loop: robot on starter 23.3s, 7 of 15 bikes beat three stars riding the same careful way
-  [28.6, 36.1],   // 43 Crater Maker: robot on starter 30.1s, 9 of 15 bikes beat three stars riding the same careful way
-  [29.7, 37.6],   // 44 Slow Float: robot on starter 31.3s, 6 of 15 bikes beat three stars riding the same careful way
-  [33.8, 42.7],   // 45 Regolith: robot on starter 35.6s, 8 of 15 bikes beat three stars riding the same careful way
-  [38.6, 48.8],   // 46 Dark Side: robot on starter 40.6s, 7 of 15 bikes beat three stars riding the same careful way
-  [37.1, 46.8],   // 47 Escape Velocity: robot on starter 39.0s, 7 of 15 bikes beat three stars riding the same careful way
-  [46.9, 59.3]    // 48 Riot Run: robot on starter 49.4s, 7 of 15 bikes beat three stars riding the same careful way
+  [21.2, 1],   //  1 First Gear: robot 19.6s with 2 flips (flips b up to 1), careful run without flips 19.8s
+  [25.1, 2],   //  2 Rolling Dunes: robot 23.2s with 3 flips (flips b up to 1), careful run without flips 23.5s
+  [18.6, 2],   //  3 Hop Skip: robot 17.2s with 3 flips (flips f up to 1), careful run without flips 17.5s
+  [22.1, 1],   //  4 Loop de Dust: robot 20.5s with 2 flips (flips b up to 1), careful run without flips 20.8s
+  [23.2, 1],   //  5 Mesa Drop: robot 21.5s with 1 flip (high road, flips f up to 1), careful run without flips 21.8s
+  [36.1, 3],   //  6 Washboard: robot 33.4s with 4 flips (flips f up to 1), careful run without flips 33.6s
+  [28.8, 2],   //  7 Gulch Gap: robot 26.6s with 3 flips (flips alt up to 1), careful run without flips 27.6s
+  [41.2, 3],   //  8 Canyon Run: robot 38.1s with 4 flips (flips b up to 1), careful run without flips 38.6s
+  [21.5, 1],   //  9 Log Jam: robot 20.3s with 0 flips (flips b up to 1), careful run without flips 20.3s
+  [20.6, 1],   // 10 Mossy Loop: robot 19.4s with 1 flip (flips f up to 1), careful run without flips 19.5s
+  [19.9, 1],   // 11 Timber Table: robot 18.8s with 2 flips (flips alt up to 1), careful run without flips 18.9s
+  [29.3, 1],   // 12 Sawmill: robot 27.6s with 1 flip (flips f up to 1), careful run without flips 27.7s
+  [36.6, 1],   // 13 Root Rage: robot 34.5s with 0 flips (flips b up to 1), careful run without flips 34.5s
+  [24.2, 1],   // 14 Creek Hop: robot 22.9s with 0 flips (flips b up to 1), careful run without flips 22.9s
+  [34.8, 1],   // 15 Beaver Dam: robot 32.8s with 2 flips (flips alt up to 1), careful run without flips 33.2s
+  [40.8, 2],   // 16 Old Growth: robot 38.5s with 3 flips (flips alt up to 1), careful run without flips 38.7s
+  [17.0, 1],   // 17 Green Flag: robot 16.2s with 0 flips (flips b up to 1), careful run without flips 16.2s
+  [21.0, 1],   // 18 Rumble Strip: robot 20.0s with 1 flip (flips f up to 1), careful run without flips 20.2s
+  [26.4, 1],   // 19 Oil Slick: robot 25.2s with 2 flips (flips f up to 1), careful run without flips 26.1s
+  [22.8, 1],   // 20 Bus Stop: robot 21.7s with 1 flip (flips b up to 1), careful run without flips 21.8s
+  [29.2, 1],   // 21 Pit Lane: robot 27.8s with 1 flip (flips b up to 1), careful run without flips 27.8s
+  [28.2, 1],   // 22 Seven Buses: robot 26.9s with 2 flips (flips b up to 1), careful run without flips 27.1s
+  [32.3, 1],   // 23 Stunt Show: robot 30.8s with 1 flip (flips b up to 1), careful run without flips 30.8s
+  [37.6, 2],   // 24 Chequered Flag: robot 35.8s with 3 flips (flips alt up to 1), careful run without flips 36.0s
+  [20.3, 1],   // 25 Black Ice: robot 19.5s with 0 flips (flips b up to 1), careful run without flips 19.5s
+  [23.1, 1],   // 26 Glacier Loop: robot 22.2s with 1 flip (flips f up to 1), careful run without flips 22.3s
+  [24.8, 1],   // 27 Slip Road: robot 23.8s with 1 flip (flips b up to 1), careful run without flips 24.0s
+  [33.2, 1],   // 28 Whiteout: robot 31.9s with 1 flip (flips f up to 1), careful run without flips 32.3s
+  [37.6, 1],   // 29 Aurora: robot 36.1s with 2 flips (flips f up to 1), careful run without flips 36.2s
+  [32.9, 1],   // 30 Powder Keg: robot 31.6s with 1 flip (flips b up to 1), careful run without flips 31.8s
+  [28.5, 1],   // 31 Crevasse: robot 27.4s with 2 flips (flips f up to 1), careful run without flips 27.4s
+  [40.0, 2],   // 32 Avalanche: robot 38.4s with 3 flips (flips alt up to 1), careful run without flips 39.1s
+  [19.2, 2],   // 33 Hot Start: robot 18.7s with 3 flips (flips b up to 1), careful run without flips 19.4s
+  [25.6, 1],   // 34 Caldera: robot 24.8s with 2 flips (flips f up to 1), careful run without flips 24.9s
+  [20.3, 1],   // 35 Magma Hop: robot 19.7s with 2 flips (flips f up to 1), careful run without flips 19.9s
+  [30.7, 1],   // 36 The Chimney: robot 29.8s with 0 flips (flips b up to 1), careful run without flips 29.8s
+  [35.8, 1],   // 37 Fire Walk: robot 34.8s with 2 flips (flips b up to 1), careful run without flips 34.8s
+  [30.8, 1],   // 38 Ash Loop: robot 29.9s with 2 flips (flips alt up to 1), careful run without flips 30.0s
+  [30.6, 1],   // 39 Ember Steps: robot 29.7s with 1 flip (flips b up to 1), careful run without flips 29.7s
+  [40.4, 3],   // 40 Eruption: robot 39.2s with 4 flips (flips f up to 1), careful run without flips 39.4s
+  [22.1, 3],   // 41 One Small Hop: robot 21.7s with 5 flips (flips alt up to 1, safe), careful run without flips 22.2s
+  [23.4, 2],   // 42 Double Loop: robot 22.9s with 3 flips (flips f up to 2), careful run without flips 23.3s
+  [30.6, 3],   // 43 Crater Maker: robot 30.0s with 5 flips (flips b up to 1), careful run without flips 30.1s
+  [31.8, 6],   // 44 Slow Float: robot 31.2s with 9 flips (flips b up to 2), careful run without flips 31.3s
+  [36.1, 4],   // 45 Regolith: robot 35.4s with 6 flips (flips alt up to 1), careful run without flips 35.6s
+  [40.9, 5],   // 46 Dark Side: robot 40.1s with 7 flips (flips f up to 1), careful run without flips 40.6s
+  [36.6, 9],   // 47 Escape Velocity: robot 35.9s with 12 flips (flips alt up to 2), careful run without flips 39.0s
+  [50.3, 6]    // 48 Riot Run: robot 49.3s with 9 flips (flips b up to 2), careful run without flips 49.4s
 ];
-RR.ZONE_V = [[], [], [], [], [], [8.5], [10], [8, 10.5], [], [], [10.5], [8.5, 10], [8, 11], [10, 10], [7, 10], [9, 7, 9.5, 10.5], [], [], [9.5], [10, 10], [8.5, 10], [9, 8.5], [10, 8.5, 10], [9, 8.5, 11, 10, 11], [], [], [8], [10, 8], [8, 10, 8], [9, 10.5], [9.5, 9, 9], [8, 9, 9, 8.5], [], [], [10.5], [9, 8], [9, 9, 9, 8.5], [8, 11], [8.5, 8, 9, 10.5], [7, 9, 9, 10.5], [], [], [8.5], [11, 10.5], [7.5, 8, 11], [8, 8.5, 10], [8.5, 8.5], [9, 7.5, 10, 10.5]];
+RR.ZONE_V = [[], [], [], [], [], [9.5], [11], [8, 10.5], [], [], [10.5], [8.5, 10], [8, 11], [10, 10], [7, 10], [9, 7, 9.5, 10.5], [], [], [9.5], [10, 10], [8.5, 10], [9, 8.5], [10, 8.5, 10], [9, 8.5, 11, 10, 11], [], [], [8], [10, 8], [8, 10, 8], [9, 10.5], [9.5, 9, 9], [8, 9, 9, 8.5], [], [], [10.5], [9, 8], [9, 9, 9, 8.5], [8, 11], [8.5, 8, 9, 10.5], [7, 9, 9, 10.5], [], [], [8.5], [11, 10.5], [7.5, 8, 11], [8, 8.5, 10], [8.5, 8.5], [9, 7.5, 10, 10.5]];
+if (typeof module !== 'undefined' && module.exports) module.exports = RR;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+/* ---- gearspots.js ---- */
+/* Where each track's hidden gear sits. Written by: node tools/gearspot.js --write   (do not edit by hand)
+   Tracks that place their gear themselves (b.gearAt in tracks.js) are not listed. */
+(function (root) {
+var RR = root.RR || (root.RR = {});
+RR.GEAR_AT = {
+  'first-gear': [217.6, -3.6],
+  'rolling-dunes': [244.3, -6.2],
+  'hop-skip': [153.3, -4.5],
+  'loop-de-dust': [180.2, -6.6],
+  'washboard': [374.6, -8.2],
+  'gulch-gap': [238, -14.7],
+  'canyon-run': [395.1, -20]
+};
 if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -2682,9 +3022,14 @@ if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 (function (root) {
 var RR = root.RR || (root.RR = {});
 RR.REBUILT = {
-  'washboard': [1, 22.8, 28.8],
-  'gulch-gap': [1, 21.5, 27.1],
-  'canyon-run': [1, 32.5, 41.1],
+  'first-gear': [1, 20.2, 25.5],
+  'rolling-dunes': [1, 23.6, 29.8],
+  'hop-skip': [1, 16.6, 21],
+  'loop-de-dust': [1, 18.7, 23.5],
+  'mesa-drop': [1, 21, 26.6],
+  'washboard': [2, 28.1, 35.5],
+  'gulch-gap': [2, 25.8, 32.6],
+  'canyon-run': [2, 34.9, 44],
   'timber-table': [1, 17.9, 22.6],
   'sawmill': [1, 21.4, 27.1],
   'root-rage': [1, 26.6, 33.6],
@@ -2743,10 +3088,11 @@ RR.botInput = function (s, P, out) {
     if (err > (P.gth || 0.42)) lean = 1; else if (err < -(P.gth || 0.42) * 0.8) lean = -1;
   } else {
     // follow the arc of the jump to see when and on what slope we come down
-    var x = s.x, y = s.y - b.com[1] * 0.9, vx = s.vx, vy = s.vy, g = s.g, t = 0, h = 0.04, target = 0, T = 3;
+    var x = s.x, y = s.y - b.com[1] * 0.9, vx = s.vx, vy = s.vy, g = s.g, t = 0, h = 0.04, target = 0, T = 3, y0 = y + 0.2, two = tr.forks && tr.forks.length;
     for (var k = 0; k < 160; k++) {
       x += vx * h; vy -= g * h; y += vy * h; t += h;
-      if (y <= RR.groundY(tr, x)) { target = (RR.groundSlope(tr, x - 0.6) + RR.groundSlope(tr, x + 0.6)) * 0.5; T = t; break; }
+      if (two) { if (y <= RR.surfaceY(tr, x, y0)) { target = RR.surfaceSlope(tr, x, y0); T = t; break; } }
+      else if (y <= RR.groundY(tr, x)) { target = (RR.groundSlope(tr, x - 0.6) + RR.groundSlope(tr, x + 0.6)) * 0.5; T = t; break; }
     }
     // the hop bike saves its puff for a jump that is going to come up short
     if (b.hop && s.hopReady && s.vy < 0 && P.trick !== false) {
@@ -2754,6 +3100,21 @@ RR.botInput = function (s, P, out) {
       for (var q = 0; q < hz.length; q++) if (x > hz[q].x0 - 0.3 && x < hz[q].x1 + 0.6) { trick = true; break; }
     }
     if (target > 1.2 || target < -1.2) target = 0;
+    /* Flips, when asked for (P.flips): at take-off, work out how many whole turns fit in the air time, then hold the
+       lean until nearly round and let the normal landing control square it up. P.flips: { dir: 'b'|'f'|'alt', max, at: [x0, x1], spare } */
+    var F = P.flips;
+    if (F && !P._fl && s.airT < 0.06 && s.airT > 0) {
+      var spare = F.spare == null ? 0.1 : F.spare, k = 0, need;
+      for (var kk = F.max || 2; kk >= 1; kk--) { need = (TAU * kk - 1.0) / b.spin + 0.25 + spare; if (T >= need) { k = kk; break; } }
+      if (k && (!F.at || (s.x >= F.at[0] && s.x <= F.at[1]))) {
+        var dd = F.dir === 'alt' ? ((P._flipN || 0) % 2 ? 'f' : 'b') : (F.dir || 'b');
+        P._fl = { d: dd === 'b' ? -1 : 1, k: k, done: false };
+      } else P._fl = { k: 0, done: true };
+    }
+    if (P._fl && !P._fl.done) {
+      if (Math.abs(s.rot) >= TAU * P._fl.k - 0.9) { P._fl.done = true; P._flipN = (P._flipN || 0) + 1; }
+      else { out.lean = P._fl.d; out.trick = false; P._lastAir = true; return finishGas(s, P, out, true); }
+    }
     target += 0.08 + (P.airBias || 0);
     // a winged bike that is going too fast for what is coming keeps its nose down, so the wings stop lifting and it lands to brake
     if (b.glide && P.wantV != null && Math.sqrt(s.vx * s.vx + s.vy * s.vy) > P.wantV + 0.5) target = Math.atan2(s.vy, s.vx) - 0.04;
@@ -2768,7 +3129,19 @@ RR.botInput = function (s, P, out) {
     // the pivot bike stops its spin dead once the nose is where it wants it
     if (b.pivot && lean === 0 && P.trick !== false && (s.w > 1 || s.w < -1) && err < th && err > -th) trick = true;
   }
+  if (!air && P._fl) P._fl = null;
+  // a wheelie when asked (P.wheelie: [x0, x1]): hold the front up at about 25 degrees
+  if (P.wheelie && !air && s.x > P.wheelie[0] && s.x < P.wheelie[1]) {
+    var sl = Math.atan2(-s.nrmX[0], s.nrmY[0]), pa = wrap(s.a - sl) + s.w * 0.15;
+    lean = pa < 0.38 ? -1 : pa > 0.5 ? 1 : 0; P._wh = true;
+  }
+  // two-route tracks: P.route 'high' leans back through the fork sign
+  if (P.route === 'high' && tr.forks) for (var fi = 0; fi < tr.forks.length; fi++) if (s.x > tr.forks[fi].x - 5 && s.x < tr.forks[fi].x + 0.5) lean = -1;
   out.lean = lean; out.trick = trick;
+  return finishGas(s, P, out, air);
+};
+function finishGas(s, P, out, air) {
+  var b = s.b, tr = s.track;
   var sp = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
   var cap = P.vcap || 1e9;
   /* Slow zones: stretches where full gas gets you hurt. The track carries a sensible
@@ -2787,13 +3160,13 @@ RR.botInput = function (s, P, out) {
   out.brake = sp > cap + (cap < 1e8 ? 0.5 : 0) && !air;
   // throttle: held open, but eased off when the front wheel climbs too high, the way a rider would
   var gas = !out.brake && sp < cap - 0.15;
-  if (gas && s.gnd[0] && !s.gnd[1]) {
+  if (gas && s.gnd[0] && !s.gnd[1] && !(P.wheelie && s.x > P.wheelie[0] && s.x < P.wheelie[1])) {
     var pr = wrap(s.a - Math.atan2(-s.nrmX[0], s.nrmY[0])) + s.w * (P.wlook == null ? 0.22 : P.wlook);
     if (pr > (P.wth || 0.4)) gas = false;
   }
   out.gas = gas;
   return out;
-};
+}
 
 if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -10088,6 +10461,37 @@ function drawRoofs(c, G, T, xl, xr, yt) {
   }
 }
 
+/* Two-route tracks: rock shelves you can ride on top of and under, and the bridge that brings the high route down. */
+function drawShelves(c, G, T, xl, xr) {
+  var ch = G.track.chains, i, k;
+  for (i = 1; i < ch.length; i++) {
+    var p = ch[i].pts;
+    if (ch[i].kind === 'shelf') {
+      var mn = 1e9, mx = -1e9; for (k = 0; k < p.length; k += 2) { if (p[k] < mn) mn = p[k]; if (p[k] > mx) mx = p[k]; }
+      if (mx < xl || mn > xr) continue;
+      c.beginPath(); c.moveTo(p[0], p[1]); for (k = 2; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]); c.closePath();
+      c.fillStyle = T.ground[1]; c.fill();
+      c.save(); c.clip(); c.fillStyle = T.ground[2] || T.ground[1];
+      for (k = 0; k < 7; k++) { var sx = mn + (mx - mn) * hash(k * 3.1 + mn), sy = p[3] - 0.25 - hash(k * 7.7 + mn) * 0.4; c.beginPath(); c.ellipse(sx, sy, 0.35 + hash(k + mn) * 0.4, 0.09, 0, 0, TAU); c.fill(); }
+      c.restore();
+      c.lineWidth = 0.055; c.strokeStyle = OUT; c.stroke();
+      // the crust on top
+      c.beginPath(); var n = p.length / 2; c.moveTo(p[2], p[3]); for (k = 2; k < n && p[k * 2] > p[k * 2 - 2]; k++) c.lineTo(p[k * 2], p[k * 2 + 1]);
+      c.lineWidth = 0.2; c.strokeStyle = T.crust; c.stroke();
+    } else if (ch[i].kind === 'bridge') {
+      if (p[p.length - 2] < xl || p[0] > xr) continue;
+      // trestle legs down to the ground, then the deck and a rail
+      c.lineWidth = 0.08; c.strokeStyle = '#6b4a2a';
+      for (k = 2; k < p.length - 2; k += 4) { var gy = RR.groundY(G.track, p[k]); if (gy < p[k + 1] - 0.4) { c.beginPath(); c.moveTo(p[k], p[k + 1]); c.lineTo(p[k] + 0.2, gy); c.moveTo(p[k], p[k + 1]); c.lineTo(p[k] - 0.2, gy); c.stroke(); } }
+      c.beginPath(); c.moveTo(p[0], p[1]); for (k = 2; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]);
+      c.lineWidth = 0.26; c.strokeStyle = OUT; c.stroke(); c.lineWidth = 0.18; c.strokeStyle = '#a5763f'; c.stroke();
+      c.beginPath(); c.moveTo(p[0], p[1] + 0.7); for (k = 2; k < p.length; k += 2) c.lineTo(p[k], p[k + 1] + 0.7);
+      c.lineWidth = 0.05; c.strokeStyle = '#6b4a2a'; c.stroke();
+      for (k = 0; k < p.length; k += 4) { c.beginPath(); c.moveTo(p[k], p[k + 1]); c.lineTo(p[k], p[k + 1] + 0.7); c.stroke(); }
+    }
+  }
+}
+
 /* Something hanging over a jump. The solid part is the plain column from y0 upward; the drawing
    stays inside it at the bottom so what you see is what you hit. */
 function drawBeams(c, G, T, xl, xr, yt) {
@@ -10140,10 +10544,36 @@ function drawStump(c, ft, m, T) {
     A.shape(c, [x - r * 0.32, ft.y - r * 0.05, x - r * 0.2, ft.y + r * 0.62 + h * 0.3, x + r * 0.05, ft.y + r * 0.5 + h * 0.4, x + r * 0.3, ft.y - r * 0.05], col, 0.035);
   }
 }
+/* the fork sign: two arrows, the upper one with a lean-back symbol */
+function drawForkSign(c, ft) {
+  c.save(); c.translate(ft.x - 1.2, ft.y);
+  A.line(c, [0, 0, 0, 2.6], 0.08, '#4a3a2a');
+  A.shape(c, [0.05, 2.7, 1.3, 2.7, 1.55, 2.95, 1.3, 3.2, 0.05, 3.2], '#f2c230', 0.04);
+  A.shape(c, [0.05, 2.05, 1.3, 2.05, 1.55, 1.8, 1.3, 1.55, 0.05, 1.55], '#f5f1e6', 0.04);
+  A.line(c, [0.35, 2.82, 0.95, 3.08], 0.07, '#15171d'); A.line(c, [0.35, 1.8, 1.0, 1.8], 0.07, '#15171d');
+  c.restore();
+}
+/* the hidden gear: a brass cog that turns and bobs. Already found: a faint outline. Picked up this run: gone. */
+function drawGear(c, G, ft) {
+  if (G.gearGot || G.attract) return;
+  var had = RR.Progress && RR.Progress.gearHave(G.track.index), t = G.t, r = 0.42, n = 10, k;
+  c.save(); c.translate(ft.x, ft.y + Math.sin(t * 2.2) * 0.06); c.rotate(t * 1.4);
+  c.globalAlpha = had ? 0.35 : 1;
+  if (!had) { c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.25 + 0.15 * Math.sin(t * 4); A.circ(c, 0, 0, r * 1.6, '#ffd27a', 0); c.restore(); }
+  c.beginPath();
+  for (k = 0; k < n * 2; k++) { var a0 = k / (n * 2) * TAU, rr = k % 2 ? r * 0.78 : r; c.lineTo(Math.cos(a0 - 0.12) * rr, Math.sin(a0 - 0.12) * rr); c.lineTo(Math.cos(a0 + 0.12) * rr, Math.sin(a0 + 0.12) * rr); }
+  c.closePath(); c.fillStyle = had ? '#9aa0a8' : '#d9a83a'; c.fill(); c.lineWidth = 0.05; c.strokeStyle = OUT; c.stroke();
+  A.circ(c, 0, 0, r * 0.5, had ? '#c8ccd2' : '#ffe08a', 0.04);
+  A.circ(c, 0, 0, r * 0.2, '#2b2f38', 0.03);
+  c.lineWidth = 0.05; c.strokeStyle = 'rgba(255,255,255,0.6)'; c.beginPath(); c.arc(0, 0, r * 0.66, 3.6, 4.6); c.stroke();
+  c.restore(); c.globalAlpha = 1;
+}
 function drawFeats(c, G, T, xl, xr, behind) {
   var f = G.track.feats, i, tr = G.track;
   for (i = 0; i < f.length; i++) {
     var ft = f[i];
+    if (ft.t === 'gear' && !behind) { if (ft.x > xl - 1 && ft.x < xr + 1) drawGear(c, G, ft); continue; }
+    if (ft.t === 'sign' && ft.kind === 'fork' && behind && ft.x > xl - 2 && ft.x < xr + 2) { drawForkSign(c, ft); continue; }
     if (ft.t === 'log' && !behind) {
       if (ft.x < xl - 1 || ft.x > xr + 1) continue;
       if (G.sim && G.sim.smash && G.sim.smash[ft.id]) { drawStump(c, ft, RR.WORLDS[tr.worldIndex].logMat, T); continue; }
@@ -10329,6 +10759,7 @@ R.frame = function (G, dt) {
   for (i = 0; i < tr.loops.length; i++) if (tr.loops[i].cx + tr.loops[i].R + 2 > xl && tr.loops[i].cx - tr.loops[i].R - 2 < xr) drawLoop(c, tr.loops[i], T);
   drawGround(c, G, T, xl, xr, yb);
   drawRoofs(c, G, T, xl, xr, yt);
+  drawShelves(c, G, T, xl, xr);
   drawBeams(c, G, T, xl, xr, yt);
   drawFeats(c, G, T, xl, xr, false);
 
@@ -12223,9 +12654,9 @@ function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 /* ------------------------------------------------------------------ */
 var KEY = 'ridgeRiot.v1';
 var DEF = {
-  v: 3, news: 0, best: {}, bike: 'scrapper', owned: { scrapper: 1 }, last: 0, seenHow: false,
+  v: 4, news: 0, best: {}, st: {}, bike: 'scrapper', owned: { scrapper: 1 }, last: 0, seenHow: false,
   nuggets: 0, paints: {}, riders: {}, fit: {}, crates: { rare: 0, epic: 0 }, garage: { level: 0, slots: [] }, opened: 0, pity: 0, paid: {}, got: {}, fresh: {}, kept: {},
-  gears: {}, chal: {}, flipst: {},
+  gears: {}, chal: {},
   settings: { sfx: 0.8, engine: 0.7, music: 0.5, tilt: false, tiltSens: 0.8, tiltFlip: false, hints: true, ghost: true, unlockAll: false, quality: 'auto', buzz: true },
   stats: { flips: 0, bestAir: 0, crashes: 0, runs: 0, finishes: 0, bestJump: 0, bestFlips: 0, dist: 0, topSpeed: 0 }
 };
@@ -12244,13 +12675,14 @@ var Store = RR.Store = {
   set: function (k, v) { mem[k] = v; try { root.localStorage.setItem(k, v); return true; } catch (e) { return false; } },
   del: function (k) { delete mem[k]; try { root.localStorage.removeItem(k); } catch (e) {} },
   load: function () {
-    var raw = Store.get(KEY), d = JSON.parse(JSON.stringify(DEF)), k, i, old = false, revs = {};
+    var raw = Store.get(KEY), d = JSON.parse(JSON.stringify(DEF)), k, i, old = false, revs = {}, o = null;
     Store.rebuilt = 0;
     Store.other = {};
     if (raw) {
       try {
-        var o = JSON.parse(raw);
+        o = JSON.parse(raw);
         for (k in o) if (k !== 'settings' && k !== 'stats' && k !== 'best' && k !== 'crates' && k !== 'garage' && k !== 'v' && k in d) d[k] = o[k];
+        if (o.v >= 4 && o.st) d.st = o.st;
         for (k in o.settings || {}) if (k in d.settings) d.settings[k] = o.settings[k];
         for (k in o.stats || {}) if (k in d.stats) d.stats[k] = o.stats[k];
         /* Version 2 saves had geodes: a gold geode (finish a world) is now a rare crate and a diamond geode (three stars on a world) an epic crate. */
@@ -12272,6 +12704,18 @@ var Store = RR.Store = {
         }
       } catch (e) {}
     }
+    /* Version 3 and older saves had three time stars per track. Each old star becomes one new one, in order:
+       one star is the finish star, two add the time star, three add the flip star too. Nothing you had
+       unlocked can lock again, because nobody loses a star. */
+    if (raw && (!o || !(o.v >= 4))) {
+      for (i = 0; i < RR.TRACK_COUNT; i++) {
+        var tid = RR.trackId(i), n = d.kept[tid] || 0, bt = d.best[i], leg = RR.LEGACY_STARS && RR.LEGACY_STARS[tid], rb0 = RR.REBUILT && RR.REBUILT[tid];
+        if (bt && rb0 && (revs[tid] || 0) < rb0[0]) leg = [rb0[1], rb0[2]];
+        if (bt && leg) n = Math.max(n, bt <= leg[0] ? 3 : bt <= leg[1] ? 2 : 1);
+        if (n) d.st[tid] = (d.st[tid] || 0) | (n >= 3 ? 7 : n >= 2 ? 3 : 1);
+      }
+      d.kept = {}; Store.converted = true;
+    }
     if (!RR.BIKE[d.bike]) d.bike = 'scrapper';
     for (i = 0; i < RR.GARAGE_MAX_SLOTS; i++) if (d.garage.slots[i] === undefined) d.garage.slots[i] = null;
     d.owned.scrapper = 1;
@@ -12281,12 +12725,10 @@ var Store = RR.Store = {
     for (k in d.best) {
       var id = RR.trackId(+k), rb = RR.REBUILT && RR.REBUILT[id];
       if (!rb || !d.best[k] || (revs[id] || 0) >= rb[0]) continue;
-      var st = d.best[k] <= rb[1] ? 3 : d.best[k] <= rb[2] ? 2 : 1;
-      if (st > (d.kept[id] || 0)) d.kept[id] = st;
       delete d.best[k]; Store.del(KEY + '.ghost.' + id); Store.rebuilt++;
     }
     Store.data = d;
-    if (Store.rebuilt && !old) Store.save();
+    if ((Store.rebuilt || Store.converted) && !old) Store.save();
     if (old) {
       // move the ghost recordings to their new names as well
       for (k = 0; k < V1.length; k++) { var g = Store.get(KEY + '.ghost.' + k); if (g) { Store.set(KEY + '.ghost.' + v1id(k), g); Store.del(KEY + '.ghost.' + k); } }
@@ -12315,15 +12757,13 @@ var Store = RR.Store = {
 
 var P = RR.Progress = {
   earned: [],      // trophies handed over since the last finish, so the results screen can announce them
-  starsFor: function (i) {
-    var b = Store.data.best[i], kept = Store.data.kept[RR.trackId(i)] || 0;
-    if (!b) return kept;
-    var st = RR.STAR_TIMES[i], n = b <= st[0] ? 3 : b <= st[1] ? 2 : 1;
-    return n > kept ? n : kept;
-  },
-  /* finished at least once, on this layout or the one before it */
-  done: function (i) { return !!Store.data.best[i] || !!Store.data.kept[RR.trackId(i)]; },
-  starsForTime: function (i, t) { var st = RR.STAR_TIMES[i]; return t <= st[0] ? 3 : t <= st[1] ? 2 : 1; },
+  /* the three stars of a track as bits: 1 finish, 2 time, 4 flips (RR.STAR) */
+  starBits: function (i) { return Store.data.st[RR.trackId(i)] || 0; },
+  starsFor: function (i) { return RR.starCount(P.starBits(i)); },
+  /* finished at least once (the finish star) */
+  done: function (i) { return !!Store.data.best[i] || !!(P.starBits(i) & 1); },
+  /* the stars one run earns */
+  runBits: function (i, t, flips) { var st = RR.STAR_TIMES[i]; return 1 | (t <= st[0] ? 2 : 0) | (flips >= st[1] ? 4 : 0); },
   total: function () { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) n += P.starsFor(i); return n; },
   worldDone: function (w) { for (var i = w * 8; i < w * 8 + 8; i++) if (!P.done(i)) return false; return true; },
   worldCount: function (w) { var n = 0; for (var i = w * 8; i < w * 8 + 8; i++) if (P.done(i)) n++; return n; },
@@ -12356,7 +12796,26 @@ var P = RR.Progress = {
   /* Phase 2 collectables: one hidden gear and one challenge per track, and the flip star (filed by track name) */
   gearCount: function (w) { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) if ((w == null || Math.floor(i / 8) === w) && Store.data.gears[RR.trackId(i)]) n++; return n; },
   chalCount: function () { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) if (Store.data.chal[RR.trackId(i)]) n++; return n; },
-  flipStars: function () { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) if (Store.data.flipst[RR.trackId(i)]) n++; return n; },
+  flipStars: function () { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) if (P.starBits(i) & 4) n++; return n; },
+  gearHave: function (i) { return !!Store.data.gears[RR.trackId(i)]; },
+  chalHave: function (i) { return !!Store.data.chal[RR.trackId(i)]; },
+  /* rewards for gears and challenges: an item at every 6, a trophy at all 48. Returns what was handed over. */
+  claimGoals: function () {
+    var d = Store.data, out = [], R = RR.GOAL_REWARDS, k;
+    [['gears', P.gearCount()], ['chal', P.chalCount()]].forEach(function (g) {
+      var list = R[g[0]];
+      for (k = 0; k < list.length; k++) {
+        var need = (k + 1) * R.every, key = 'goal:' + g[0] + ':' + need;
+        if (g[1] < need || d.got[key]) continue;
+        d.got[key] = 1;
+        var it = RR.PAINT[list[k]] || RR.RIDER[list[k]];
+        if (it && !P.reallyOwns(it)) { d[it.kind === 'paint' ? 'paints' : 'riders'][it.id] = 1; d.fresh[it.id] = 1; out.push({ item: it, why: need + ' ' + (g[0] === 'gears' ? 'gears found' : 'challenges done') }); }
+        else { d.crates.epic++; out.push({ crate: 'epic', why: need + ' ' + (g[0] === 'gears' ? 'gears found' : 'challenges done') + ' (you had that one, so an epic crate instead)' }); }
+      }
+    });
+    P.claimTrophies().forEach(function (it) { P.earned.push(it); out.push({ item: it, why: 'Trophy' }); });
+    return out;
+  },
   bikeOpen: function (d) { return Store.data.settings.unlockAll || !!Store.data.owned[d.id]; },
   /* what a locked bike still needs: the rule, where you are now, and 0..1 for the bar */
   bikeNeed: function (d) {
@@ -12454,6 +12913,8 @@ var P = RR.Progress = {
     else if (r.type === 'dist') { have = Math.min(s.dist, need); now = (have / 1000).toFixed(1) + ' of ' + (need / 1000) + ' km'; }
     else if (r.type === 'crashes') { have = Math.min(s.crashes, need); now = have + ' of ' + need + ' crashes'; }
     else if (r.type === 'collect') { need = RR.ITEMS.length; have = P.ownedCount(); now = have + ' of ' + need + ' collected'; }
+    else if (r.type === 'gears') { need = RR.TRACK_COUNT; have = P.gearCount(); now = have + ' of ' + need + ' gears'; }
+    else if (r.type === 'chal') { need = RR.TRACK_COUNT; have = P.chalCount(); now = have + ' of ' + need + ' challenges'; }
     return { text: r.text, now: now, k: have / need, met: have >= need };
   },
   /* hand over any trophy whose rule is now met; returns the newly earned ones */
@@ -12605,6 +13066,7 @@ G.reset = function (snapCam) {
   var s = G.sim;
   RR.resetSim(s);
   R.clearParts(); R.clearPopups();
+  G.chal = RR.chalStart(G.track.chal); G.gearSpot = RR.gearOf(G.track); G.gearGot = false; G.goalNews = [];
   G.wipe = null; G.sunk = false; G.camHold = false; G.banked = false; G.runPay = 0; G.flipPaid = 0; G.bonked = false; G.stuckT = 0; G.stuckSaid = false; G.flash = 0; G.boostGlow = 0; G.timeScale = 1; G.endT = 0; G.resultShown = false;
   vis.noRider = false; vis.stand = 0; vis.crouch = 0;
   Ghost.rec.length = 0; tickN = 0; acc = 0; if (G.trail) G.trail.length = 0;
@@ -12662,7 +13124,9 @@ function copyPrev() {
 
 function finishRun() {
   var s = G.sim, i = G.track.index, t = Math.round(s.finishTime * 100) / 100, d = Store.data, E = RR.ECON;
-  var old = d.best[i], isBest = !old || t < old, before = P.starsFor(i), totBefore = P.total();
+  var old = d.best[i], isBest = !old || t < old, before = P.starsFor(i), bitsBefore = P.starBits(i), totBefore = P.total();
+  var bits = P.runBits(i, t, s.flips), id = RR.trackId(i);
+  d.st[id] = bitsBefore | bits;
   d.stats.finishes++; P.earned = [];
   if (isBest) { d.best[i] = t; Ghost.store(i, G.bikeDef.id); }
   var st = d.stats;
@@ -12679,8 +13143,8 @@ function finishRun() {
   var owed = P.settle();
   pay.stars = owed.nuggets; pay.total = pay.finish + pay.best + pay.flips + pay.stars;
   Store.save();
-  G.result = { time: t, old: old || 0, best: isBest, stars: P.starsForTime(i, t), starsBefore: before, bikes: bikes, worlds: worlds, flips: s.flips, air: s.bestAir, track: i,
-    pay: pay, crates: owed.crates, trophies: P.earned.slice() };
+  G.result = { time: t, old: old || 0, best: isBest, bits: bits, bitsBefore: bitsBefore, stars: RR.starCount(bits), starsBefore: before, bikes: bikes, worlds: worlds, flips: s.flips, air: s.bestAir, track: i,
+    pay: pay, crates: owed.crates, trophies: P.earned.slice(), goals: G.goalNews.slice(), chal: G.chal && G.chal.done };
 }
 
 /* ------------------------------------------------------------------ */
@@ -12787,6 +13251,29 @@ function onEvents() {
   ev.length = 0;
 }
 
+/* challenges and the hidden gear, checked every tick of a run */
+function goalsTick(s, input) {
+  var id = RR.trackId(G.track.index), d = Store.data, k;
+  if (G.chal && !G.chal.done && RR.chalTick(G.chal, s, input) && !d.chal[id]) {
+    d.chal[id] = 1; Store.save();
+    R.popup('CHALLENGE', RR.chalText(G.chal.c), '#ff8ad8'); Au.unlocked(); buzz(40);
+    goalPay();
+  } else if (G.chal && G.chal.done && !G.chalSaid) { G.chalSaid = true; }
+  var gs = G.gearSpot;
+  if (gs && !G.gearGot && !s.crashed && RR.gearTouch(s, gs.x, gs.y)) {
+    G.gearGot = true;
+    for (k = 0; k < 14; k++) R.emit(2, gs.x, gs.y, rnd(-4, 4), rnd(-2, 5), rnd(0.3, 0.7), 0.06, k % 2 ? '#ffd27a' : '#fff3c2', { g: 0.6, front: 1 });
+    if (!d.gears[id]) { d.gears[id] = 1; Store.save(); R.popup('GEAR FOUND', P.gearCount() + ' of ' + RR.TRACK_COUNT, '#ffd27a'); Au.gear ? Au.gear() : Au.coin(3); buzz(30); goalPay(); }
+    else Au.coin(1);
+  }
+}
+function goalPay() {
+  var got = P.claimGoals();
+  got.forEach(function (g) { G.goalNews.push(g); });
+  if (got.length && RR.UI) RR.UI.toast(got.map(function (g) { return g.item ? (g.why === 'Trophy' ? 'Trophy earned: ' + g.item.name : g.why + ': ' + g.item.name) : g.why; }).join('. ') + '.');
+  var bk = P.claim(); if (bk.length && RR.UI) RR.UI.toastBikes(bk);
+}
+
 /* dirt off the back tyre, exhaust smoke, sparks: emitted a little every tick */
 function trailFx() {
   var s = G.sim, b = G.bike, T = R.THEMES[G.track.worldIndex], def = G.bikeDef, ca = Math.cos(s.a), sa = Math.sin(s.a), k;
@@ -12861,6 +13348,7 @@ function tickOnce() {
   if (bk.pivot && input.brake && !G.brkWas && !s.gnd[0] && !s.gnd[1] && !s.crashed) Au.pivot();
   G.brkWas = input.brake;
   if (bk.stick) { if (G.stickWas > 0 && s.stickT <= 0 && !s.crashed) Au.unstick(); G.stickWas = s.stickT; }
+  if (G.state === 'run' || G.state === 'finish') goalsTick(s, input);
   onEvents();
   trailFx();
   if (G.wipe) G.wipe.step(DT);
@@ -12955,11 +13443,19 @@ var UI = RR.UI = { cur: '', world: 0, gi: 0, gtab: 'bikes', pick: null };
 function $(id) { return doc.getElementById(id); }
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 function fmt(t) { return t.toFixed(2); }
+/* the three stars of a track, each with what it is for */
+function starBits(bits, cls) { return '<span class="stars sb ' + (cls || '') + '">' + [1, 2, 4].map(function (b) { return '<i class="star' + (bits & b ? ' on' : '') + '"></i>'; }).join('') + '</span>'; }
+function goalMarks(i) { return '<span class="gm"><i class="g' + (P.gearHave(i) ? ' on' : '') + '" title="Hidden gear">' + IC.gear + '</i><i class="c' + (P.chalHave(i) ? ' on' : '') + '" title="Challenge">' + IC.chal + '</i></span>'; }
 function stars(n, cls) { var s = '<span class="stars ' + (cls || '') + '">'; for (var i = 0; i < 3; i++) s += '<i class="star' + (i < n ? ' on' : '') + '"></i>'; return s + '</span>'; }
 var NUG = '<i class="nug"></i>';
 UI.NUG = NUG; UI.esc = esc;
 
 var IC = {
+  gear: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M10.3 1.8h3.4l.5 2.6 1.9.8 2.2-1.5 2.4 2.4-1.5 2.2.8 1.9 2.6.5v3.4l-2.6.5-.8 1.9 1.5 2.2-2.4 2.4-2.2-1.5-1.9.8-.5 2.6h-3.4l-.5-2.6-1.9-.8-2.2 1.5-2.4-2.4 1.5-2.2-.8-1.9-2.6-.5v-3.4l2.6-.5.8-1.9-1.5-2.2 2.4-2.4 2.2 1.5 1.9-.8zM12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2z"/></svg>',
+  chal: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.5a9.5 9.5 0 1 0 9.5 9.5h-3a6.5 6.5 0 1 1-6.5-6.5V2.5zm1.2 0v6.4l4.6-3.2 1.6 2.3-6.2 4.3V2.5z"/></svg>',
+  flip: '<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M5 13a7 7 0 1 1 3 5.7"/><path fill="currentColor" d="M2.3 10.8l5.4 1.2-3.9 3.9z"/></svg>',
+  clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2.6"/><path stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M12 9v4.5l3 1.8M9.5 2.5h5"/></svg>',
+  flag: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M5 2.5h2.4v19H5zM8.6 3.4h11l-2.6 4 2.6 4h-11z"/></svg>',
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="#f6f2e7" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4 7 12l8 8"/></svg>',
   pause: '<svg viewBox="0 0 24 24" fill="#f6f2e7"><rect x="5" y="4" width="5" height="16" rx="1.2"/><rect x="14" y="4" width="5" height="16" rx="1.2"/></svg>',
   redo: '<svg viewBox="0 0 24 24" fill="none" stroke="#f6f2e7" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5V8h-4.5"/></svg>',
@@ -13280,12 +13776,13 @@ UI.tracks = function () {
     var info = RR.trackInfo(i), open = P.trackOpen(i), best = Store.data.best[i];
     h += '<button class="card' + (open ? '' : ' locked') + '" data-act="track" data-i="' + i + '" aria-label="' + esc(info.name) + (open ? '' : ', locked') + '">' +
       '<canvas data-thumb="' + i + '" width="240" height="90"></canvas><span class="num">' + (info.num + 1) + '</span><span class="nm">' + esc(info.name) + '</span>' +
-      (open ? '<span class="st">' + stars(P.starsFor(i)) + '</span>' + (best ? '<span class="bt">' + fmt(best) + '</span>' : '') : '<span class="lock">' + IC.lock + '</span>') + '</button>';
+      (open ? '<span class="st">' + starBits(P.starBits(i)) + goalMarks(i) + '</span>' + (best ? '<span class="bt">' + fmt(best) + '</span>' : '') : '<span class="lock">' + IC.lock + '</span>') + '</button>';
   }
   $('grid').innerHTML = h;
   var cvs = $('grid').querySelectorAll('canvas');
   for (i = 0; i < cvs.length; i++) R.trackThumb(cvs[i], RR.getTrack(+cvs[i].getAttribute('data-thumb')), T.ground[0], T.crust === '#f6fbff' ? '#9db8e8' : T.id === 'race' ? '#3a3d46' : T.crust);
-  $('lockmsg').textContent = wopen ? (P.worldCount(w) < 8 ? 'Finish a track to open the next one.' : P.worldStars(w) < 24 ? 'Three stars on all eight earns an epic crate.' : '') : W.name + ' opens at ' + W.need + ' stars. You have ' + tot + '.';
+  var gW = 0, cW = 0; for (i = w * 8; i < w * 8 + 8; i++) { if (P.gearHave(i)) gW++; if (P.chalHave(i)) cW++; }
+  $('lockmsg').textContent = wopen ? (P.worldCount(w) < 8 ? 'Finish a track to open the next one. ' : P.worldStars(w) < 24 ? 'Three stars on all eight earns an epic crate. ' : '') + 'Gears found here: ' + gW + ' of 8. Challenges: ' + cW + ' of 8.' : W.name + ' opens at ' + W.need + ' stars. You have ' + tot + '.';
 };
 
 /* ------------------------------------------------------------------ */
@@ -13596,7 +14093,10 @@ UI.onReset = function () {
   if (i === 0 && !touchy) tip = 'W or up: gas. S or down: brake. A and D, or left and right: lean back and forward.';
   if (tilt && i === 0) tip = 'Tilt the phone to lean. The lean buttons still work.';
   if (G.bikeDef.bonk && !tip) tip = 'The roll hoop takes one knock on the head for you. Only one.';
-  $('howmid').innerHTML = go + (tip ? '<small>' + esc(tip) + '</small>' : '');
+  var st = RR.STAR_TIMES[i], ch = G.track.chal;
+  var goals = '<span class="goals"><span>' + IC.flag + 'Finish</span><span>' + IC.clock + 'Under ' + fmt(st[0]) + '</span><span>' + IC.flip + st[1] + ' flip' + (st[1] > 1 ? 's' : '') + ' in one run</span></span>' +
+    (ch ? '<span class="chal' + (P.chalHave(i) ? ' done' : '') + '">' + IC.chal + 'Challenge: ' + esc(RR.chalText(ch)) + (P.chalHave(i) ? ' (done)' : '') + '</span>' : '');
+  $('howmid').innerHTML = go + goals + (tip ? '<small>' + esc(tip) + '</small>' : '');
   $('pads').className = 'pads' + (Store.data.settings.hints ? '' : ' off');
   UI.measurePads();
   lastGoal = -1; lastClk = ''; lastPads = '';
@@ -13621,8 +14121,10 @@ UI.hud = function (g, In) {
   var s = g.sim, i = g.track.index, st = RR.STAR_TIMES[i];
   var txt = fmt(s.finished ? s.finishTime : s.time);
   if (txt !== lastClk) { $('clk').textContent = txt; lastClk = txt; }
-  var tier = s.time <= st[0] ? 3 : s.time <= st[1] ? 2 : 1;
-  if (tier !== lastGoal) { lastGoal = tier; $('goal').innerHTML = stars(tier) + '<span>' + (tier === 3 ? 'under ' + fmt(st[0]) : tier === 2 ? 'under ' + fmt(st[1]) : 'just finish') + '</span>'; }
+  var inTime = s.time <= st[0], fl = Math.min(s.flips, 99), cp = RR.chalProgress(g.chal), key = (inTime ? 1 : 0) + ':' + fl + ':' + cp + ':' + (g.chal && g.chal.done ? 1 : 0);
+  if (key !== lastGoal) { lastGoal = key;
+    $('goal').innerHTML = '<span class="hg' + (inTime ? ' on' : '') + '">' + IC.clock + fmt(st[0]) + '</span><span class="hg' + (fl >= st[1] ? ' on' : '') + '">' + IC.flip + fl + '/' + st[1] + '</span>' +
+      (g.chal ? '<span class="hg c' + (g.chal.done ? ' on' : '') + '">' + IC.chal + (cp ? esc(cp) : '') + '</span>' : ''); }
   var pads = (In.L ? 'L' : '') + (In.R ? 'R' : '') + (In.G ? 'G' : '') + (In.B ? 'B' : '');
   if (pads !== lastPads) { lastPads = pads; $('padB').className = 'pad b' + (In.L ? ' on' : ''); $('padF').className = 'pad f' + (In.R ? ' on' : ''); $('padG').className = 'pad g' + (In.G && !In.B ? ' on' : ''); $('padK').className = 'pad k' + (In.B ? ' on' : ''); }
   var bo = $('boost');
@@ -13633,13 +14135,19 @@ UI.results = function (r, again) {
   var i = r.track, info = RR.trackInfo(i), st = RR.STAR_TIMES[i], h, k;
   var next = i + 1 < RR.TRACK_COUNT && P.trackOpen(i + 1) ? i + 1 : -1;
   h = '<div class="tn">' + esc(RR.WORLDS[info.world].name) + ' ' + (info.num + 1) + ', ' + esc(info.name) + '</div><div class="time">' + fmt(r.time) + '</div>' +
-      '<div class="big"><i class="star' + (again && r.stars > 0 ? ' on' : '') + '" id="rs0"></i><i class="star' + (again && r.stars > 1 ? ' on' : '') + '" id="rs1"></i><i class="star' + (again && r.stars > 2 ? ' on' : '') + '" id="rs2"></i></div>';
+      '<div class="big">' + [1, 2, 4].map(function (b, n) { var lab = b === 1 ? 'Finish' : b === 2 ? 'Under ' + fmt(st[0]) : st[1] + ' flip' + (st[1] > 1 ? 's' : ''); return '<span class="sg"><i class="star' + (again && ((r.bits | r.bitsBefore) & b) ? ' on' : '') + '" id="rs' + n + '"></i><small class="' + (r.bits & b ? 'got' : (r.bitsBefore & b ? 'had' : '')) + '">' + lab + '</small></span>'; }).join('') + '</div>';
   var line;
   if (r.best && r.old) line = '<b>New best</b> ' + fmt(r.old - r.time) + ' quicker than before';
   else if (r.best) line = '<b>First finish</b>';
   else line = 'Your best is ' + fmt(r.old) + ', this was ' + fmt(r.time - r.old) + ' off it';
   h += '<div class="line">' + line + '</div>';
-  h += '<div class="line">' + (r.stars === 3 ? 'All three stars. Nothing left to prove here.' : r.stars === 2 ? 'Three stars needs under ' + fmt(st[0]) + '.' : 'Two stars needs under ' + fmt(st[1]) + ', three needs under ' + fmt(st[0]) + '.') + '</div>';
+  var all = r.bits | r.bitsBefore, miss = [];
+  if (!(all & 2)) miss.push('finish under ' + fmt(st[0]));
+  if (!(all & 4)) miss.push('land ' + st[1] + ' flip' + (st[1] > 1 ? 's' : '') + ' in one run (you landed ' + r.flips + ')');
+  h += '<div class="line">' + (miss.length ? 'Still to get: ' + miss.join(', and ') + '.' : 'All three stars here.') + '</div>';
+  var ch = G.track && G.track.chal;
+  if (ch) h += '<div class="line chl' + (P.chalHave(i) ? ' done' : '') + '">' + IC.chal + (r.chal ? '<b>Challenge done</b> ' : P.chalHave(i) ? 'Challenge done: ' : 'Challenge: ') + esc(RR.chalText(ch)) + '</div>';
+  for (k = 0; k < (r.goals || []).length; k++) if (r.goals[k].why !== 'Trophy') h += '<div class="unl">' + esc(r.goals[k].why) + ': ' + (r.goals[k].item ? esc(r.goals[k].item.name) : 'an epic crate') + '</div>';
   var pay = r.pay, bits = [];
   if (pay) {
     bits.push('finish ' + pay.finish); if (pay.stars) bits.push('new stars ' + pay.stars); if (pay.flips) bits.push('flips ' + pay.flips); if (pay.best) bits.push('new best ' + pay.best);
@@ -13656,7 +14164,7 @@ UI.results = function (r, again) {
   $('res').innerHTML = h;
   UI.show('results');
   if (again) return;
-  for (k = 0; k < r.stars; k++) (function (n) { setTimeout(function () { var e = $('rs' + n); if (e && UI.cur === 'results') { e.className = 'star on'; Au.star(n); } }, 350 + n * 330); })(k);
+  [1, 2, 4].forEach(function (b, n) { if (!((r.bits | r.bitsBefore) & b)) return; setTimeout(function () { var e = $('rs' + n); if (e && UI.cur === 'results') { e.className = 'star on'; Au.star(n); } }, 350 + n * 330); });
   setTimeout(function () { if (UI.cur !== 'results') return; if (r.bikes.length || r.worlds.length || (r.crates || []).length || (r.trophies || []).length) Au.unlocked(); else if (r.best && r.old) Au.newBest(); else if (pay) Au.coin(2); }, 350 + r.stars * 330 + 150);
 };
 
@@ -13665,15 +14173,16 @@ RR.boot = function () {
   Store.load();
   P.claim();
   var owed = P.settle();      // old saves are paid for the stars and worlds they already have
-  var news = Store.data.news < 3;
-  if (owed.nuggets || owed.crates.length || news) { Store.data.news = 3; Store.save(); }
+  var news = Store.data.news < 3, news4 = Store.data.news < 4;
+  if (owed.nuggets || owed.crates.length || news || news4) { Store.data.news = 4; Store.save(); }
   R.init($('stage'));
   UI.init();
   // the crate answers to a tap anywhere
   $('cratecv').addEventListener('pointerdown', function (e) { e.preventDefault(); Au.unlock(); afterUnlock(); crateHit(); });
   G.menu();
   UI.title();
-  if (owed.nuggets || owed.crates.length || news) setTimeout(function () { UI.toast('New: crates, trophies and a showroom for your bikes, and far more paint jobs and riders. You have ' + Store.data.nuggets + ' nuggets' + (P.freeCrates() ? ' and ' + P.freeCrates() + ' prize crate' + (P.freeCrates() > 1 ? 's' : '') : '') + '.'); }, 900);
+  if (news4) setTimeout(function () { UI.toast('New: every track now has three goals (finish, beat the time, land the flips), a challenge and a hidden gear, and there are nine new bikes. Your old stars carried over.'); }, 900);
+  else if (owed.nuggets || owed.crates.length || news) setTimeout(function () { UI.toast('New: crates, trophies and a showroom for your bikes, and far more paint jobs and riders. You have ' + Store.data.nuggets + ' nuggets' + (P.freeCrates() ? ' and ' + P.freeCrates() + ' prize crate' + (P.freeCrates() > 1 ? 's' : '') : '') + '.'); }, 900);
   if (Store.rebuilt) setTimeout(function () { UI.toast(Store.rebuilt + ' track' + (Store.rebuilt > 1 ? 's have' : ' has') + ' been rebuilt and now bite back. You keep your stars on them. Best times start again.'); }, owed.nuggets || owed.crates.length || news ? 7500 : 900);
   root.requestAnimationFrame(G.frame);
 };

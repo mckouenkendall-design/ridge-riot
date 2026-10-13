@@ -56,6 +56,6 @@ if (require.main === module) {
     if (tr.chal && tr.chal.t === 'nobrake') { const r = ride(t, id, { caps: cal.win.map(w => w ? w.aim : 1e9), vcap: cal.G, nobrake: true }); if (r.ok && r.chal) chalBy.push('careful line, lifting instead of braking'); }
     console.log(`#${t + 1} ${tr.name}`);
     console.log(`   gear at ${g ? g.x.toFixed(1) + ', ' + g.y.toFixed(1) : 'NONE'}: careful ride ${base.gear ? 'TAKES IT BY ACCIDENT' : 'misses it'}, flat out ${flat.gear ? 'takes it' + (flat.ok ? ' and finishes' : ' then crashes') : 'misses it'}; found by ${gearBy.length} of ${pol.length} ways: ${gearBy.slice(0, 4).join(' | ') || 'NONE'}`);
-    console.log(`   challenge "${RR.chalText(tr.chal || {})}": done by ${chalBy.length} ways: ${chalBy.slice(0, 4).join(' | ') || 'NONE'}`);
+    console.log(`   challenge "${RR.chalText(tr.chal || {})}": careful ride ${base.chal ? 'DOES IT BY ACCIDENT' : 'does not do it'}, flat out ${flat.chal ? 'does it' : 'does not'}; done by ${chalBy.length} ways: ${chalBy.slice(0, 4).join(' | ') || 'NONE'}`);
   }
 }

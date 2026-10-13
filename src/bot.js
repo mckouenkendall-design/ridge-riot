@@ -70,7 +70,7 @@ RR.botInput = function (s, P, out) {
     lean = pa < 0.38 ? -1 : pa > 0.5 ? 1 : 0; P._wh = true;
   }
   // two-route tracks: P.route 'high' leans back through the fork sign
-  if (P.route === 'high' && tr.forks && !air) for (var fi = 0; fi < tr.forks.length; fi++) if (s.x > tr.forks[fi].x - 4 && s.x < tr.forks[fi].x + 0.5) lean = -1;
+  if (P.route === 'high' && tr.forks) for (var fi = 0; fi < tr.forks.length; fi++) if (s.x > tr.forks[fi].x - 5 && s.x < tr.forks[fi].x + 0.5) lean = -1;
   out.lean = lean; out.trick = trick;
   return finishGas(s, P, out, air);
 };

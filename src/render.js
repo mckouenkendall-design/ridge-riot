@@ -1035,10 +1035,36 @@ function drawStump(c, ft, m, T) {
     A.shape(c, [x - r * 0.32, ft.y - r * 0.05, x - r * 0.2, ft.y + r * 0.62 + h * 0.3, x + r * 0.05, ft.y + r * 0.5 + h * 0.4, x + r * 0.3, ft.y - r * 0.05], col, 0.035);
   }
 }
+/* the fork sign: two arrows, the upper one with a lean-back symbol */
+function drawForkSign(c, ft) {
+  c.save(); c.translate(ft.x - 1.2, ft.y);
+  A.line(c, [0, 0, 0, 2.6], 0.08, '#4a3a2a');
+  A.shape(c, [0.05, 2.7, 1.3, 2.7, 1.55, 2.95, 1.3, 3.2, 0.05, 3.2], '#f2c230', 0.04);
+  A.shape(c, [0.05, 2.05, 1.3, 2.05, 1.55, 1.8, 1.3, 1.55, 0.05, 1.55], '#f5f1e6', 0.04);
+  A.line(c, [0.35, 2.82, 0.95, 3.08], 0.07, '#15171d'); A.line(c, [0.35, 1.8, 1.0, 1.8], 0.07, '#15171d');
+  c.restore();
+}
+/* the hidden gear: a brass cog that turns and bobs. Already found: a faint outline. Picked up this run: gone. */
+function drawGear(c, G, ft) {
+  if (G.gearGot || G.attract) return;
+  var had = RR.Progress && RR.Progress.gearHave(G.track.index), t = G.t, r = 0.42, n = 10, k;
+  c.save(); c.translate(ft.x, ft.y + Math.sin(t * 2.2) * 0.06); c.rotate(t * 1.4);
+  c.globalAlpha = had ? 0.35 : 1;
+  if (!had) { c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.25 + 0.15 * Math.sin(t * 4); A.circ(c, 0, 0, r * 1.6, '#ffd27a', 0); c.restore(); }
+  c.beginPath();
+  for (k = 0; k < n * 2; k++) { var a0 = k / (n * 2) * TAU, rr = k % 2 ? r * 0.78 : r; c.lineTo(Math.cos(a0 - 0.12) * rr, Math.sin(a0 - 0.12) * rr); c.lineTo(Math.cos(a0 + 0.12) * rr, Math.sin(a0 + 0.12) * rr); }
+  c.closePath(); c.fillStyle = had ? '#9aa0a8' : '#d9a83a'; c.fill(); c.lineWidth = 0.05; c.strokeStyle = OUT; c.stroke();
+  A.circ(c, 0, 0, r * 0.5, had ? '#c8ccd2' : '#ffe08a', 0.04);
+  A.circ(c, 0, 0, r * 0.2, '#2b2f38', 0.03);
+  c.lineWidth = 0.05; c.strokeStyle = 'rgba(255,255,255,0.6)'; c.beginPath(); c.arc(0, 0, r * 0.66, 3.6, 4.6); c.stroke();
+  c.restore(); c.globalAlpha = 1;
+}
 function drawFeats(c, G, T, xl, xr, behind) {
   var f = G.track.feats, i, tr = G.track;
   for (i = 0; i < f.length; i++) {
     var ft = f[i];
+    if (ft.t === 'gear' && !behind) { if (ft.x > xl - 1 && ft.x < xr + 1) drawGear(c, G, ft); continue; }
+    if (ft.t === 'sign' && ft.kind === 'fork' && behind && ft.x > xl - 2 && ft.x < xr + 2) { drawForkSign(c, ft); continue; }
     if (ft.t === 'log' && !behind) {
       if (ft.x < xl - 1 || ft.x > xr + 1) continue;
       if (G.sim && G.sim.smash && G.sim.smash[ft.id]) { drawStump(c, ft, RR.WORLDS[tr.worldIndex].logMat, T); continue; }

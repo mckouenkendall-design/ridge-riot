@@ -259,6 +259,9 @@ P.beam = function (dx, clear, w, h, style) {
 P.slow = function (v) { this._zone = { t: 'zone', x0: this.x, v: v }; return this; };
 P.go = function () { var z = this._zone; if (z) { z.x1 = this.x; this.feats.push(z); this._zone = null; } return this; };
 /* the track's hidden gear, dx ahead of the pen and dy above it */
+/* where the gear should go, roughly: tools/gearspot.js --write rides the track and picks the exact spot in
+   [here + dx, here + dx + len] (below: under the ordinary line; minh: at least this high above the ground) */
+P.gearHint = function (o) { o = o || {}; var x0 = this.x + (o.dx || 0); this.feats.push({ t: 'gearhint', x0: x0, x1: x0 + (o.len || 40), below: o.below !== false, minh: o.minh || 0 }); return this; };
 P.gearAt = function (x, y) { this.feats.push({ t: 'gear', x: x, y: y }); return this; };
 P.gear = function (dx, dy) { this.feats.push({ t: 'gear', x: this.x + dx, y: this.y + dy }); return this; };
 P.sign = function (kind) { this.feats.push({ t: 'sign', x: this.x, y: this.y, kind: kind }); return this; };

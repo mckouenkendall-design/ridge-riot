@@ -282,3 +282,25 @@ input[type=range]::-moz-range-thumb { width: 1.3rem; height: 1.3rem; background:
 .pk.cur { background: var(--yellow); }
 .pk.down { filter: brightness(0.86); }
 .pickbox .btns { flex: none; display: flex; gap: 0.6rem; justify-content: center; }
+
+/* Phase 2: the three stars, the gear and the challenge */
+.stars.sb .star:nth-child(2)::after, .stars.sb .star:nth-child(3)::after { content: none; }
+.gm { display: inline-flex; gap: 0.15rem; margin-left: 0.3rem; vertical-align: middle; }
+.gm i { width: 0.95rem; height: 0.95rem; display: inline-block; color: rgba(23, 26, 34, 0.22); }
+.gm i svg { width: 100%; height: 100%; display: block; }
+.gm i.g.on { color: #c8962a; filter: drop-shadow(0.05em 0.05em 0 var(--ink)); }
+.gm i.c.on { color: #e0409a; filter: drop-shadow(0.05em 0.05em 0 var(--ink)); }
+.howto .goals { display: flex; gap: 0.7rem; justify-content: center; flex-wrap: wrap; font-size: 0.82rem; font-weight: 800; margin-top: 0.35rem; }
+.howto .goals span, .howto .chal { display: inline-flex; align-items: center; gap: 0.25rem; }
+.howto .goals svg, .howto .chal svg { width: 1em; height: 1em; }
+.howto .chal { display: flex; justify-content: center; font-size: 0.82rem; font-weight: 800; margin-top: 0.25rem; color: #ffb8e6; }
+.howto .chal.done { opacity: 0.6; }
+#goal .hg { display: inline-flex; align-items: center; gap: 0.18rem; margin: 0 0.25rem; opacity: 0.55; font-variant-numeric: tabular-nums; }
+#goal .hg.on { opacity: 1; }
+#goal .hg svg { width: 0.95em; height: 0.95em; }
+#goal .hg.c.on { color: #e0409a; }
+.res .big .sg { display: inline-flex; flex-direction: column; align-items: center; }
+.res .big .sg small { font-size: 0.62rem; font-weight: 800; color: rgba(23, 26, 34, 0.5); line-height: 1; margin-top: 0.1rem; white-space: nowrap; }
+.res .big .sg small.got { color: var(--ink); }
+.res .line.chl { display: flex; align-items: center; justify-content: center; gap: 0.3rem; }
+.res .line.chl svg { width: 1em; height: 1em; color: #e0409a; }

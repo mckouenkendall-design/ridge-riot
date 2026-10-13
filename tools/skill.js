@@ -118,6 +118,24 @@ function calibrate(t, id) {
   return best;
 }
 
+/* THREE STARS IN ONE RUN. The starter bike's robot rides the careful line and flips wherever there is time,
+   trying a few ways (backward, forward, alternating, up to doubles, a little bolder or a little safer about it).
+   The run with the most flips that finishes sets the flip target (three quarters of its flips, at least one),
+   and its time sets the time target, so that one run earns all three stars by construction. */
+function starRun(t, id, cal) {
+  const s = simFor(t, id); let best = null;
+  const tr = RR.getTrack(t), routes = tr.forks && tr.forks.length ? ['low', 'high'] : [undefined];
+  for (const route of routes) for (const dir of ['b', 'f', 'alt']) for (const max of [1, 2]) for (const spare of [0.1, 0.25]) {
+    const P = { caps: cal.win.map(w => w ? w.aim : 1e9), vcap: cal.G, flips: { dir, max, spare }, route };
+    RR.resetSim(s); s.started = true;
+    const res = run(s, P, 1e9);
+    if (res !== 'finish') continue;
+    const r = { time: s.finishTime, flips: s.flips, how: (route ? route + ' road, ' : '') + 'flips ' + dir + ' up to ' + max + (spare > 0.1 ? ', safe' : '') };
+    if (!best || r.flips > best.flips || (r.flips === best.flips && r.time < best.time)) best = r;
+  }
+  return best;
+}
+
 /* LEARNED */
 function learned(t, id, cal, runs, sigma) {
   const s = simFor(t, id); let ok = 0; const where = {};
@@ -136,22 +154,23 @@ function learned(t, id, cal, runs, sigma) {
    last star needs the limits ridden closer or a flip or two for the boost. */
 function writeStars(table) {
   const fs = require('fs'), path = require('path');
-  const bp = path.join(__dirname, 'baseline.json'), shipped = fs.existsSync(bp) ? JSON.parse(fs.readFileSync(bp, 'utf8')) : {};
   try { require('../src/revs.js'); } catch (e) {}
-  const F3 = { dust: 1.07, pine: 1.03, race: 1.02, frost: 1.0, cinder: 0.97, orbit: 0.95 }, F2 = { dust: 1.35, pine: 1.3, race: 1.28, frost: 1.25, cinder: 1.22, orbit: 1.2 }, rows = [], zv = [];
+  // how much slack the time target leaves over the robot's flipping run, by world (later worlds are tighter)
+  const FT = { dust: 1.08, pine: 1.06, race: 1.05, frost: 1.04, cinder: 1.03, orbit: 1.02 }, rows = [], zv = [];
   for (let t = 0; t < RR.TRACK_COUNT; t++) {
     const R = table[t]; if (!R || !R.scrapper || !R.scrapper.ok) throw new Error('no clean starter run on track ' + (t + 1));
-    const base = R.scrapper.time, wid = RR.WORLDS[Math.floor(t / 8)].id, tid = RR.trackId(t);
-    let s3 = Math.round(base * F3[wid] * 10) / 10, s2 = Math.round(base * F2[wid] * 10) / 10;
-    // a track whose shape has not changed keeps exactly the star times it shipped with
-    if (shipped[tid] && !(RR.REBUILT && RR.REBUILT[tid])) { s3 = shipped[tid].stars[0]; s2 = shipped[tid].stars[1]; }
-    const ids = Object.keys(R), can = ids.filter(id => R[id].ok && R[id].time <= s3).length;
-    rows.push(`  [${s3.toFixed(1)}, ${s2.toFixed(1)}]${t < RR.TRACK_COUNT - 1 ? ',' : ' '}   // ${String(t + 1).padStart(2)} ${RR.getTrack(t).name}: robot on starter ${base.toFixed(1)}s` + (ids.length > 1 ? `, ${can} of ${ids.length} bikes beat three stars riding the same careful way` : ''));
+    const st = R.scrapper.star; if (!st) throw new Error('no three-star run on track ' + (t + 1));
+    const wid = RR.WORLDS[Math.floor(t / 8)].id;
+    const T = Math.round(st.time * FT[wid] * 10) / 10, F = Math.max(1, Math.floor(st.flips * 0.75));
+    rows.push(`  [${T.toFixed(1)}, ${F}]${t < RR.TRACK_COUNT - 1 ? ',' : ' '}   // ${String(t + 1).padStart(2)} ${RR.getTrack(t).name}: robot ${st.time.toFixed(1)}s with ${st.flips} flip${st.flips === 1 ? '' : 's'} (${st.how}), careful run without flips ${R.scrapper.time.toFixed(1)}s`);
     zv.push('[' + R.scrapper.win.map(w => w.open ? 'null' : (Math.round((w.lo + 0.6 * (w.hi - w.lo)) * 2) / 2)).join(', ') + ']');
   }
   fs.writeFileSync(path.join(__dirname, '..', 'src', 'startimes.js'),
-    `/* Star times: [three-star time, two-star time] per track, in seconds, and the speed the robot rider
-   holds through each slow zone. Written by: node tools/skill.js --bikes all --write   (do not edit by hand) */
+    `/* The stars on each track: [time target in seconds, flip target]. Three stars: finish, beat the time, land at least
+   that many flips in one run. Both targets come from one robot run on the starter bike that finished, flipping where
+   it could (see starRun in tools/skill.js), so all three can be had in a single run.
+   ZONE_V: the speed the robot rider holds through each slow zone.
+   Written by: node tools/skill.js --from <results>   (do not edit by hand) */
 (function (root) {
 var RR = root.RR || (root.RR = {});
 RR.STAR_TIMES = [
@@ -184,6 +203,7 @@ if (require.main === module) {
     for (const id of bikes) {
       const m = masher(t, id, runs), c = calibrate(t, id), l = c.ok ? learned(t, id, c, runs) : { rate: 0, where: {} };
       table[t][id] = { flat: m.rate, learned: l.rate, ok: c.ok, time: c.time, G: c.G, win: c.win, maxSpeed: c.maxSpeed, x: c.x, retries: 0 };
+      if (id === 'scrapper' && c.ok) table[t][id].star = starRun(t, id, c);
       if (!c.ok && prove) {
         // no clean run from the simple plan, so let the rewind-and-retry robot look for any way through
         const r = require('./bot.js').solve(t, id, { base: { vcap: c.G, bias: 0, caps: zs.map((z, i) => c.win[i] ? c.win[i].aim : z.v) } });

@@ -12,9 +12,9 @@ function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 /* ------------------------------------------------------------------ */
 var KEY = 'ridgeRiot.v1';
 var DEF = {
-  v: 3, news: 0, best: {}, bike: 'scrapper', owned: { scrapper: 1 }, last: 0, seenHow: false,
+  v: 4, news: 0, best: {}, st: {}, bike: 'scrapper', owned: { scrapper: 1 }, last: 0, seenHow: false,
   nuggets: 0, paints: {}, riders: {}, fit: {}, crates: { rare: 0, epic: 0 }, garage: { level: 0, slots: [] }, opened: 0, pity: 0, paid: {}, got: {}, fresh: {}, kept: {},
-  gears: {}, chal: {}, flipst: {},
+  gears: {}, chal: {},
   settings: { sfx: 0.8, engine: 0.7, music: 0.5, tilt: false, tiltSens: 0.8, tiltFlip: false, hints: true, ghost: true, unlockAll: false, quality: 'auto', buzz: true },
   stats: { flips: 0, bestAir: 0, crashes: 0, runs: 0, finishes: 0, bestJump: 0, bestFlips: 0, dist: 0, topSpeed: 0 }
 };
@@ -33,13 +33,14 @@ var Store = RR.Store = {
   set: function (k, v) { mem[k] = v; try { root.localStorage.setItem(k, v); return true; } catch (e) { return false; } },
   del: function (k) { delete mem[k]; try { root.localStorage.removeItem(k); } catch (e) {} },
   load: function () {
-    var raw = Store.get(KEY), d = JSON.parse(JSON.stringify(DEF)), k, i, old = false, revs = {};
+    var raw = Store.get(KEY), d = JSON.parse(JSON.stringify(DEF)), k, i, old = false, revs = {}, o = null;
     Store.rebuilt = 0;
     Store.other = {};
     if (raw) {
       try {
-        var o = JSON.parse(raw);
+        o = JSON.parse(raw);
         for (k in o) if (k !== 'settings' && k !== 'stats' && k !== 'best' && k !== 'crates' && k !== 'garage' && k !== 'v' && k in d) d[k] = o[k];
+        if (o.v >= 4 && o.st) d.st = o.st;
         for (k in o.settings || {}) if (k in d.settings) d.settings[k] = o.settings[k];
         for (k in o.stats || {}) if (k in d.stats) d.stats[k] = o.stats[k];
         /* Version 2 saves had geodes: a gold geode (finish a world) is now a rare crate and a diamond geode (three stars on a world) an epic crate. */
@@ -61,6 +62,18 @@ var Store = RR.Store = {
         }
       } catch (e) {}
     }
+    /* Version 3 and older saves had three time stars per track. Each old star becomes one new one, in order:
+       one star is the finish star, two add the time star, three add the flip star too. Nothing you had
+       unlocked can lock again, because nobody loses a star. */
+    if (raw && (!o || !(o.v >= 4))) {
+      for (i = 0; i < RR.TRACK_COUNT; i++) {
+        var tid = RR.trackId(i), n = d.kept[tid] || 0, bt = d.best[i], leg = RR.LEGACY_STARS && RR.LEGACY_STARS[tid], rb0 = RR.REBUILT && RR.REBUILT[tid];
+        if (bt && rb0 && (revs[tid] || 0) < rb0[0]) leg = [rb0[1], rb0[2]];
+        if (bt && leg) n = Math.max(n, bt <= leg[0] ? 3 : bt <= leg[1] ? 2 : 1);
+        if (n) d.st[tid] = (d.st[tid] || 0) | (n >= 3 ? 7 : n >= 2 ? 3 : 1);
+      }
+      d.kept = {}; Store.converted = true;
+    }
     if (!RR.BIKE[d.bike]) d.bike = 'scrapper';
     for (i = 0; i < RR.GARAGE_MAX_SLOTS; i++) if (d.garage.slots[i] === undefined) d.garage.slots[i] = null;
     d.owned.scrapper = 1;
@@ -70,12 +83,10 @@ var Store = RR.Store = {
     for (k in d.best) {
       var id = RR.trackId(+k), rb = RR.REBUILT && RR.REBUILT[id];
       if (!rb || !d.best[k] || (revs[id] || 0) >= rb[0]) continue;
-      var st = d.best[k] <= rb[1] ? 3 : d.best[k] <= rb[2] ? 2 : 1;
-      if (st > (d.kept[id] || 0)) d.kept[id] = st;
       delete d.best[k]; Store.del(KEY + '.ghost.' + id); Store.rebuilt++;
     }
     Store.data = d;
-    if (Store.rebuilt && !old) Store.save();
+    if ((Store.rebuilt || Store.converted) && !old) Store.save();
     if (old) {
       // move the ghost recordings to their new names as well
       for (k = 0; k < V1.length; k++) { var g = Store.get(KEY + '.ghost.' + k); if (g) { Store.set(KEY + '.ghost.' + v1id(k), g); Store.del(KEY + '.ghost.' + k); } }
@@ -104,15 +115,13 @@ var Store = RR.Store = {
 
 var P = RR.Progress = {
   earned: [],      // trophies handed over since the last finish, so the results screen can announce them
-  starsFor: function (i) {
-    var b = Store.data.best[i], kept = Store.data.kept[RR.trackId(i)] || 0;
-    if (!b) return kept;
-    var st = RR.STAR_TIMES[i], n = b <= st[0] ? 3 : b <= st[1] ? 2 : 1;
-    return n > kept ? n : kept;
-  },
-  /* finished at least once, on this layout or the one before it */
-  done: function (i) { return !!Store.data.best[i] || !!Store.data.kept[RR.trackId(i)]; },
-  starsForTime: function (i, t) { var st = RR.STAR_TIMES[i]; return t <= st[0] ? 3 : t <= st[1] ? 2 : 1; },
+  /* the three stars of a track as bits: 1 finish, 2 time, 4 flips (RR.STAR) */
+  starBits: function (i) { return Store.data.st[RR.trackId(i)] || 0; },
+  starsFor: function (i) { return RR.starCount(P.starBits(i)); },
+  /* finished at least once (the finish star) */
+  done: function (i) { return !!Store.data.best[i] || !!(P.starBits(i) & 1); },
+  /* the stars one run earns */
+  runBits: function (i, t, flips) { var st = RR.STAR_TIMES[i]; return 1 | (t <= st[0] ? 2 : 0) | (flips >= st[1] ? 4 : 0); },
   total: function () { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) n += P.starsFor(i); return n; },
   worldDone: function (w) { for (var i = w * 8; i < w * 8 + 8; i++) if (!P.done(i)) return false; return true; },
   worldCount: function (w) { var n = 0; for (var i = w * 8; i < w * 8 + 8; i++) if (P.done(i)) n++; return n; },
@@ -145,7 +154,26 @@ var P = RR.Progress = {
   /* Phase 2 collectables: one hidden gear and one challenge per track, and the flip star (filed by track name) */
   gearCount: function (w) { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) if ((w == null || Math.floor(i / 8) === w) && Store.data.gears[RR.trackId(i)]) n++; return n; },
   chalCount: function () { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) if (Store.data.chal[RR.trackId(i)]) n++; return n; },
-  flipStars: function () { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) if (Store.data.flipst[RR.trackId(i)]) n++; return n; },
+  flipStars: function () { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) if (P.starBits(i) & 4) n++; return n; },
+  gearHave: function (i) { return !!Store.data.gears[RR.trackId(i)]; },
+  chalHave: function (i) { return !!Store.data.chal[RR.trackId(i)]; },
+  /* rewards for gears and challenges: an item at every 6, a trophy at all 48. Returns what was handed over. */
+  claimGoals: function () {
+    var d = Store.data, out = [], R = RR.GOAL_REWARDS, k;
+    [['gears', P.gearCount()], ['chal', P.chalCount()]].forEach(function (g) {
+      var list = R[g[0]];
+      for (k = 0; k < list.length; k++) {
+        var need = (k + 1) * R.every, key = 'goal:' + g[0] + ':' + need;
+        if (g[1] < need || d.got[key]) continue;
+        d.got[key] = 1;
+        var it = RR.PAINT[list[k]] || RR.RIDER[list[k]];
+        if (it && !P.reallyOwns(it)) { d[it.kind === 'paint' ? 'paints' : 'riders'][it.id] = 1; d.fresh[it.id] = 1; out.push({ item: it, why: need + ' ' + (g[0] === 'gears' ? 'gears found' : 'challenges done') }); }
+        else { d.crates.epic++; out.push({ crate: 'epic', why: need + ' ' + (g[0] === 'gears' ? 'gears found' : 'challenges done') + ' (you had that one, so an epic crate instead)' }); }
+      }
+    });
+    P.claimTrophies().forEach(function (it) { P.earned.push(it); out.push({ item: it, why: 'Trophy' }); });
+    return out;
+  },
   bikeOpen: function (d) { return Store.data.settings.unlockAll || !!Store.data.owned[d.id]; },
   /* what a locked bike still needs: the rule, where you are now, and 0..1 for the bar */
   bikeNeed: function (d) {
@@ -243,6 +271,8 @@ var P = RR.Progress = {
     else if (r.type === 'dist') { have = Math.min(s.dist, need); now = (have / 1000).toFixed(1) + ' of ' + (need / 1000) + ' km'; }
     else if (r.type === 'crashes') { have = Math.min(s.crashes, need); now = have + ' of ' + need + ' crashes'; }
     else if (r.type === 'collect') { need = RR.ITEMS.length; have = P.ownedCount(); now = have + ' of ' + need + ' collected'; }
+    else if (r.type === 'gears') { need = RR.TRACK_COUNT; have = P.gearCount(); now = have + ' of ' + need + ' gears'; }
+    else if (r.type === 'chal') { need = RR.TRACK_COUNT; have = P.chalCount(); now = have + ' of ' + need + ' challenges'; }
     return { text: r.text, now: now, k: have / need, met: have >= need };
   },
   /* hand over any trophy whose rule is now met; returns the newly earned ones */
@@ -394,6 +424,7 @@ G.reset = function (snapCam) {
   var s = G.sim;
   RR.resetSim(s);
   R.clearParts(); R.clearPopups();
+  G.chal = RR.chalStart(G.track.chal); G.gearSpot = RR.gearOf(G.track); G.gearGot = false; G.goalNews = [];
   G.wipe = null; G.sunk = false; G.camHold = false; G.banked = false; G.runPay = 0; G.flipPaid = 0; G.bonked = false; G.stuckT = 0; G.stuckSaid = false; G.flash = 0; G.boostGlow = 0; G.timeScale = 1; G.endT = 0; G.resultShown = false;
   vis.noRider = false; vis.stand = 0; vis.crouch = 0;
   Ghost.rec.length = 0; tickN = 0; acc = 0; if (G.trail) G.trail.length = 0;
@@ -451,7 +482,9 @@ function copyPrev() {
 
 function finishRun() {
   var s = G.sim, i = G.track.index, t = Math.round(s.finishTime * 100) / 100, d = Store.data, E = RR.ECON;
-  var old = d.best[i], isBest = !old || t < old, before = P.starsFor(i), totBefore = P.total();
+  var old = d.best[i], isBest = !old || t < old, before = P.starsFor(i), bitsBefore = P.starBits(i), totBefore = P.total();
+  var bits = P.runBits(i, t, s.flips), id = RR.trackId(i);
+  d.st[id] = bitsBefore | bits;
   d.stats.finishes++; P.earned = [];
   if (isBest) { d.best[i] = t; Ghost.store(i, G.bikeDef.id); }
   var st = d.stats;
@@ -468,8 +501,8 @@ function finishRun() {
   var owed = P.settle();
   pay.stars = owed.nuggets; pay.total = pay.finish + pay.best + pay.flips + pay.stars;
   Store.save();
-  G.result = { time: t, old: old || 0, best: isBest, stars: P.starsForTime(i, t), starsBefore: before, bikes: bikes, worlds: worlds, flips: s.flips, air: s.bestAir, track: i,
-    pay: pay, crates: owed.crates, trophies: P.earned.slice() };
+  G.result = { time: t, old: old || 0, best: isBest, bits: bits, bitsBefore: bitsBefore, stars: RR.starCount(bits), starsBefore: before, bikes: bikes, worlds: worlds, flips: s.flips, air: s.bestAir, track: i,
+    pay: pay, crates: owed.crates, trophies: P.earned.slice(), goals: G.goalNews.slice(), chal: G.chal && G.chal.done };
 }
 
 /* ------------------------------------------------------------------ */
@@ -576,6 +609,29 @@ function onEvents() {
   ev.length = 0;
 }
 
+/* challenges and the hidden gear, checked every tick of a run */
+function goalsTick(s, input) {
+  var id = RR.trackId(G.track.index), d = Store.data, k;
+  if (G.chal && !G.chal.done && RR.chalTick(G.chal, s, input) && !d.chal[id]) {
+    d.chal[id] = 1; Store.save();
+    R.popup('CHALLENGE', RR.chalText(G.chal.c), '#ff8ad8'); Au.unlocked(); buzz(40);
+    goalPay();
+  } else if (G.chal && G.chal.done && !G.chalSaid) { G.chalSaid = true; }
+  var gs = G.gearSpot;
+  if (gs && !G.gearGot && !s.crashed && RR.gearTouch(s, gs.x, gs.y)) {
+    G.gearGot = true;
+    for (k = 0; k < 14; k++) R.emit(2, gs.x, gs.y, rnd(-4, 4), rnd(-2, 5), rnd(0.3, 0.7), 0.06, k % 2 ? '#ffd27a' : '#fff3c2', { g: 0.6, front: 1 });
+    if (!d.gears[id]) { d.gears[id] = 1; Store.save(); R.popup('GEAR FOUND', P.gearCount() + ' of ' + RR.TRACK_COUNT, '#ffd27a'); Au.gear ? Au.gear() : Au.coin(3); buzz(30); goalPay(); }
+    else Au.coin(1);
+  }
+}
+function goalPay() {
+  var got = P.claimGoals();
+  got.forEach(function (g) { G.goalNews.push(g); });
+  if (got.length && RR.UI) RR.UI.toast(got.map(function (g) { return g.item ? (g.why === 'Trophy' ? 'Trophy earned: ' + g.item.name : g.why + ': ' + g.item.name) : g.why; }).join('. ') + '.');
+  var bk = P.claim(); if (bk.length && RR.UI) RR.UI.toastBikes(bk);
+}
+
 /* dirt off the back tyre, exhaust smoke, sparks: emitted a little every tick */
 function trailFx() {
   var s = G.sim, b = G.bike, T = R.THEMES[G.track.worldIndex], def = G.bikeDef, ca = Math.cos(s.a), sa = Math.sin(s.a), k;
@@ -650,6 +706,7 @@ function tickOnce() {
   if (bk.pivot && input.brake && !G.brkWas && !s.gnd[0] && !s.gnd[1] && !s.crashed) Au.pivot();
   G.brkWas = input.brake;
   if (bk.stick) { if (G.stickWas > 0 && s.stickT <= 0 && !s.crashed) Au.unstick(); G.stickWas = s.stickT; }
+  if (G.state === 'run' || G.state === 'finish') goalsTick(s, input);
   onEvents();
   trailFx();
   if (G.wipe) G.wipe.step(DT);

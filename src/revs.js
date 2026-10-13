@@ -3,9 +3,14 @@
 (function (root) {
 var RR = root.RR || (root.RR = {});
 RR.REBUILT = {
-  'washboard': [1, 22.8, 28.8],
-  'gulch-gap': [1, 21.5, 27.1],
-  'canyon-run': [1, 32.5, 41.1],
+  'first-gear': [1, 20.2, 25.5],
+  'rolling-dunes': [1, 23.6, 29.8],
+  'hop-skip': [1, 16.6, 21],
+  'loop-de-dust': [1, 18.7, 23.5],
+  'mesa-drop': [1, 21, 26.6],
+  'washboard': [2, 28.1, 35.5],
+  'gulch-gap': [2, 25.8, 32.6],
+  'canyon-run': [2, 34.9, 44],
   'timber-table': [1, 17.9, 22.6],
   'sawmill': [1, 21.4, 27.1],
   'root-rage': [1, 26.6, 33.6],
