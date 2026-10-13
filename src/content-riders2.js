@@ -20,6 +20,7 @@ RR.MORE_RIDERS2 = [
   { id: 'void',      name: 'Void',             tier: 'legendary', suit: ['#0b0912', '#0b0912', '#ff9a3f'], head: 'void', live: true, blurb: 'Where the head should be, there is only a mild draught.' },
   // trophy
   { id: 'champ',     name: 'The Champ',        tier: 'trophy', suit: ['#ffd23f', '#f6f1e2', '#fff3b0'], head: 'champ', live: true, blurb: 'Three stars on every track. Still checks the mirror first.' },
-  { id: 'goldie',    name: 'Goldie',           tier: 'trophy', suit: ['#f3e6c4', '#e8c25a', '#fff2cc'], head: 'goldie', live: true, blurb: 'Broken five hundred times. Every crack is the good part.' }
+  { id: 'goldie',    name: 'Goldie',           tier: 'trophy', suit: ['#f3e6c4', '#e8c25a', '#fff2cc'], head: 'goldie', live: true, blurb: 'Broken five hundred times. Every crack is the good part.' },
+  { id: 'daredevil', name: 'Daredevil',        tier: 'trophy', suit: ['#f8f6ef', '#f1ede2', '#d3232e'], head: 'daredevil', cape: '#1f4aa8', stars: ['#1f4aa8', '#d3232e', '#1f4aa8', '#d3232e', '#e8b030'], live: true, blurb: 'Jumped everything on the list. Wrote a longer list.' }
 ];
 })(typeof window !== 'undefined' ? window : globalThis);

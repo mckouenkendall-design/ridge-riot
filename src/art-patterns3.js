@@ -863,4 +863,135 @@ LIVE.curator = function (c, N, P, t) {
   c.restore();
 };
 
+/* gearhead: a train of brass and steel gears on a dark machined plate. Every pair that touches really meshes:
+   sizes go with tooth counts, each turns the other way at the speed its teeth allow, and the teeth sit in each
+   other's gaps the whole way round. The gears tile across the seams of the picture like everything else. */
+var GEARM = 1.3, GEARADD = 2.3, GEARDED = 2.6;                        // pitch radius per tooth, tooth height out and in (tile pixels)
+var GEARS = [                                                        // n teeth, centre, parent it meshes with (-1: the driver), brass or steel
+  { n: 14, x: 18, y: 18, p: -1, brass: true },
+  { n: 9, x: 46.33, y: 27.55, p: 0, brass: false },
+  { n: 12, x: 52.27, y: 54.2, p: 1, brass: true },
+  { n: 7, x: 20.17, y: 54.79, p: 0, brass: false }
+];
+(function () {
+  // work out turning direction and starting angle so the teeth of every meshing pair interlock
+  GEARS.forEach(function (g, i) {
+    g.r = GEARM * g.n;
+    if (g.p < 0) { g.dir = 1; g.a0 = 0; return; }
+    var P = GEARS[g.p], best = null, a, b;
+    for (a = -1; a <= 1; a++) for (b = -1; b <= 1; b++) {                     // the copy of this gear that touches the parent
+      var dx = g.x + a * 64 - P.x, dy = g.y + b * 64 - P.y, e = Math.abs(Math.sqrt(dx * dx + dy * dy) - (P.r + g.r));
+      if (!best || e < best[0]) best = [e, dx, dy];
+    }
+    var phi = Math.atan2(best[2], best[1]), u = mod((phi - P.a0) * P.n / TAU, 1);
+    g.dir = -P.dir; g.a0 = phi + Math.PI - TAU * (0.5 - u) / g.n;
+  });
+})();
+function gearPath(g, x, y, n, r) {
+  var k, P = TAU / n, ra = r + GEARADD, rf = r - GEARDED;
+  g.beginPath();
+  for (k = 0; k < n; k++) {
+    var a = k * P;
+    g.arc(x, y, rf, a - P * 0.5, a - P * 0.27);
+    g.arc(x, y, ra, a - P * 0.15, a + P * 0.15);
+    g.arc(x, y, rf, a + P * 0.27, a + P * 0.5);
+  }
+  g.closePath();
+}
+/* one gear, drawn once with its centre in the middle of a small picture, then turned as it is copied onto the tile */
+function gearSprite(gd) {
+  var S = Math.ceil(2 * (gd.r + GEARADD) + 4);
+  return layer('gear' + gd.n + (gd.brass ? 'b' : 's'), S * GEARRES, function (g) {
+    g.scale(GEARRES, GEARRES);
+    var o = S / 2, r = gd.r, n = gd.n, k, P = TAU / n;
+    var col = gd.brass ? { body: '#f2c24c', web: '#c8922c', hub: '#f6d77a', line: '#4a2e04', tip: 'rgba(255,246,200,0.95)', deep: '#8a5a12' }
+      : { body: '#bcc6d0', web: '#7d8896', hub: '#e6ebf0', line: '#1c222a', tip: 'rgba(255,255,255,0.95)', deep: '#5a6572' };
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    gearPath(g, o, o, n, r); g.fillStyle = col.body; g.fill(); g.lineWidth = 1.5; g.strokeStyle = col.line; g.stroke();
+    // a lit edge across every tooth tip and a cut line at the tooth roots
+    var rt = r + GEARADD - 0.6;
+    g.beginPath(); for (k = 0; k < n; k++) { g.moveTo(o + Math.cos(k * P - P * 0.12) * rt, o + Math.sin(k * P - P * 0.12) * rt); g.arc(o, o, rt, k * P - P * 0.12, k * P + P * 0.12); }
+    g.lineWidth = 0.8; g.strokeStyle = col.tip; g.stroke();
+    g.beginPath(); g.arc(o, o, r - GEARDED - 0.9, 0, TAU); g.lineWidth = 0.7; g.strokeStyle = 'rgba(0,0,0,0.3)'; g.stroke();
+    // recessed web
+    var rw = r - GEARDED - 1.6;
+    g.beginPath(); g.arc(o, o, rw, 0, TAU); g.fillStyle = col.web; g.fill(); g.lineWidth = 0.8; g.strokeStyle = col.deep; g.stroke();
+    g.beginPath(); g.arc(o, o, rw - 0.6, Math.PI * 0.15, Math.PI * 0.95); g.lineWidth = 0.7; g.strokeStyle = 'rgba(0,0,0,0.35)'; g.stroke();
+    // sunk pockets between the spokes on the big gears, round dimples on the small ones (dark but not see-through, so a gear still reads as one solid wheel)
+    g.fillStyle = gd.brass ? '#74500f' : '#4d5763';
+    var ri = Math.max(r * 0.34, 3.2), holes = [];
+    if (n >= 12) {
+      var m = 5, half = Math.PI / m * 0.55;
+      for (k = 0; k < m; k++) { var a = k * TAU / m + 0.3; g.beginPath(); g.arc(o, o, rw - 1.4, a - half, a + half); g.arc(o, o, ri + 1.4, a + half * 0.8, a - half * 0.8, true); g.closePath(); g.fill(); holes.push(a); }
+      holes.forEach(function (a) {
+        g.beginPath(); g.arc(o, o, rw - 1.4, a - half, a + half); g.arc(o, o, ri + 1.4, a + half * 0.8, a - half * 0.8, true); g.closePath(); g.lineWidth = 1.3; g.strokeStyle = col.line; g.stroke();
+      });
+    } else {
+      var hr = (rw - ri) * 0.36, hm = (rw + ri) / 2;
+      for (k = 0; k < 4; k++) { var a2 = k * TAU / 4 + 0.4; g.beginPath(); g.arc(o + Math.cos(a2) * hm, o + Math.sin(a2) * hm, hr, 0, TAU); g.fill(); holes.push(a2); }
+      holes.forEach(function (a) { g.beginPath(); g.arc(o + Math.cos(a) * hm, o + Math.sin(a) * hm, hr, 0, TAU); g.lineWidth = 1.3; g.strokeStyle = col.line; g.stroke(); });
+    }
+    // hub, a ring of bolt heads and the keyed axle
+    g.beginPath(); g.arc(o, o, ri, 0, TAU); g.fillStyle = col.hub; g.fill(); g.lineWidth = 1; g.strokeStyle = col.line; g.stroke();
+    g.beginPath(); g.arc(o, o, ri - 1, Math.PI * 1.1, Math.PI * 1.75); g.lineWidth = 0.7; g.strokeStyle = '#ffffff'; g.stroke();
+    if (ri > 4) for (k = 0; k < 4; k++) { var b = k * TAU / 4 + 0.8; g.beginPath(); g.arc(o + Math.cos(b) * (ri - 1.9), o + Math.sin(b) * (ri - 1.9), 0.75, 0, TAU); g.fillStyle = col.deep; g.fill(); }
+    g.beginPath(); for (k = 0; k < 6; k++) { var hx = k * TAU / 6; g[k ? 'lineTo' : 'moveTo'](o + Math.cos(hx) * 1.9, o + Math.sin(hx) * 1.9); } g.closePath(); g.fillStyle = col.web; g.fill(); g.lineWidth = 0.7; g.strokeStyle = col.line; g.stroke();
+    g.beginPath(); g.arc(o, o, 0.8, 0, TAU); g.fillStyle = '#16120e'; g.fill();
+    g.fillStyle = col.deep; g.fillRect(o + 1.2, o - 0.4, 1.6, 0.8);                                   // the index mark, so the turning shows
+  });
+}
+function gearStatic(N) {
+  return CACHE.gearbase || (CACHE.gearbase = layer('gearbase', N * GEARRES, function (g) {
+    g.scale(GEARRES, GEARRES);
+    var s = rng(48), i;
+    g.fillStyle = lg(g, 0, 0, N * 0.6, N, [[0, '#3a352f'], [0.5, '#26231f'], [1, '#332e28']]); g.fillRect(0, 0, N, N);
+    for (i = 0; i < 70; i++) { var y = s() * N, x = s() * N, L = 8 + s() * 30; g.fillStyle = s() < 0.55 ? 'rgba(255,240,210,0.07)' : 'rgba(0,0,0,0.2)'; g.fillRect(x, y, L, 0.6); g.fillRect(x - N, y, L, 0.6); }     // brushed grain
+    // rivets on the plate, wherever there is room between the gears
+    var placed = 0, tries = 0;
+    while (placed < 7 && tries++ < 400) {
+      var rx = s() * N, ry = s() * N, ok = true;
+      GEARS.forEach(function (gd) { for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) { var dx = rx - gd.x - a * N, dy = ry - gd.y - b * N; if (dx * dx + dy * dy < (gd.r + GEARADD + 3.2) * (gd.r + GEARADD + 3.2)) ok = false; } });
+      if (!ok) continue; placed++;
+      wrap(N, rx, ry, 3, function (px, py) {
+        g.beginPath(); g.arc(px + 0.5, py + 0.7, 1.7, 0, TAU); g.fillStyle = 'rgba(0,0,0,0.5)'; g.fill();
+        g.beginPath(); g.arc(px, py, 1.6, 0, TAU); g.fillStyle = rg(g, px - 0.5, py - 0.5, 0.1, 1.7, [[0, '#f6dc8c'], [1, '#8a5a12']]); g.fill();
+      });
+    }
+    // the shadow each gear throws on the plate
+    GEARS.forEach(function (gd) { wrap(N, gd.x + 1.3, gd.y + 1.9, gd.r + 3, function (px, py) { g.beginPath(); g.arc(px, py, gd.r + GEARADD * 0.6, 0, TAU); g.fillStyle = 'rgba(0,0,0,0.42)'; g.fill(); }); });
+  }));
+}
+var GEARRES = 2;                                                     // the gears and plate are painted twice as fine as the tile units
+var GEARW = 5.5;                                                     // how fast the train runs: a gear with n teeth turns GEARW / n radians a second
+LIVE.gearhead = function (c, NR, P, t) {
+  var N = 64, S = gearStatic(N);                                   // drawn in 64ths of the tile whatever its real size (pat.res)
+  c.save(); up(c, NR); c.scale(NR / N, NR / N);
+  c.drawImage(S, 0, 0, N, N);
+  GEARS.forEach(function (gd) {
+    var spr = gearSprite(gd), h = spr.width / GEARRES / 2, ang = gd.a0 + gd.dir * t * GEARW / gd.n, R = gd.r + GEARADD;
+    put(c, N, gd.x, gd.y, R + 1, function () {
+      c.save(); c.rotate(ang); c.drawImage(spr, -h, -h, h * 2, h * 2); c.restore();
+      // light that stays put while the metal turns under it: bright upper left, shade lower right
+      c.save(); c.beginPath(); c.arc(0, 0, R, 0, TAU); c.clip();
+      c.fillStyle = lg(c, -R, -R, R, R, gd.brass ? [[0, 'rgba(255,248,210,0.42)'], [0.45, 'rgba(255,230,160,0.06)'], [0.6, 'rgba(0,0,0,0)'], [1, 'rgba(40,20,0,0.24)']] : [[0, 'rgba(255,255,255,0.4)'], [0.45, 'rgba(255,255,255,0.05)'], [0.6, 'rgba(0,0,0,0)'], [1, 'rgba(0,10,25,0.28)']]);
+      c.fillRect(-R, -R, R * 2, R * 2);
+      c.restore();
+    });
+  });
+  // the polished brass catches a travelling band of light (only the brass gears, not the steel or the plate)
+  c.save(); c.beginPath();
+  GEARS.forEach(function (gd) { if (gd.brass) wrap(N, gd.x, gd.y, gd.r + GEARADD, function (px, py) { c.moveTo(px + gd.r + GEARADD, py); c.arc(px, py, gd.r + GEARADD, 0, TAU); }); });
+  c.clip(); c.globalCompositeOperation = 'lighter';
+  sweep(c, N, t * 24 - 6, 20, 10, 'rgba(255,226,140,0.22)'); sweep(c, N, t * 24 - 6, 20, 2.6, 'rgba(255,255,235,0.75)');
+  c.restore();
+  // glints winking on the brass where the light hits the teeth
+  c.globalCompositeOperation = 'lighter';
+  GEARS.forEach(function (gd, i) {
+    if (!gd.brass) return;
+    var k = Math.max(0, Math.sin(t * 2.4 + i * 2.1)), R = gd.r + GEARADD - 1;
+    if (k > 0.05) wrap(N, gd.x - R * 0.68, gd.y - R * 0.72, 8, function (px, py) { star4(c, px, py, 1.5 + 5.5 * k, 'rgba(255,250,225,' + (0.45 + 0.55 * k) + ')'); });
+  });
+  c.restore();
+};
+
 })(typeof window !== 'undefined' ? window : globalThis);
