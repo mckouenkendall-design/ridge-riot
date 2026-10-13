@@ -12,8 +12,8 @@ function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 /* ------------------------------------------------------------------ */
 var KEY = 'ridgeRiot.v1';
 var DEF = {
-  v: 2, best: {}, bike: 'scrapper', owned: { scrapper: 1 }, last: 0, seenHow: false,
-  nuggets: 0, paints: {}, riders: {}, fit: {}, geodes: { gold: 0, diamond: 0 }, opened: 0, pity: 0, paid: {}, got: {}, fresh: {}, kept: {},
+  v: 3, news: 0, best: {}, bike: 'scrapper', owned: { scrapper: 1 }, last: 0, seenHow: false,
+  nuggets: 0, paints: {}, riders: {}, fit: {}, crates: { rare: 0, epic: 0 }, garage: { level: 0, slots: [] }, opened: 0, pity: 0, paid: {}, got: {}, fresh: {}, kept: {},
   settings: { sfx: 0.8, engine: 0.7, music: 0.5, tilt: false, tiltSens: 0.8, tiltFlip: false, hints: true, ghost: true, unlockAll: false, quality: 'auto', buzz: true },
   stats: { flips: 0, bestAir: 0, crashes: 0, runs: 0, finishes: 0, bestJump: 0, bestFlips: 0, dist: 0, topSpeed: 0 }
 };
@@ -38,10 +38,16 @@ var Store = RR.Store = {
     if (raw) {
       try {
         var o = JSON.parse(raw);
-        for (k in o) if (k !== 'settings' && k !== 'stats' && k !== 'best' && k !== 'geodes' && k !== 'v' && k in d) d[k] = o[k];
+        for (k in o) if (k !== 'settings' && k !== 'stats' && k !== 'best' && k !== 'crates' && k !== 'garage' && k !== 'v' && k in d) d[k] = o[k];
         for (k in o.settings || {}) if (k in d.settings) d.settings[k] = o.settings[k];
         for (k in o.stats || {}) if (k in d.stats) d.stats[k] = o.stats[k];
-        for (k in o.geodes || {}) if (k in d.geodes) d.geodes[k] = o.geodes[k];
+        /* Version 2 saves had geodes: a gold geode (finish a world) is now a rare crate and a diamond geode (three stars on a world) an epic crate. */
+        if (o.crates) { for (k in o.crates) if (k in d.crates) d.crates[k] = Math.max(0, o.crates[k] | 0); }
+        else if (o.geodes) { d.crates.rare = Math.max(0, o.geodes.gold | 0); d.crates.epic = Math.max(0, o.geodes.diamond | 0); }
+        if (o.garage) {
+          d.garage.level = Math.max(0, Math.min(RR.GARAGES.length - 1, o.garage.level | 0));
+          if (Array.isArray(o.garage.slots)) for (i = 0; i < RR.GARAGE_MAX_SLOTS; i++) { var sv = o.garage.slots[i]; d.garage.slots[i] = typeof sv === 'string' ? sv : null; }
+        }
         if (o.times) {
           for (k in o.times) { i = RR.trackIndex(k); if (i >= 0) d.best[i] = o.times[k]; else Store.other[k] = o.times[k]; }
           i = RR.trackIndex(o.lastId || ''); d.last = i >= 0 ? i : 0;
@@ -55,6 +61,7 @@ var Store = RR.Store = {
       } catch (e) {}
     }
     if (!RR.BIKE[d.bike]) d.bike = 'scrapper';
+    for (i = 0; i < RR.GARAGE_MAX_SLOTS; i++) if (d.garage.slots[i] === undefined) d.garage.slots[i] = null;
     d.owned.scrapper = 1;
     /* Tracks that have been rebuilt since this save was written: the old best time was set on a
        different track, so it and its ghost go. The stars it earned are kept, so nothing that was
@@ -95,6 +102,7 @@ var Store = RR.Store = {
 };
 
 var P = RR.Progress = {
+  earned: [],      // trophies handed over since the last finish, so the results screen can announce them
   starsFor: function (i) {
     var b = Store.data.best[i], kept = Store.data.kept[RR.trackId(i)] || 0;
     if (!b) return kept;
@@ -144,13 +152,17 @@ var P = RR.Progress = {
   claim: function () {
     var out = [];
     RR.BIKES.forEach(function (d) { if (!Store.data.owned[d.id] && P.bikeMet(d)) { Store.data.owned[d.id] = 1; out.push(d); } });
+    P.claimTrophies().forEach(function (it) { P.earned.push(it); out.push(it); });
     return out;
   },
 
-  /* ---- the collection: nuggets, geodes, paint jobs and riders ---- */
-  owns: function (it) { return Store.data.settings.unlockAll || !!Store.data[it.kind === 'paint' ? 'paints' : 'riders'][it.id]; },
+  /* ---- the collection: nuggets, crates, paint jobs and riders ---- */
+  /* Trophies only come from achievements: the "unlock everything" switch does not open them. */
+  owns: function (it) { return (Store.data.settings.unlockAll && it.tier !== 'trophy') || !!Store.data[it.kind === 'paint' ? 'paints' : 'riders'][it.id]; },
   reallyOwns: function (it) { return !!Store.data[it.kind === 'paint' ? 'paints' : 'riders'][it.id]; },
+  /* how many of the things a crate can hold you have (trophies are counted on their own) */
   ownedCount: function () { var n = 0; RR.ITEMS.forEach(function (it) { if (P.reallyOwns(it)) n++; }); return n; },
+  trophyCount: function () { var n = 0; RR.TROPHIES.forEach(function (it) { if (P.reallyOwns(it)) n++; }); return n; },
   /* what a bike is wearing: { paint, rider }, either may be null for the stock look */
   look: function (bikeId) {
     var f = Store.data.fit[bikeId] || {}, p = RR.PAINT[f.p], r = RR.RIDER[f.r];
@@ -161,10 +173,10 @@ var P = RR.Progress = {
     f[kind === 'paint' ? 'p' : 'r'] = id || '';
   },
   /* Pay out anything owed for stars and finished worlds. Stars pay once each; finishing every
-     track in a world gives a gold geode, and three stars on all of them a diamond one.
+     track in a world gives a rare crate, and three stars on all of them an epic one.
      Old saves are owed for everything they already did, which this also covers. */
   settle: function () {
-    var d = Store.data, out = { stars: 0, nuggets: 0, geodes: [] }, i, w;
+    var d = Store.data, out = { stars: 0, nuggets: 0, crates: [] }, i, w;
     for (i = 0; i < RR.TRACK_COUNT; i++) {
       var id = RR.trackId(i), n = P.starsFor(i), was = d.paid[id] || 0;
       if (n > was) { out.stars += n - was; d.paid[id] = n; }
@@ -172,28 +184,89 @@ var P = RR.Progress = {
     out.nuggets = out.stars * RR.ECON.star; d.nuggets += out.nuggets;
     for (w = 0; w < RR.WORLDS.length; w++) {
       var W = RR.WORLDS[w];
-      if (!d.got['done:' + W.id] && P.worldDone(w)) { d.got['done:' + W.id] = 1; d.geodes.gold++; out.geodes.push({ kind: 'gold', why: 'Every ' + W.name + ' track finished' }); }
-      if (!d.got['aced:' + W.id] && P.worldStars(w) >= 24) { d.got['aced:' + W.id] = 1; d.geodes.diamond++; out.geodes.push({ kind: 'diamond', why: 'Three stars on every ' + W.name + ' track' }); }
+      if (!d.got['done:' + W.id] && P.worldDone(w)) { d.got['done:' + W.id] = 1; d.crates.rare++; out.crates.push({ kind: 'rare', why: 'Every ' + W.name + ' track finished' }); }
+      if (!d.got['aced:' + W.id] && P.worldStars(w) >= 24) { d.got['aced:' + W.id] = 1; d.crates.epic++; out.crates.push({ kind: 'epic', why: 'Three stars on every ' + W.name + ' track' }); }
     }
     return out;
   },
   itemsLeft: function () { var n = 0; RR.ITEMS.forEach(function (it) { if (!P.reallyOwns(it)) n++; }); return n; },
-  freeGeodes: function () { return Store.data.geodes.gold + Store.data.geodes.diamond; },
-  canCrack: function () { return P.itemsLeft() > 0 && (P.freeGeodes() > 0 || Store.data.nuggets >= RR.ECON.geode); },
-  /* open one geode: prize geodes first (best first), otherwise pay for an ordinary one */
-  crack: function () {
-    var d = Store.data, kind = 'any';
+  freeCrates: function () { return Store.data.crates.rare + Store.data.crates.epic; },
+  canOpen: function () { return P.itemsLeft() > 0 && (P.freeCrates() > 0 || Store.data.nuggets >= RR.ECON.crate); },
+  /* the crate that would be opened next: prize crates first (best first), otherwise an ordinary one for nuggets, or null */
+  nextCrate: function () {
+    var d = Store.data;
     if (P.itemsLeft() <= 0) return null;
-    if (d.geodes.diamond > 0) kind = 'diamond'; else if (d.geodes.gold > 0) kind = 'gold'; else if (d.nuggets < RR.ECON.geode) return null;
+    if (d.crates.epic > 0) return 'epic';
+    if (d.crates.rare > 0) return 'rare';
+    return d.nuggets >= RR.ECON.crate ? 'any' : null;
+  },
+  /* open one crate and keep what is inside. Returns { item, kind } or null if there is nothing to open. */
+  openCrate: function () {
+    var d = Store.data, kind = P.nextCrate();
+    if (!kind) return null;
     var pity = kind === 'any' && d.pity >= RR.ECON.pity;
-    var it = RR.rollGeode(kind, P.reallyOwns, Math.random, pity);
+    var it = RR.rollCrate(kind, P.reallyOwns, Math.random, pity);
     if (!it) return null;
-    if (kind === 'any') d.nuggets -= RR.ECON.geode; else d.geodes[kind]--;
+    if (kind === 'any') d.nuggets -= RR.ECON.crate; else d.crates[kind]--;
     d[it.kind === 'paint' ? 'paints' : 'riders'][it.id] = 1;
     d.fresh[it.id] = 1; d.opened++;
     d.pity = RR.TIER[it.tier].rank >= 2 ? 0 : d.pity + 1;
+    var tro = P.claimTrophies();       // the last item of the collection earns the Curator trophy on the spot
     Store.save();
-    return { item: it, kind: kind };
+    return { item: it, kind: kind, trophies: tro };
+  },
+
+  /* ---- trophies: earned by things the game already counts ---- */
+  /* what a trophy asks for, where you are, and 0..1 for the progress bar */
+  trophyNeed: function (it) {
+    var r = it.trophy, s = Store.data.stats, have = 0, need = r ? r.n || 1 : 1, now = '';
+    if (!r) return { text: '', now: '', k: 0, met: false };
+    if (r.type === 'finished') { need = RR.TRACK_COUNT; for (var i = 0; i < need; i++) if (P.done(i)) have++; now = have + ' of ' + need + ' tracks'; }
+    else if (r.type === 'stars') { need = RR.TRACK_COUNT * 3; have = P.total(); now = have + ' of ' + need + ' stars'; }
+    else if (r.type === 'flips') { have = Math.min(s.flips, need); now = have + ' of ' + need + ' flips'; }
+    else if (r.type === 'dist') { have = Math.min(s.dist, need); now = (have / 1000).toFixed(1) + ' of ' + (need / 1000) + ' km'; }
+    else if (r.type === 'crashes') { have = Math.min(s.crashes, need); now = have + ' of ' + need + ' crashes'; }
+    else if (r.type === 'collect') { need = RR.ITEMS.length; have = P.ownedCount(); now = have + ' of ' + need + ' collected'; }
+    return { text: r.text, now: now, k: have / need, met: have >= need };
+  },
+  /* hand over any trophy whose rule is now met; returns the newly earned ones */
+  claimTrophies: function () {
+    var out = [];
+    RR.TROPHIES.forEach(function (it) {
+      if (!it.trophy || P.reallyOwns(it) || !P.trophyNeed(it).met) return;
+      Store.data[it.kind === 'paint' ? 'paints' : 'riders'][it.id] = 1; Store.data.fresh[it.id] = 1; out.push(it);
+    });
+    return out;
+  },
+
+  /* ---- the garage you show your bikes in ---- */
+  garage: function () { return RR.GARAGES[Store.data.garage.level] || RR.GARAGES[0]; },
+  nextGarage: function () { return RR.GARAGES[Store.data.garage.level + 1] || null; },
+  buyGarage: function () {
+    var n = P.nextGarage(), g = Store.data.garage;
+    if (!n || Store.data.nuggets < n.price) return false;
+    Store.data.nuggets -= n.price; g.level++; Store.save(); return true;
+  },
+  /* The bike on each display slot: slots hold a bike id, '' for a slot left empty on purpose, or null for "not chosen yet".
+     Slots nobody has chosen fill themselves with bikes you own that are not on show, the ride you have picked first. */
+  garageFill: function () {
+    var g = Store.data.garage, n = P.garage().slots, shown = {}, i;
+    while (g.slots.length < RR.GARAGE_MAX_SLOTS) g.slots.push(null);
+    for (i = 0; i < n; i++) { var id = g.slots[i]; if (id && (!RR.BIKE[id] || !P.bikeOpen(RR.BIKE[id]) || shown[id])) g.slots[i] = id = null; if (id) shown[id] = 1; }
+    var order = [Store.data.bike].concat(RR.BIKES.map(function (b) { return b.id; })), k = 0;
+    for (i = 0; i < n; i++) {
+      if (g.slots[i] !== null) continue;
+      while (k < order.length && (shown[order[k]] || !RR.BIKE[order[k]] || !P.bikeOpen(RR.BIKE[order[k]]))) k++;
+      if (k < order.length) { g.slots[i] = order[k]; shown[order[k]] = 1; }
+    }
+    return g.slots.slice(0, n);
+  },
+  /* put a bike (or '' for nothing) on a slot; a bike already on show swaps places with whatever stood there */
+  garagePlace: function (slot, bikeId) {
+    var g = Store.data.garage, n = P.garage().slots, i, prev;
+    P.garageFill(); prev = g.slots[slot] || '';
+    if (bikeId) for (i = 0; i < n; i++) if (i !== slot && g.slots[i] === bikeId) g.slots[i] = prev;
+    g.slots[slot] = bikeId || '';
   }
 };
 
@@ -359,14 +432,14 @@ function copyPrev() {
 function finishRun() {
   var s = G.sim, i = G.track.index, t = Math.round(s.finishTime * 100) / 100, d = Store.data, E = RR.ECON;
   var old = d.best[i], isBest = !old || t < old, before = P.starsFor(i), totBefore = P.total();
-  d.stats.finishes++;
+  d.stats.finishes++; P.earned = [];
   if (isBest) { d.best[i] = t; Ghost.store(i, G.bikeDef.id); }
   var st = d.stats;
   if (s.bestAir > st.bestAir) st.bestAir = Math.round(s.bestAir * 100) / 100;
   if (s.bestJump > st.bestJump) st.bestJump = Math.round(s.bestJump * 10) / 10;
   if (s.flips > st.bestFlips) st.bestFlips = s.flips;
   bank();
-  var bikes = P.claim();
+  var bikes = P.claim().filter(function (x) { return !x.kind; });
   var worlds = [], tot = P.total();
   for (var w = 1; w < RR.WORLDS.length; w++) { var need = RR.WORLDS[w].need; if (tot >= need && totBefore < need) worlds.push(RR.WORLDS[w]); }
   // nuggets: a little for finishing, more for each new star, a bit for beating your own time
@@ -376,7 +449,7 @@ function finishRun() {
   pay.stars = owed.nuggets; pay.total = pay.finish + pay.best + pay.flips + pay.stars;
   Store.save();
   G.result = { time: t, old: old || 0, best: isBest, stars: P.starsForTime(i, t), starsBefore: before, bikes: bikes, worlds: worlds, flips: s.flips, air: s.bestAir, track: i,
-    pay: pay, geodes: owed.geodes };
+    pay: pay, crates: owed.crates, trophies: P.earned.slice() };
 }
 
 /* ------------------------------------------------------------------ */

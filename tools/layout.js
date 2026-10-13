@@ -15,19 +15,21 @@ const SIZES = [
   { n: 'tablet', w: 1024, h: 768, inset: [0, 0, 0] },
   { n: 'laptop', w: 1366, h: 700, inset: [0, 0, 0] }
 ];
-const SAVE = { v: 2, nuggets: 480, geodes: { gold: 1, diamond: 0 }, paints: { hornet: 1, chrome: 1, whiteopal: 1 }, riders: { dusty: 1, clanks: 1 }, fresh: { chrome: 1 }, owned: { scrapper: 1, mosquito: 1, dune: 1 },
+const SAVE = { v: 3, nuggets: 480, crates: { rare: 1, epic: 0 }, garage: { level: 0, slots: [] }, paints: { hornet: 1, chrome: 1, whiteopal: 1 }, riders: { dusty: 1, clanks: 1 }, fresh: { chrome: 1 }, owned: { scrapper: 1, mosquito: 1, dune: 1 }, news: 3,
   times: { 'first-gear': 19.5, 'washboard': 22, 'rolling-dunes': 25, 'hop-skip': 17, 'loop-de-dust': 19, 'mesa-drop': 22, 'gulch-gap': 24, 'canyon-run': 36, 'log-jam': 22 }, settings: { music: 0, tilt: true }, paid: {}, got: {} };
 async function check(t, name, size) {
   const bad = await t.ev(([inset]) => {
     const W = innerWidth, H = innerHeight, out = [];
     const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
+    const picking = document.getElementById('showpick') && document.getElementById('showpick').classList.contains('on');
     document.querySelectorAll('#ui [data-act], #ui input').forEach(e => {
       if (!vis(e) || !e.closest('.screen.on')) return;
+      if (picking && !e.closest('#showpick')) return;        // the list of bikes sits over the room on purpose
       const r = e.getBoundingClientRect(), label = (e.getAttribute('aria-label') || e.textContent || e.getAttribute('data-act') || e.id || '').trim().slice(0, 28) + ' [' + (e.getAttribute('data-act') || e.tagName) + ']';
       const scroller = e.closest('.cols, .scroll');
       if (scroller) { const s = scroller.getBoundingClientRect(); if (r.bottom > s.bottom + 1 || r.top < s.top - 1) return; }      // scrolled out of view is fine
       if (r.left < inset[0] - 0.5 || r.right > W - inset[1] + 0.5 || r.top < -0.5 || r.bottom > H - inset[2] + 0.5) out.push(label + ' sticks out: ' + [r.left, r.top, r.right, r.bottom].map(v => v.toFixed(0)).join(','));
-      if (e.id === 'geocv') return;
+      if (e.id === 'cratecv') return;
       const pts = [[0.5, 0.5], [0.2, 0.25], [0.8, 0.25], [0.2, 0.75], [0.8, 0.75]];
       for (const p of pts) {
         const x = r.left + r.width * p[0], y = r.top + r.height * p[1];
@@ -64,6 +66,7 @@ async function check(t, name, size) {
       RR.UI.gi = 0;
       RR.UI.gtab = 'paint'; RR.PAINTS.forEach(p => { RR.UI.pick = p.id; RR.UI.garage(); over('#gpanel', p.name); over('#gpanel .info p', p.name); over('#gpanel .nm', p.name); });
       RR.UI.gtab = 'riders'; RR.RIDERS.forEach(p => { RR.UI.pick = p.id; RR.UI.garage(); over('#gpanel', p.name); over('#gpanel .info p', p.name); over('#gpanel .nm', p.name); });
+      RR.UI.gtab = 'trophies'; RR.TROPHIES.forEach(p => { RR.UI.pick = p.id; RR.UI.garage(); over('#gpanel', p.name); over('#gpanel .info p', p.name); over('#gpanel .nm', p.name); over('.need', p.name); });
       RR.UI.gtab = 'bikes'; RR.UI.pick = null; RR.UI.garage();
       return out;
     });
@@ -74,11 +77,24 @@ async function check(t, name, size) {
     await t.tapSel('.tile[data-id=tiger]'); await t.wait(200); await run('garage-paint-locked');
     await t.tapSel('.gtab[data-t=riders]'); await t.wait(250); await run('garage-riders');
     await t.tapSel('.tile[data-id=clanks]'); await t.wait(200); await run('garage-rider-pick');
-    await t.tapSel('.gtab[data-t=geodes]'); await t.wait(250); await run('garage-geodes');
-    await t.tapText('Crack'); await t.wait(400); await run('geode-rock');
+    await t.tapSel('.gtab[data-t=trophies]'); await t.wait(250); await run('garage-trophies');
+    await t.tapSel('.tile[data-id=grandtour]'); await t.wait(200); await run('garage-trophy-pick');
+    await t.tapSel('.gtab[data-t=crates]'); await t.wait(250); await run('garage-crates');
+    await t.tapSel('#gpanel .btn.go'); await t.wait(400); await run('crate-closed');
     for (let i = 0; i < 3; i++) { await t.tap(size.w / 2, size.h * 0.45); await t.wait(120); }
-    await t.wait(1100); await run('geode-card');
+    await t.wait(1100); await run('crate-card');
     await t.tapText('Done'); await t.wait(250);
+    // the showroom at every garage level, with every bike owned and dressed
+    await t.ev(() => { const D = RR.Store.data, P = RR.PAINTS, R = RR.RIDERS; RR.BIKES.forEach((b, i) => { D.owned[b.id] = 1; D.fit[b.id] = { p: P[(i * 5 + 7) % P.length].id, r: R[(i * 4 + 3) % R.length].id }; D.paints[D.fit[b.id].p] = 1; D.riders[D.fit[b.id].r] = 1; }); D.nuggets = 9000; RR.Store.save(); });
+    await t.tapSel('.gtab[data-t=show]'); await t.wait(700); await run('show-L0');
+    for (let lv = 1; lv < 5; lv++) {
+      await t.tapText('Upgrade'); await t.wait(1500);       // the flash and the note fade
+      await run('show-L' + lv);
+    }
+    await t.tapText('Arrange'); await t.wait(200); await run('show-arrange');
+    await t.tapSel('.slotb[data-i="1"]'); await t.wait(400); await run('show-picker');
+    await t.tapText('Cancel'); await t.wait(150);
+    await t.tapSel('.screen.on .back'); await t.wait(250);
     await t.tapSel('.screen.on .back'); await t.wait(200);
     await t.tapText('Settings'); await t.wait(250); await run('settings');
     await t.tapSel('.screen.on .back'); await t.wait(200);

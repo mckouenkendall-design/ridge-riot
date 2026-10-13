@@ -25,7 +25,7 @@ RR.MORE_PAINTS2 = [
   // trophy: earned, never found in a crate
   { id: 'grandtour',  name: 'Grand Tour',      tier: 'trophy', c: ['#e8b12e', '#7a5210', '#fff3b0'], pat: { t: 'grandtour', size: 0.6, ang: 0, dx: 0, dy: 0 }, rim: '#ffe27a', glow: '#ffd23f', glint: '#fff7cf', trail: { cols: ['#fff7cf', '#ffc22e'], w: 0.28, spark: '#fff3b0' }, live: true, wide: true },
   { id: 'pinwheel',   name: 'Pinwheel',        tier: 'trophy', c: ['#f6d65a', '#fffaf0', '#b8841a'], pat: { t: 'pinwheel', size: 0.5, ang: 0, dx: 0, dy: 0 }, rim: '#fffaf0', glow: '#ffd23f', glint: '#ffffff', trail: { cols: ['#ffffff', '#ffc22e'], w: 0.28, spark: '#fff3b0' }, live: true, wide: true },
-  { id: 'longhaul',   name: 'Long Haul',       tier: 'trophy', c: ['#14161e', '#ffc83a', '#f4e9c0'], pat: { t: 'longhaul', size: 0.6, ang: 0, dx: 0, dy: 0 }, rim: '#ffc83a', glow: '#ffd23f', glint: '#fff0b0', trail: { cols: ['#fff3b0', '#ff9a1f'], w: 0.28, spark: '#ffe9a0' }, live: true, wide: true },
+  { id: 'longhaul',   name: 'Long Haul',       tier: 'trophy', c: ['#14161e', '#ffc83a', '#f4e9c0'], pat: { t: 'longhaul', size: 0.9, ang: 0, dx: 0, dy: 0 }, rim: '#ffc83a', glow: '#ffd23f', glint: '#fff0b0', trail: { cols: ['#fff3b0', '#ff9a1f'], w: 0.28, spark: '#ffe9a0' }, live: true, wide: true },
   { id: 'curator',    name: 'Curator',         tier: 'trophy', c: ['#f2efe8', '#c8962a', '#7a1830'], pat: { t: 'curator', size: 0.6, ang: 0, dx: 0, dy: 0 }, rim: '#e2ae34', glow: '#ffd23f', glint: '#ffffff', trail: { cols: ['#ffffff', '#ffc22e'], w: 0.28, spark: '#fff7cf' }, live: true, wide: true }
 ];
 })(typeof window !== 'undefined' ? window : globalThis);

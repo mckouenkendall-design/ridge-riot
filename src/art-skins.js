@@ -392,6 +392,12 @@ function puff(c, cs, fill, lw) {
   for (k = 0; k < cs.length; k++) { c.beginPath(); c.arc(cs[k][0], cs[k][1], cs[k][2], 0, TAU); c.fill(); }
 }
 /* the tools new art files use: art-patterns.js adds pattern painters, art-heads.js adds heads */
+/* does this paint job or rider change from one moment to the next? (the menus repaint those every frame and everything else once) */
+A.moves = function (it) {
+  if (!it) return false;
+  if (it.kind === 'paint') return !!(it.live || it.glint || (it.pat && (it.pat.t === 'metal' || it.pat.slide)));
+  return !!(it.live || it.shift || it.stars || (HEAD[it.head] && HEAD[it.head].length > 1));
+};
 A.kit = { ci: ci, po: po, bl: bl, ln: ln, eye: eye, el: el, star: star, puff: puff, hsl: hsl, rng: rng, mk: mk, wrap: wrap, blobAt: blobAt, TAU: TAU, SKIN: SKIN, LW: LW, OUT: OUT };
 A.HEADS = HEAD; A.TILES = NEWTILE; A.LIVE = LIVE;
 

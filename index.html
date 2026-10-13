@@ -19,7 +19,7 @@
 :root {
   color-scheme: dark;
   --ink: #171a22; --plate: #f6f2e7; --yellow: #f2c230; --red: #e2402f; --blue: #2f6fd6; --dim: rgba(23, 26, 34, 0.62);
-  --ruby: #e0314b; --emerald: #19b56b; --gold: #f2b632; --diamond: #8fdcff;
+  --common: #b8c0cc; --uncommon: #3fbf6a; --rare: #3b8cf0; --epic: #a259ee; --legendary: #ff9a1f; --trophy: #ffd23f;
   --font: "Avenir Next Condensed", "Arial Narrow", "Roboto Condensed", "HelveticaNeue-CondensedBold", "Bahnschrift", "Segoe UI", system-ui, sans-serif;
   --safe-l: env(safe-area-inset-left, 0px); --safe-r: env(safe-area-inset-right, 0px); --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px);
 }
@@ -72,13 +72,16 @@ h3 { margin: 0; font-size: 1.5rem; font-weight: 900; font-style: italic; line-he
 /* a gold nugget */
 .nug { display: inline-block; width: 1em; height: 0.9em; flex: none; background: linear-gradient(135deg, #fff3b0 0 30%, #f2b632 30% 62%, #b9801a 62%); clip-path: polygon(22% 4%, 70% 0, 100% 34%, 88% 86%, 44% 100%, 6% 78%, 0 34%); }
 .dotb { display: inline-block; width: 0.62rem; height: 0.62rem; border-radius: 50%; background: var(--red); border: 0.1rem solid var(--ink); margin-left: 0.35rem; vertical-align: 0.5em; }
-/* rarity colours. Opal keeps moving. */
+/* rarity colours. Legendary and trophy keep moving (the shift is done by the browser, so it runs at the screen's own rate). */
 .chip { display: inline-block; flex: none; padding: 0.02rem 0.55rem 0; border-radius: 1rem; border: 0.1rem solid var(--ink); font-weight: 900; font-style: italic; font-size: 0.8rem; color: var(--ink); white-space: nowrap; line-height: 1.25; }
-.t-ruby { --tc: var(--ruby); --tl: #ffb0bc; } .t-emerald { --tc: var(--emerald); --tl: #a8f5cb; } .t-gold { --tc: var(--gold); --tl: #fff3b0; } .t-diamond { --tc: var(--diamond); --tl: #ffffff; } .t-opal { --tc: #c9b0ff; --tl: #ffffff; }
-.chip.t-ruby, .chip.t-emerald, .chip.t-gold, .chip.t-diamond { background: linear-gradient(135deg, var(--tl), var(--tc) 55%); }
-.chip.t-ruby { color: #fff; text-shadow: 0.05rem 0.05rem 0 var(--ink); }
-.chip.t-opal, .tile.item.t-opal, .gecard.t-opal #geoitem { background: linear-gradient(120deg, #bfeeff, #ffc6ee, #fff5b0, #b8ffd6, #d2c2ff, #bfeeff, #ffc6ee); background-size: 300% 100%; animation: opal 3.2s linear infinite; }
-@keyframes opal { from { background-position: 0 0; } to { background-position: 150% 0; } }
+.t-common { --tc: var(--common); --tl: #f2f5f9; } .t-uncommon { --tc: var(--uncommon); --tl: #b6f5c8; } .t-rare { --tc: var(--rare); --tl: #bcdcff; } .t-epic { --tc: var(--epic); --tl: #e0c6ff; }
+.t-legendary { --tc: #ff9a1f; --tl: #ffe0a8; } .t-trophy { --tc: #f2b632; --tl: #fff7cf; }
+.chip.t-common, .chip.t-uncommon, .chip.t-rare, .chip.t-epic { background: linear-gradient(135deg, var(--tl), var(--tc) 55%); }
+.chip.t-rare, .chip.t-epic { color: #fff; text-shadow: 0.05rem 0.05rem 0 var(--ink); }
+.chip.t-legendary, .tile.item.t-legendary, .cratecard.t-legendary #crateitem { background: linear-gradient(120deg, #ffd9a0, #ff9a1f, #ff6fb0, #ffe27a, #ff9a1f, #ffd9a0, #ff9a1f); background-size: 300% 100%; animation: shimmer 3.2s linear infinite; }
+.chip.t-trophy, .tile.item.t-trophy { background: linear-gradient(115deg, #fff7cf, #ffd23f 30%, #fff7cf 45%, #e9a31c 60%, #ffd23f 80%, #fff7cf); background-size: 300% 100%; animation: shimmer 2.6s linear infinite; }
+.cratecard.t-trophy #crateitem { background: linear-gradient(160deg, #fff7cf, #f2b632); }
+@keyframes shimmer { from { background-position: 0 0; } to { background-position: 150% 0; } }
 
 /* title */
 #s-title .logo { position: absolute; left: calc(1.6rem + var(--safe-l)); top: 8%; transform: rotate(-5deg); transform-origin: left top; }
@@ -115,8 +118,8 @@ h3 { margin: 0; font-size: 1.5rem; font-weight: 900; font-style: italic; line-he
 .lockmsg { flex: none; margin-top: 0.5rem; min-height: 1.1rem; font-size: 0.95rem; line-height: 1.1; font-style: italic; font-weight: 700; text-shadow: 0.08rem 0.08rem 0 var(--ink); }
 
 /* garage */
-.gtabs { display: flex; gap: 0.35rem; min-width: 0; }
-.gtab { height: 2.4rem; padding: 0 0.9rem; border-radius: 0.45rem; border: 0.14rem solid var(--ink); background: rgba(246, 242, 231, 0.2); color: var(--plate); transform: skewX(-8deg); font-weight: 900; font-style: italic; font-size: 1.15rem; white-space: nowrap; }
+.gtabs { display: flex; gap: 0.25rem; min-width: 0; }
+.gtab { height: 2.4rem; padding: 0 0.62rem; border-radius: 0.45rem; border: 0.14rem solid var(--ink); background: rgba(246, 242, 231, 0.2); color: var(--plate); transform: skewX(-8deg); font-weight: 900; font-style: italic; font-size: 1.02rem; white-space: nowrap; }
 .gtab.on { background: var(--plate); color: var(--ink); box-shadow: 0.2rem 0.2rem 0 var(--ink); }
 .gtab.down { filter: brightness(0.86); }
 .gbody { flex: 1; min-height: 0; display: flex; gap: 0.9rem; margin-top: 0.55rem; }
@@ -128,7 +131,15 @@ h3 { margin: 0; font-size: 1.5rem; font-weight: 900; font-style: italic; line-he
 .gright { flex: 1; min-width: 0; padding: 0.45rem 0.7rem 0.55rem; display: flex; flex-direction: column; gap: 0.3rem; overflow: hidden; }
 /* The grid of pictures gives up height first, so the name and the button under it always fit. */
 .tiles { flex: 1 1 auto; min-height: 3rem; display: grid; gap: 0.3rem; grid-auto-rows: minmax(0, 1fr); }
-.t5 { grid-template-columns: repeat(5, 1fr); max-height: 7.4rem; } .t7 { grid-template-columns: repeat(7, 1fr); max-height: 9.3rem; } .t9 { grid-template-columns: repeat(9, 1fr); max-height: 7.4rem; }
+.t5 { grid-template-columns: repeat(5, 1fr); max-height: 7.4rem; }
+/* the paint and rider lists are long: they scroll, in rows of a fixed size, with a small heading for each rarity */
+.tiles.scroll { overflow-y: auto; overflow-x: hidden; grid-auto-rows: auto; align-content: start; touch-action: pan-y; padding-right: 0.15rem; -webkit-overflow-scrolling: touch; }
+/* a tile's height is set by the script (--th, from the width of a column) because a grid will not count aspect-ratio when it works out how tall each row is */
+.tiles.scroll .tile { aspect-ratio: 1 / 0.92; min-height: auto; height: var(--th, auto); touch-action: pan-y; }
+.t7.scroll .tile, .t6.scroll .tile { aspect-ratio: 1 / 1; }
+.t6 { grid-template-columns: repeat(6, 1fr); } .t7 { grid-template-columns: repeat(7, 1fr); } .t9 { grid-template-columns: repeat(9, 1fr); }
+.sep { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 0.5rem; padding: 0.05rem 0.2rem 0; border-bottom: 0.12rem solid var(--tc, var(--ink)); font-size: 0.8rem; line-height: 1.15; }
+.sep b { font-weight: 900; font-style: italic; } .sep i { font-style: normal; font-weight: 700; opacity: 0.7; }
 .tile { position: relative; min-height: 0; min-width: 0; padding: 0; border: 0.12rem solid var(--ink); border-radius: 0.4rem; background: rgba(23, 26, 34, 0.07); overflow: hidden; }
 .tile canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .tile.item { background: linear-gradient(160deg, var(--tl, #fff), var(--tc, #cfc9ba)); }
@@ -137,6 +148,7 @@ h3 { margin: 0; font-size: 1.5rem; font-weight: 900; font-style: italic; line-he
 .tile.sel { box-shadow: inset 0 0 0 0.16rem var(--yellow), inset 0 0 0 0.26rem var(--ink); }
 .tile.cur { outline: 0.18rem solid var(--blue); outline-offset: 0.05rem; z-index: 1; }
 .tile.down { filter: brightness(0.86); }
+.setn { flex: none; font-size: 0.7rem; font-weight: 800; opacity: 0.75; white-space: nowrap; }
 .tile .lock { position: absolute; right: 0.1rem; bottom: 0.08rem; width: 0.82rem; height: 0.82rem; background: var(--plate); border-radius: 0.2rem; padding: 0.07rem; display: block; }
 .tile .lock svg { display: block; width: 100%; height: 100%; }
 .tile .new { position: absolute; left: 0; top: 0; background: var(--red); color: var(--plate); font-size: 0.56rem; font-weight: 900; font-style: normal; padding: 0 0.22rem; border-radius: 0 0 0.3rem 0; line-height: 1.3; }
@@ -145,7 +157,7 @@ h3 { margin: 0; font-size: 1.5rem; font-weight: 900; font-style: italic; line-he
 .info .nm h3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; line-height: 1.22; padding-right: 0.25rem; }
 .info p, .geo p { margin: 0; font-size: 0.84rem; line-height: 1.2; font-weight: 500; }
 .info p { height: 2.02rem; overflow: hidden; }
-.info .btn, .tab-geodes > .btn { min-height: 2.45rem; font-size: 1.1rem; flex: none; align-self: stretch; padding: 0.2rem 0.6rem; }
+.info .btn, .tab-crates > .btn { min-height: 2.45rem; font-size: 1.1rem; flex: none; align-self: stretch; padding: 0.2rem 0.6rem; }
 .bars { display: grid; grid-template-columns: auto 1fr auto 1fr auto 1fr; gap: 0.14rem 0.5rem; align-items: center; font-size: 0.74rem; font-weight: 700; line-height: 1.15; }
 .bar { height: 0.5rem; background: rgba(23, 26, 34, 0.14); border-radius: 0.3rem; overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--ink); border-radius: 0.3rem; }
@@ -161,23 +173,23 @@ h3 { margin: 0; font-size: 1.5rem; font-weight: 900; font-style: italic; line-he
 .geo p b { font-weight: 900; font-style: italic; font-size: 1.02rem; }
 .odds { display: flex; flex-wrap: wrap; gap: 0.25rem; }
 
-/* cracking a geode */
-#s-geode { padding: 0; }
-#s-geode.shade.full { background: radial-gradient(circle at 50% 46%, rgba(40, 44, 60, 0.94), rgba(10, 11, 16, 0.97) 70%); }
-#geocv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-.gehint { position: absolute; left: 50%; bottom: calc(1.6rem + var(--safe-b)); transform: translateX(-50%); font-size: 1.3rem; font-weight: 900; font-style: italic; text-shadow: 0.1rem 0.1rem 0 var(--ink); opacity: 0; pointer-events: none; white-space: nowrap; }
-.gehint.on { opacity: 1; animation: nudge 1s ease-in-out infinite; }
+/* opening a crate */
+#s-crate { padding: 0; }
+#s-crate.shade.full { background: radial-gradient(circle at 50% 46%, rgba(40, 44, 60, 0.94), rgba(10, 11, 16, 0.97) 70%); }
+#cratecv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.cratehint { position: absolute; left: 50%; bottom: calc(1.6rem + var(--safe-b)); transform: translateX(-50%); font-size: 1.3rem; font-weight: 900; font-style: italic; text-shadow: 0.1rem 0.1rem 0 var(--ink); opacity: 0; pointer-events: none; white-space: nowrap; }
+.cratehint.on { opacity: 1; animation: nudge 1s ease-in-out infinite; }
 @keyframes nudge { 50% { transform: translateX(-50%) scale(1.08); } }
-.gecard { position: absolute; left: 50%; top: 50%; width: min(35rem, calc(100% - 2rem - var(--safe-l) - var(--safe-r))); transform: translate(-50%, -50%) scale(0.6); opacity: 0; pointer-events: none; display: flex; align-items: stretch; gap: 1rem; padding: 0.8rem 1rem 0.9rem 0.8rem; transition: transform 0.22s cubic-bezier(0.2, 1.5, 0.4, 1), opacity 0.15s; }
-.gecard.on { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
-#geoitem { flex: none; width: 9rem; height: 9rem; border-radius: 0.5rem; border: 0.16rem solid var(--ink); background: linear-gradient(160deg, var(--tl, #fff), var(--tc, #ccc)); display: block; }
-.gecard .gi { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
-.gecard .k { font-size: 0.95rem; font-weight: 800; font-style: italic; display: flex; align-items: center; gap: 0.5rem; }
-.gecard h3 { font-size: 2.1rem; }
-.gecard p { margin: 0; font-size: 0.92rem; line-height: 1.25; font-weight: 500; }
-.gecard .btns { margin-top: auto; display: flex; gap: 0.55rem; flex-wrap: wrap; align-items: center; }
-.gecard .btn { min-height: 2.4rem; font-size: 1.15rem; padding: 0.2rem 1rem; }
-.gecard .btn.small { min-height: 2.4rem; font-size: 1rem; }
+.cratecard { position: absolute; left: 50%; top: 50%; width: min(35rem, calc(100% - 2rem - var(--safe-l) - var(--safe-r))); transform: translate(-50%, -50%) scale(0.6); opacity: 0; pointer-events: none; display: flex; align-items: stretch; gap: 1rem; padding: 0.8rem 1rem 0.9rem 0.8rem; transition: transform 0.22s cubic-bezier(0.2, 1.5, 0.4, 1), opacity 0.15s; }
+.cratecard.on { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
+#crateitem { flex: none; width: 9rem; height: 9rem; border-radius: 0.5rem; border: 0.16rem solid var(--ink); background: linear-gradient(160deg, var(--tl, #fff), var(--tc, #ccc)); display: block; }
+.cratecard .gi { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.cratecard .k { font-size: 0.95rem; font-weight: 800; font-style: italic; display: flex; align-items: center; gap: 0.5rem; }
+.cratecard h3 { font-size: 2.1rem; }
+.cratecard p { margin: 0; font-size: 0.92rem; line-height: 1.25; font-weight: 500; }
+.cratecard .btns { margin-top: auto; display: flex; gap: 0.55rem; flex-wrap: wrap; align-items: center; }
+.cratecard .btn { min-height: 2.4rem; font-size: 1.15rem; padding: 0.2rem 1rem; }
+.cratecard .btn.small { min-height: 2.4rem; font-size: 1rem; }
 
 /* settings */
 #s-settings .cols { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: max-content; align-content: start; align-items: center; gap: 0.5rem 2rem; margin-top: 0.8rem; overflow-y: auto; touch-action: pan-y; padding-right: 0.4rem; }
@@ -248,6 +260,7 @@ input[type=range]::-moz-range-thumb { width: 1.3rem; height: 1.3rem; background:
 .res .pay b { font-size: 1.15rem; font-weight: 900; font-style: italic; }
 .res .pay span { font-weight: 500; opacity: 0.75; font-size: 0.84rem; }
 .res .unl { margin-top: 0.15rem; font-size: 0.95rem; font-weight: 800; color: var(--blue); line-height: 1.15; }
+.res .unl.gold { color: #b9801a; }
 .res .btns { display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; row-gap: 0.45rem; }
 .res .btns .btn { font-size: 1.15rem; padding: 0.3rem 0.9rem; min-height: 2.5rem; }
 .res .btns .btn.small { font-size: 0.95rem; padding: 0.2rem 0.7rem; min-height: 2.45rem; }
@@ -257,7 +270,33 @@ input[type=range]::-moz-range-thumb { width: 1.3rem; height: 1.3rem; background:
 #rotate.on { display: flex; }
 #rotate .ph { width: 16vw; height: 28vw; border: 1.2vw solid var(--plate); border-radius: 3vw; animation: turn 2s ease-in-out infinite; }
 @keyframes turn { 0%, 25% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
-@media (prefers-reduced-motion: reduce) { .wipe.on, .res .big .star.on, #rotate .ph, .gehint.on, .chip.t-opal, .tile.item.t-opal, .gecard.t-opal #geoitem { animation: none; } #toast, .gecard { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .wipe.on, .res .big .star.on, #rotate .ph, .cratehint.on, .chip.t-legendary, .chip.t-trophy, .tile.item.t-legendary, .tile.item.t-trophy, .cratecard.t-legendary #crateitem { animation: none; } #toast, .cratecard { transition: none; } }
+
+/* showroom: the room is a canvas behind everything, with a clear button laid over each display spot */
+#s-show { padding: calc(0.7rem + var(--safe-t)) calc(1rem + var(--safe-r)) 0 calc(1rem + var(--safe-l)); overflow: hidden; }
+#showcv { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; background: #15171d; }
+#showslots { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.slotb { position: absolute; display: block; padding: 0; border: 0; background: transparent; border-radius: 0.6rem; }
+.slotb.down { background: rgba(255, 255, 255, 0.16); }
+.showhead { position: relative; z-index: 2; }
+.showfoot { position: absolute; z-index: 2; left: calc(1rem + var(--safe-l)); right: calc(1rem + var(--safe-r)); bottom: calc(0.6rem + var(--safe-b)); display: flex; align-items: flex-end; gap: 0.7rem; }
+.showcap { flex: 1; min-width: 0; padding: 0.3rem 0.7rem 0.35rem; font-size: 0.8rem; line-height: 1.15; font-weight: 600; }
+.showcap b { display: block; font-size: 1rem; font-weight: 900; font-style: italic; line-height: 1.1; }
+.showbtns { flex: none; display: flex; gap: 0.6rem; }
+.showbtns .btn { min-height: 2.5rem; white-space: nowrap; }
+.btn.poor { filter: saturate(0.5) brightness(0.9); }
+.showpick { position: absolute; z-index: 4; left: 0; top: 0; width: 100%; height: 100%; display: none; align-items: center; justify-content: center; background: rgba(10, 12, 18, 0.62); padding: calc(0.7rem + var(--safe-t)) calc(1rem + var(--safe-r)) calc(0.7rem + var(--safe-b)) calc(1rem + var(--safe-l)); }
+.showpick.on { display: flex; }
+.pickbox { width: min(42rem, 100%); max-height: 100%; display: flex; flex-direction: column; gap: 0.4rem; padding: 0.45rem 0.8rem 0.7rem; }
+.pickbox h3 { margin: 0; flex: none; font-size: 1.15rem; font-style: italic; font-weight: 900; }
+.pickgrid { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.35rem; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+.pk { display: flex; flex-direction: column; align-items: center; padding: 0.15rem 0.1rem 0.2rem; border: 0.12rem solid var(--ink); border-radius: 0.4rem; background: rgba(23, 26, 34, 0.07); color: var(--ink); font: inherit; touch-action: pan-y; }
+.pk canvas { width: 100%; height: 2.6rem; display: block; pointer-events: none; }
+.pk b { font-size: 0.8rem; font-weight: 900; font-style: italic; line-height: 1.1; }
+.pk i { font-size: 0.62rem; font-style: normal; font-weight: 700; opacity: 0.65; line-height: 1.1; }
+.pk.cur { background: var(--yellow); }
+.pk.down { filter: brightness(0.86); }
+.pickbox .btns { flex: none; display: flex; gap: 0.6rem; justify-content: center; }
 
 </style>
 </head>
@@ -1461,7 +1500,7 @@ RR.MORE_PAINTS2 = [
   // trophy: earned, never found in a crate
   { id: 'grandtour',  name: 'Grand Tour',      tier: 'trophy', c: ['#e8b12e', '#7a5210', '#fff3b0'], pat: { t: 'grandtour', size: 0.6, ang: 0, dx: 0, dy: 0 }, rim: '#ffe27a', glow: '#ffd23f', glint: '#fff7cf', trail: { cols: ['#fff7cf', '#ffc22e'], w: 0.28, spark: '#fff3b0' }, live: true, wide: true },
   { id: 'pinwheel',   name: 'Pinwheel',        tier: 'trophy', c: ['#f6d65a', '#fffaf0', '#b8841a'], pat: { t: 'pinwheel', size: 0.5, ang: 0, dx: 0, dy: 0 }, rim: '#fffaf0', glow: '#ffd23f', glint: '#ffffff', trail: { cols: ['#ffffff', '#ffc22e'], w: 0.28, spark: '#fff3b0' }, live: true, wide: true },
-  { id: 'longhaul',   name: 'Long Haul',       tier: 'trophy', c: ['#14161e', '#ffc83a', '#f4e9c0'], pat: { t: 'longhaul', size: 0.6, ang: 0, dx: 0, dy: 0 }, rim: '#ffc83a', glow: '#ffd23f', glint: '#fff0b0', trail: { cols: ['#fff3b0', '#ff9a1f'], w: 0.28, spark: '#ffe9a0' }, live: true, wide: true },
+  { id: 'longhaul',   name: 'Long Haul',       tier: 'trophy', c: ['#14161e', '#ffc83a', '#f4e9c0'], pat: { t: 'longhaul', size: 0.9, ang: 0, dx: 0, dy: 0 }, rim: '#ffc83a', glow: '#ffd23f', glint: '#fff0b0', trail: { cols: ['#fff3b0', '#ff9a1f'], w: 0.28, spark: '#ffe9a0' }, live: true, wide: true },
   { id: 'curator',    name: 'Curator',         tier: 'trophy', c: ['#f2efe8', '#c8962a', '#7a1830'], pat: { t: 'curator', size: 0.6, ang: 0, dx: 0, dy: 0 }, rim: '#e2ae34', glow: '#ffd23f', glint: '#ffffff', trail: { cols: ['#ffffff', '#ffc22e'], w: 0.28, spark: '#fff7cf' }, live: true, wide: true }
 ];
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -3699,6 +3738,12 @@ function puff(c, cs, fill, lw) {
   for (k = 0; k < cs.length; k++) { c.beginPath(); c.arc(cs[k][0], cs[k][1], cs[k][2], 0, TAU); c.fill(); }
 }
 /* the tools new art files use: art-patterns.js adds pattern painters, art-heads.js adds heads */
+/* does this paint job or rider change from one moment to the next? (the menus repaint those every frame and everything else once) */
+A.moves = function (it) {
+  if (!it) return false;
+  if (it.kind === 'paint') return !!(it.live || it.glint || (it.pat && (it.pat.t === 'metal' || it.pat.slide)));
+  return !!(it.live || it.shift || it.stars || (HEAD[it.head] && HEAD[it.head].length > 1));
+};
 A.kit = { ci: ci, po: po, bl: bl, ln: ln, eye: eye, el: el, star: star, puff: puff, hsl: hsl, rng: rng, mk: mk, wrap: wrap, blobAt: blobAt, TAU: TAU, SKIN: SKIN, LW: LW, OUT: OUT };
 A.HEADS = HEAD; A.TILES = NEWTILE; A.LIVE = LIVE;
 
@@ -7245,6 +7290,473 @@ HEAD.goldie = function (c, t) {
 
 })(typeof window !== 'undefined' ? window : globalThis);
 
+/* ---- art-crate.js ---- */
+/* Ridge Riot: the wooden parts crate you pry open (the crate screen and the little picture in the garage).
+   Drawn in a box about 3 units wide with the crate centred, y up. Same look as the rest of the art: thick dark
+   outline, flat wood tones with a lit edge and a shaded side, nails and brackets for the small parts.
+   A.crate(c, o): o.hits (0 to 2 pries so far), o.open (0 to 1 once the lid has gone), o.t (seconds),
+   o.kind ('any', 'rare' or 'epic': the better crates have coloured steel bands), o.glow (the colour of the light inside). */
+(function (root) {
+'use strict';
+var RR = root.RR, A = RR.Art, TAU = Math.PI * 2, OUT = '#15171d';
+
+var WOOD = ['#b98a54', '#a97a46', '#c39560', '#b08050'], WLO = '#7a5430', WHI = '#e0bb86';
+var DX = 0.3, DY = 0.3;                       // how far the top and right side are pushed back (depth)
+
+function poly(c, pts, fill, lw) {
+  c.beginPath(); c.moveTo(pts[0], pts[1]); for (var i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.closePath();
+  if (fill) { c.fillStyle = fill; c.fill(); }
+  if (lw) { c.lineWidth = lw; c.strokeStyle = OUT; c.lineJoin = 'round'; c.stroke(); }
+}
+function nail(c, x, y, r, bent) {
+  c.beginPath(); c.arc(x, y, r, 0, TAU); c.fillStyle = '#6b727c'; c.fill(); c.lineWidth = 0.022; c.strokeStyle = OUT; c.stroke();
+  c.beginPath(); c.arc(x - r * 0.3, y + r * 0.3, r * 0.4, 0, TAU); c.fillStyle = '#c4cbd4'; c.fill();
+  if (bent) { c.beginPath(); c.moveTo(x, y); c.lineTo(x + r * 1.8, y + r * 2.6); c.lineWidth = 0.034; c.strokeStyle = '#6b727c'; c.stroke(); }
+}
+/* a plank of the front face: x0..x1, y0..y1, with grain and a knot or two */
+function plank(c, x0, y0, x1, y1, i) {
+  poly(c, [x0, y0, x1, y0, x1, y1, x0, y1], WOOD[i % WOOD.length], 0.05);
+  c.fillStyle = 'rgba(255,230,180,0.22)'; c.fillRect(x0 + 0.03, y1 - 0.075, x1 - x0 - 0.06, 0.05);        // lit top edge
+  c.fillStyle = 'rgba(70,40,15,0.22)'; c.fillRect(x0 + 0.03, y0 + 0.03, x1 - x0 - 0.06, 0.045);           // shaded lower edge
+  c.lineWidth = 0.014; c.strokeStyle = 'rgba(90,55,22,0.55)';
+  for (var k = 0; k < 4; k++) {
+    var gy = y0 + (y1 - y0) * (0.2 + 0.2 * k + (i % 2) * 0.05), gx = x0 + (x1 - x0) * (0.1 + ((k * 0.31 + i * 0.17) % 0.3));
+    c.beginPath(); c.moveTo(gx, gy); c.bezierCurveTo(gx + 0.3, gy + 0.03, gx + 0.5, gy - 0.03, gx + 0.8 + (k % 2) * 0.3, gy + 0.01); c.stroke();
+  }
+  var kx = x0 + (x1 - x0) * (0.25 + 0.5 * ((i * 0.37) % 1)), ky = (y0 + y1) / 2;
+  c.beginPath(); c.ellipse(kx, ky, 0.07, 0.045, 0.3, 0, TAU); c.fillStyle = 'rgba(80,45,18,0.55)'; c.fill();
+  c.beginPath(); c.ellipse(kx, ky, 0.035, 0.02, 0.3, 0, TAU); c.fillStyle = 'rgba(40,20,8,0.5)'; c.fill();
+}
+/* the L-shaped steel bracket on a corner. sx, sy: which corner (+1 or -1) */
+function bracket(c, x, y, sx, sy, col, hi) {
+  var a = 0.46, w = 0.13;
+  poly(c, [x, y, x - sx * a, y, x - sx * a, y - sy * w, x - sx * w, y - sy * w, x - sx * w, y - sy * a, x, y - sy * a], col, 0.04);
+  c.beginPath(); c.moveTo(x - sx * (a - 0.03), y - sy * 0.03); c.lineTo(x - sx * 0.03, y - sy * 0.03); c.lineTo(x - sx * 0.03, y - sy * (a - 0.03)); c.lineWidth = 0.025; c.strokeStyle = hi; c.stroke();
+  nail(c, x - sx * 0.08, y - sy * 0.3, 0.032); nail(c, x - sx * 0.3, y - sy * 0.08, 0.032);
+}
+/* a gear: the stencil on the front */
+function gear(c, x, y, r, col) {
+  c.save(); c.translate(x, y); c.fillStyle = col; c.beginPath();
+  for (var i = 0; i < 16; i++) { var a0 = i / 16 * TAU, a1 = (i + 0.5) / 16 * TAU, rr = i % 2 ? r : r * 0.78; c.lineTo(Math.cos(a0) * rr, Math.sin(a0) * rr); c.lineTo(Math.cos(a1) * rr, Math.sin(a1) * rr); }
+  c.closePath(); c.fill(); c.globalCompositeOperation = 'destination-out'; c.beginPath(); c.arc(0, 0, r * 0.32, 0, TAU); c.fill(); c.restore();
+}
+function arrowUp(c, x, y, s, col) { c.beginPath(); c.moveTo(x, y + s); c.lineTo(x + s * 0.6, y + s * 0.2); c.lineTo(x + s * 0.22, y + s * 0.2); c.lineTo(x + s * 0.22, y - s); c.lineTo(x - s * 0.22, y - s); c.lineTo(x - s * 0.22, y + s * 0.2); c.lineTo(x - s * 0.6, y + s * 0.2); c.closePath(); c.fillStyle = col; c.fill(); }
+
+/* the body: front face, right side, interior (seen when the lid is up) */
+var X0 = -1.0, X1 = 1.0, Y0 = -0.82, Y1 = 0.46;
+function body(c, o, steel, steelHi) {
+  // right side, pushed back
+  poly(c, [X1, Y0, X1 + DX, Y0 + DY, X1 + DX, Y1 + DY, X1, Y1], '#8a6236', 0.05);
+  c.fillStyle = 'rgba(40,20,5,0.25)'; c.fillRect(X1 + 0.02, Y0 + 0.02, DX - 0.02, (Y1 - Y0) - 0.02);
+  c.lineWidth = 0.014; c.strokeStyle = 'rgba(60,35,12,0.6)'; c.beginPath(); c.moveTo(X1 + DX * 0.5, Y0 + DY * 0.5); c.lineTo(X1 + DX * 0.5, Y1 + DY * 0.5); c.stroke();
+  // front: three planks, vertical battens, a diagonal brace
+  var ph = (Y1 - Y0) / 3;
+  for (var i = 0; i < 3; i++) plank(c, X0, Y0 + ph * i, X1, Y0 + ph * (i + 1), i + 1);
+  poly(c, [X0 + 0.06, Y0 + 0.06, X0 + 0.34, Y0 + 0.06, X0 + 0.34, Y1 - 0.04, X0 + 0.06, Y1 - 0.04], WOOD[2], 0.045);
+  poly(c, [X1 - 0.34, Y0 + 0.06, X1 - 0.06, Y0 + 0.06, X1 - 0.06, Y1 - 0.04, X1 - 0.34, Y1 - 0.04], WOOD[2], 0.045);
+  c.fillStyle = 'rgba(255,230,180,0.2)'; c.fillRect(X0 + 0.09, Y0 + 0.1, 0.05, Y1 - Y0 - 0.2); c.fillRect(X1 - 0.31, Y0 + 0.1, 0.05, Y1 - Y0 - 0.2);
+  poly(c, [X0 + 0.34, Y0 + 0.08, X0 + 0.58, Y0 + 0.08, X1 - 0.34, Y1 - 0.08, X1 - 0.58, Y1 - 0.08], WOOD[0], 0.045);
+  c.fillStyle = 'rgba(255,230,180,0.2)'; c.beginPath(); c.moveTo(X0 + 0.4, Y0 + 0.12); c.lineTo(X0 + 0.46, Y0 + 0.12); c.lineTo(X1 - 0.42, Y1 - 0.12); c.lineTo(X1 - 0.5, Y1 - 0.12); c.fill();
+  // nails along the battens
+  [[X0 + 0.2, Y0 + 0.2], [X0 + 0.2, Y1 - 0.2], [X0 + 0.2, (Y0 + Y1) / 2], [X1 - 0.2, Y0 + 0.2], [X1 - 0.2, Y1 - 0.2], [X1 - 0.2, (Y0 + Y1) / 2]].forEach(function (p) { nail(c, p[0], p[1], 0.04); });
+  // stencil: a gear and two arrows, spray paint style
+  gear(c, 0.02, -0.18, 0.2, 'rgba(30,24,18,0.75)');
+  c.save(); c.globalAlpha = 0.75; arrowUp(c, -0.5, -0.4, 0.14, '#1e1812'); arrowUp(c, 0.52, -0.4, 0.14, '#1e1812'); c.restore();
+  // the rope handle slot on the right batten side
+  poly(c, [X0 + 0.05, -0.3, X0 + 0.3, -0.3, X0 + 0.3, -0.14, X0 + 0.05, -0.14], null, 0);
+  // steel brackets on the four front corners, and a band across for the better crates
+  bracket(c, X0, Y0, -1, -1, steel, steelHi); bracket(c, X1, Y0, 1, -1, steel, steelHi);
+  bracket(c, X0, Y1, -1, 1, steel, steelHi); bracket(c, X1, Y1, 1, 1, steel, steelHi);
+  if (o.kind !== 'any') {
+    poly(c, [X0 + 0.02, -0.55, X1 - 0.02, -0.55, X1 - 0.02, -0.43, X0 + 0.02, -0.43], steel, 0.03);
+    c.fillStyle = steelHi; c.fillRect(X0 + 0.06, -0.47, X1 - X0 - 0.12, 0.025);
+    for (var k = 0; k < 7; k++) nail(c, X0 + 0.3 + k * 0.23, -0.49, 0.028);
+    if (o.kind === 'epic') { poly(c, [X0 + 0.02, 0.16, X1 - 0.02, 0.16, X1 - 0.02, 0.28, X0 + 0.02, 0.28], steel, 0.03); c.fillStyle = steelHi; c.fillRect(X0 + 0.06, 0.24, X1 - X0 - 0.12, 0.025); for (k = 0; k < 7; k++) nail(c, X0 + 0.3 + k * 0.23, 0.2, 0.028); }
+  }
+}
+/* the lid: a top face (pushed back) and the front edge, nailed down */
+function lid(c, o) {
+  var T = 0.15;
+  poly(c, [X0 - 0.04, Y1, X1 + 0.04, Y1, X1 + 0.04 + DX, Y1 + DY, X0 - 0.04 + DX, Y1 + DY], '#c99c66', 0.05);
+  c.lineWidth = 0.014; c.strokeStyle = 'rgba(90,55,22,0.6)';
+  for (var k = 1; k < 4; k++) { var f = k / 4; c.beginPath(); c.moveTo(X0 - 0.04 + DX * f, Y1 + DY * f); c.lineTo(X1 + 0.04 + DX * f, Y1 + DY * f); c.stroke(); }
+  c.fillStyle = 'rgba(255,235,190,0.25)'; c.beginPath(); c.moveTo(X0 + 0.1 + DX * 0.1, Y1 + DY * 0.1); c.lineTo(X1 - 0.5, Y1 + DY * 0.1); c.lineTo(X1 - 0.5 + DX * 0.5, Y1 + DY * 0.5); c.lineTo(X0 + 0.1 + DX * 0.5, Y1 + DY * 0.5); c.fill();
+  poly(c, [X0 - 0.04, Y1 - 0.02, X1 + 0.04, Y1 - 0.02, X1 + 0.04, Y1 + T - 0.1, X0 - 0.04, Y1 + T - 0.1], WOOD[3], 0.05);
+  c.fillStyle = 'rgba(255,230,180,0.22)'; c.fillRect(X0, Y1 + T - 0.17, X1 - X0, 0.04);
+  [[X0 + 0.12, Y1 + 0.18], [X1 - 0.12, Y1 + 0.18]].forEach(function (p) { nail(c, p[0], p[1], 0.032, o.hits >= 2); });
+  [[X0 + 0.55, Y1 + 0.5], [X1 - 0.3, Y1 + 0.5]].forEach(function (p) { nail(c, p[0], p[1], 0.03, o.hits >= 1); });
+}
+function crowbar(c, wob) {
+  c.save(); c.translate(1.12, 0.52); c.rotate(0.6 + wob);
+  c.lineCap = 'round';
+  c.beginPath(); c.moveTo(0, 0); c.lineTo(1.5, 0); c.lineWidth = 0.17; c.strokeStyle = OUT; c.stroke();
+  c.beginPath(); c.moveTo(0.02, 0); c.lineTo(1.48, 0); c.lineWidth = 0.1; c.strokeStyle = '#c63a2e'; c.stroke();
+  c.beginPath(); c.moveTo(0.1, -0.025); c.lineTo(1.3, -0.025); c.lineWidth = 0.025; c.strokeStyle = '#ff9a8a'; c.stroke();
+  c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(-0.26, -0.01, -0.34, -0.24); c.lineWidth = 0.17; c.strokeStyle = OUT; c.stroke();
+  c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(-0.25, -0.01, -0.33, -0.23); c.lineWidth = 0.1; c.strokeStyle = '#8d949e'; c.stroke();
+  c.restore();
+}
+/* light leaking out through the gap: a bright strip and a few rays */
+function leak(c, glow, gap, t) {
+  c.save(); c.globalCompositeOperation = 'lighter';
+  var g = c.createLinearGradient(0, Y1, 0, Y1 + 1.3 + gap * 3); g.addColorStop(0, glow); g.addColorStop(1, 'rgba(0,0,0,0)');
+  c.globalAlpha = 0.55 * Math.min(1, gap * 6 + 0.25); c.fillStyle = g;
+  c.beginPath(); c.moveTo(X0 + 0.1, Y1 + 0.02); c.lineTo(X1, Y1 + 0.02); c.lineTo(X1 + 0.3 + gap * 2, Y1 + 1.2 + gap * 3); c.lineTo(X0 - 0.2, Y1 + 1.2 + gap * 3); c.closePath(); c.fill();
+  c.restore();
+}
+
+A.crate = function (c, o) {
+  var t = o.t || 0, hits = o.hits || 0, open = o.open || 0, kind = o.kind || 'any', glow = o.glow || '#f2c230', i;
+  var tier = kind === 'any' ? null : RR.TIER[kind];
+  var steel = tier ? tier.col : '#8d949e', steelHi = tier ? tier.hi : '#d4dae2';
+  c.lineJoin = 'round'; c.lineCap = 'round';
+  // shadow on the ground
+  c.fillStyle = 'rgba(0,0,0,0.38)'; c.beginPath(); c.ellipse(0.12, Y0 - 0.02, 1.35 + open * 0.3, 0.17, 0, 0, TAU); c.fill();
+  // light pouring out from the opening
+  if (open > 0) {
+    c.save(); c.translate(0.15, Y1 + 0.15); c.globalCompositeOperation = 'lighter';
+    c.rotate(t * 0.5);
+    for (i = 0; i < 12; i++) { c.rotate(Math.PI / 6); c.globalAlpha = 0.17 * Math.min(1, open * 2) * (i % 2 ? 1 : 0.6); c.fillStyle = glow; c.beginPath(); c.moveTo(0, 0); c.lineTo(-0.3, 4.2); c.lineTo(0.3, 4.2); c.closePath(); c.fill(); }
+    c.restore(); c.globalAlpha = 1;
+  }
+  body(c, o, steel, steelHi);
+  // the open top of the crate: dark inside with the light coming up out of it
+  var lift = open > 0 ? 0.5 : hits === 0 ? 0 : hits === 1 ? 0.09 : 0.24;
+  if (lift > 0) {
+    poly(c, [X0 + 0.04, Y1, X1 - 0.04, Y1, X1 - 0.04 + DX, Y1 + DY, X0 + 0.04 + DX, Y1 + DY], '#241608', 0);
+    c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = Math.min(0.9, 0.35 + hits * 0.2 + open * 0.8); c.fillStyle = glow;
+    c.beginPath(); c.moveTo(X0 + 0.1, Y1 + 0.02); c.lineTo(X1 - 0.1, Y1 + 0.02); c.lineTo(X1 - 0.1 + DX, Y1 + DY); c.lineTo(X0 + 0.1 + DX, Y1 + DY); c.closePath(); c.fill(); c.restore();
+    if (open > 0) { c.save(); c.globalCompositeOperation = 'lighter'; var gl = c.createRadialGradient(0.15, Y1 + 0.15, 0, 0.15, Y1 + 0.15, 1.6); gl.addColorStop(0, glow); gl.addColorStop(1, 'rgba(0,0,0,0)'); c.globalAlpha = 0.55 * Math.min(1, open * 2); c.fillStyle = gl; c.fillRect(-2, -1.5, 4.5, 4.5); c.restore(); }
+  }
+  if (hits > 0 && open === 0) leak(c, glow, lift, t);
+  // the lid: lifts at the right end as it is pried (it hinges on the left), and flies off on the third go
+  c.save();
+  if (open > 0) { c.translate(0.2 + open * 1.4, open * 3.2 - open * open * 0.8); c.rotate(open * 1.5); c.globalAlpha = Math.max(0, 1 - Math.max(0, open - 0.55) * 2.2); }
+  else if (lift > 0) { c.translate(X0, Y1); c.rotate(Math.atan2(lift, 2)); c.translate(-X0, -Y1); }
+  lid(c, o);
+  c.restore(); c.globalAlpha = 1;
+  if (hits > 0 && open === 0) crowbar(c, Math.sin(t * 40) * (o.shake || 0) * 0.04);
+  // splinters hanging from the pried edge
+  if (hits >= 2 && open === 0) { c.fillStyle = WHI; poly(c, [X1 - 0.05, Y1 + 0.02, X1 - 0.2, Y1 + 0.2, X1 - 0.12, Y1 + 0.02], WHI, 0.02); poly(c, [X1 - 0.3, Y1 + 0.02, X1 - 0.4, Y1 + 0.16, X1 - 0.36, Y1 + 0.02], WHI, 0.02); }
+};
+})(typeof window !== 'undefined' ? window : globalThis);
+
+/* ---- art-garage.js ---- */
+/* Ridge Riot: the five places you can keep your bikes (the showroom screen).
+   A scene is painted once into a picture when the screen is sized (A.garageScene), and the bits that move are
+   painted over it every frame (A.garageLive: swinging lamps, flickering signs, drifting dust, sweeping lights).
+   Everything is in screen pixels. g describes the room: { W, H, hz, rows } where hz is the y of the floor line
+   and rows are the rows of display slots, back row first, each { y0, y1, n }.
+   Levels: 0 shed, 1 workshop, 2 garage, 3 dealership, 4 showroom. */
+(function (root) {
+'use strict';
+var RR = root.RR, A = RR.Art, K = A.kit, TAU = K.TAU, rng = K.rng, OUT = K.OUT;
+
+function R(c, x, y, w, h, col) { c.fillStyle = col; c.fillRect(x, y, w, h); }
+function lg(c, x0, y0, x1, y1, stops) { var g = c.createLinearGradient(x0, y0, x1, y1); stops.forEach(function (s) { g.addColorStop(s[0], s[1]); }); return g; }
+function rg(c, x, y, r0, r1, stops) { var g = c.createRadialGradient(x, y, r0, x, y, r1); stops.forEach(function (s) { g.addColorStop(s[0], s[1]); }); return g; }
+function line(c, x0, y0, x1, y1, w, col) { c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.lineWidth = w; c.strokeStyle = col; c.stroke(); }
+function ell(c, x, y, rx, ry, col) { c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, TAU); c.fillStyle = col; c.fill(); }
+function bolt(c, x, y, r) { ell(c, x, y, r, r, '#2a2d33'); ell(c, x - r * 0.25, y - r * 0.25, r * 0.45, r * 0.45, '#8a9098'); }
+function vignette(c, W, H, a) { c.fillStyle = rg(c, W / 2, H * 0.55, Math.min(W, H) * 0.35, Math.max(W, H) * 0.72, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,' + a + ')']]); c.fillRect(0, 0, W, H); }
+function box(c, x, y, w, h, fill, lw) { c.fillStyle = fill; c.fillRect(x, y, w, h); if (lw) { c.lineWidth = lw; c.strokeStyle = 'rgba(10,12,16,0.85)'; c.strokeRect(x, y, w, h); } }
+
+/* ============================ 0. the shed ============================ */
+function shed(c, g) {
+  var W = g.W, H = g.H, hz = g.hz, r = rng(11), i, x, y;
+  // corrugated tin wall: vertical ribs, each lit on the left and shaded on the right
+  var rib = Math.max(11, W / 70);
+  for (x = 0; x < W; x += rib) { c.fillStyle = lg(c, x, 0, x + rib, 0, [[0, '#95a2aa'], [0.45, '#7b8a92'], [1, '#56636b']]); c.fillRect(x, 0, rib + 1, hz); }
+  // rust blooming from the bolts and the bottom edge
+  for (i = 0; i < 26; i++) { x = r() * W; y = hz * (0.25 + r() * 0.75); var rr = 12 + r() * 34; c.fillStyle = rg(c, x, y, 0, rr, [[0, 'rgba(160,78,30,0.5)'], [1, 'rgba(160,78,30,0)']]); c.fillRect(x - rr, y - rr, rr * 2, rr * 2); }
+  for (i = 0; i < 40; i++) { x = r() * W; var y0 = hz * (0.3 + r() * 0.5); c.fillStyle = 'rgba(110,52,22,0.35)'; c.fillRect(x, y0, 2 + r() * 2, 10 + r() * 40); }
+  // roof underside and two wooden rails
+  R(c, 0, 0, W, hz * 0.09, '#2c3136');
+  for (x = 0; x < W; x += rib * 1.6) R(c, x, hz * 0.09, 2, hz * 0.04, '#1c2024');
+  [0.38, 0.74].forEach(function (f) { var yy = hz * f; R(c, 0, yy, W, hz * 0.05, '#5a4129'); R(c, 0, yy, W, 2, '#8a6a46'); R(c, 0, yy + hz * 0.05 - 2, W, 2, '#33261a'); for (var bx = rib * 3; bx < W; bx += rib * 7) bolt(c, bx, yy + hz * 0.025, 2.6); });
+  // a small window, bright with daylight
+  var wx = W * 0.07, wy = hz * 0.16, ww = Math.min(W * 0.13, hz * 0.55), wh = ww * 0.8;
+  box(c, wx - 5, wy - 5, ww + 10, wh + 10, '#4a3522', 2); c.fillStyle = lg(c, 0, wy, 0, wy + wh, [[0, '#cfeeff'], [1, '#ffffff']]); c.fillRect(wx, wy, ww, wh);
+  R(c, wx + ww / 2 - 2, wy, 4, wh, '#4a3522'); R(c, wx, wy + wh / 2 - 2, ww, 4, '#4a3522');
+  // tools hanging from the rail: a spade, a rake, a saw
+  var hx = W * 0.8;
+  line(c, hx, hz * 0.4, hx, hz * 0.7, 3, '#6b4a2a'); c.beginPath(); c.moveTo(hx - 9, hz * 0.7); c.lineTo(hx + 9, hz * 0.7); c.lineTo(hx + 6, hz * 0.86); c.lineTo(hx - 6, hz * 0.86); c.closePath(); c.fillStyle = '#9aa0a8'; c.fill(); c.lineWidth = 1.5; c.strokeStyle = '#2a2d33'; c.stroke();
+  hx = W * 0.86; line(c, hx, hz * 0.4, hx, hz * 0.68, 3, '#6b4a2a'); line(c, hx - 11, hz * 0.68, hx + 11, hz * 0.68, 3, '#8a9098'); for (i = -3; i <= 3; i++) line(c, hx + i * 3.6, hz * 0.68, hx + i * 3.6, hz * 0.74, 1.5, '#8a9098');
+  hx = W * 0.64; c.beginPath(); c.moveTo(hx, hz * 0.45); c.lineTo(hx + 26, hz * 0.5); c.lineTo(hx + 26, hz * 0.58); c.lineTo(hx, hz * 0.52); c.closePath(); c.fillStyle = '#aab0b8'; c.fill(); c.lineWidth = 1.2; c.strokeStyle = '#2a2d33'; c.stroke(); R(c, hx - 9, hz * 0.45, 9, 10, '#7a4a22');
+  // a spare tyre stack and a barrel along the foot of the wall
+  [[W * 0.025, 0], [W * 0.025, 1], [W * 0.025, 2]].forEach(function (p) { var ty = hz - 12 - p[1] * 15; ell(c, p[0] + 26, ty + 5, 26, 10, '#16181c'); c.beginPath(); c.ellipse(p[0] + 26, ty, 26, 10, 0, 0, TAU); c.fillStyle = '#23262c'; c.fill(); c.beginPath(); c.ellipse(p[0] + 26, ty, 11, 4, 0, 0, TAU); c.fillStyle = '#0c0d10'; c.fill(); });
+  var bx0 = W * 0.9, bh = hz * 0.34; box(c, bx0, hz - bh, 38, bh, '#a04a22', 1.5); R(c, bx0, hz - bh * 0.7, 38, 3, '#6a2e12'); R(c, bx0, hz - bh * 0.3, 38, 3, '#6a2e12'); R(c, bx0 + 5, hz - bh, 5, bh, 'rgba(255,200,150,0.25)');
+  // the floor: packed dirt with oil stains, tyre ruts and pebbles
+  c.fillStyle = lg(c, 0, hz, 0, H, [[0, '#4f4130'], [1, '#6e5b43']]); c.fillRect(0, hz, W, H - hz);
+  for (i = 0; i < Math.min(2600, W * 3); i++) { c.fillStyle = r() < 0.5 ? 'rgba(0,0,0,0.16)' : 'rgba(255,230,190,0.1)'; c.fillRect(r() * W, hz + r() * (H - hz), 2 + r() * 3, 1 + r() * 2); }
+  for (i = 0; i < 5; i++) ell(c, W * (0.1 + r() * 0.8), hz + (H - hz) * (0.3 + r() * 0.6), 28 + r() * 40, 7 + r() * 8, 'rgba(10,8,6,0.35)');
+  c.globalAlpha = 0.16; for (i = 0; i < 2; i++) { c.beginPath(); c.moveTo(W * (0.2 + i * 0.45), hz); c.quadraticCurveTo(W * (0.15 + i * 0.5), (hz + H) / 2, W * (0.26 + i * 0.4), H); c.lineWidth = 12; c.strokeStyle = '#201810'; c.stroke(); } c.globalAlpha = 1;
+  for (i = 0; i < 24; i++) ell(c, r() * W, hz + (H - hz) * (0.1 + r() * 0.9), 2 + r() * 3, 1.5 + r() * 2, r() < 0.5 ? '#3a3024' : '#8b7c66');
+  R(c, 0, hz - 1, W, 3, 'rgba(0,0,0,0.4)');
+  vignette(c, W, H, 0.55);
+}
+function shedLive(c, g, t) {
+  var W = g.W, H = g.H, hz = g.hz, i;
+  // the bare bulb swings on its cord and lights the room
+  var sw = Math.sin(t * 1.3) * 0.07, bx = W * 0.5 + Math.sin(sw) * hz * 0.25, by = hz * 0.09 + Math.cos(sw) * hz * 0.25;
+  line(c, W * 0.5, hz * 0.09, bx, by, 2, '#15171d');
+  c.save(); c.globalCompositeOperation = 'lighter';
+  c.fillStyle = rg(c, bx, by, 0, Math.max(W, H) * 0.55, [[0, 'rgba(255,214,120,0.5)'], [0.25, 'rgba(255,190,90,0.2)'], [1, 'rgba(255,170,60,0)']]); c.fillRect(0, 0, W, H);
+  // the shaft of daylight from the window, with dust drifting in it
+  var wx = W * 0.07, ww = Math.min(W * 0.13, hz * 0.55), wy = hz * 0.16;
+  c.fillStyle = lg(c, wx, wy, wx + ww * 1.8, hz + (H - hz) * 0.6, [[0, 'rgba(200,230,255,0.4)'], [1, 'rgba(200,230,255,0)']]);
+  c.beginPath(); c.moveTo(wx, wy); c.lineTo(wx + ww, wy); c.lineTo(wx + ww * 3.1, H * 0.95); c.lineTo(wx + ww * 1.0, H * 0.95); c.closePath(); c.fill();
+  for (i = 0; i < 22; i++) { var k = (t * (0.02 + (i % 5) * 0.007) + i * 0.137) % 1, px = wx + ww * (0.2 + (i * 0.37) % 1) + k * ww * 1.9 + Math.sin(t * 0.8 + i) * 6, py = wy + k * (H * 0.8 - wy); c.fillStyle = 'rgba(255,255,240,' + (0.35 * Math.sin(k * Math.PI)).toFixed(3) + ')'; c.fillRect(px, py, 2, 2); }
+  c.restore();
+  ell(c, bx, by + 4, 5, 5, '#fff3c0'); c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = rg(c, bx, by + 4, 0, 26, [[0, 'rgba(255,230,150,0.9)'], [1, 'rgba(255,200,90,0)']]); c.fillRect(bx - 26, by - 22, 52, 52); c.restore();
+}
+
+/* ============================ 1. the workshop ============================ */
+function workshop(c, g) {
+  var W = g.W, H = g.H, hz = g.hz, r = rng(21), i, x, y;
+  // brick above, painted board below
+  var bw = Math.max(26, W / 34), bh = bw * 0.42, dado = hz * 0.62;
+  R(c, 0, 0, W, hz, '#5b3a30');
+  for (y = 0, i = 0; y < dado; y += bh, i++) for (x = -(i % 2) * bw / 2; x < W; x += bw) {
+    var tone = r(); c.fillStyle = tone < 0.3 ? '#9a4f3a' : tone < 0.6 ? '#a65a42' : tone < 0.85 ? '#8c4634' : '#b5674c';
+    c.fillRect(x + 1.5, y + 1.5, bw - 3, bh - 3); c.fillStyle = 'rgba(255,220,190,0.14)'; c.fillRect(x + 1.5, y + 1.5, bw - 3, 2);
+    if (r() < 0.06) { c.fillStyle = 'rgba(20,10,8,0.3)'; c.fillRect(x + 1.5, y + 1.5, bw * (0.2 + r() * 0.3), bh - 3); }
+  }
+  c.fillStyle = lg(c, 0, 0, 0, dado, [[0, 'rgba(0,0,0,0.5)'], [0.35, 'rgba(0,0,0,0)']]); c.fillRect(0, 0, W, dado);
+  R(c, 0, dado, W, hz - dado, '#2c5a56'); R(c, 0, dado, W, 4, '#d8c9a0'); for (x = 0; x < W; x += bw * 0.9) R(c, x, dado + 4, 2, hz - dado - 4, 'rgba(0,0,0,0.22)'); R(c, 0, dado + 4, W, 3, 'rgba(255,255,255,0.12)');
+  // a pegboard of tools, painted outlines
+  var px = W * 0.06, py = hz * 0.12, pw = Math.min(W * 0.26, hz * 1.2), ph = hz * 0.42;
+  box(c, px, py, pw, ph, '#c9b38a', 2); c.fillStyle = 'rgba(60,40,20,0.5)'; for (x = px + 7; x < px + pw - 3; x += 12) for (y = py + 7; y < py + ph - 3; y += 12) c.fillRect(x, y, 2, 2);
+  function spanner(sx, sy, ang, col) { c.save(); c.translate(sx, sy); c.rotate(ang); c.lineCap = 'round'; line(c, 0, 0, 0, ph * 0.5, 5, '#15171d'); line(c, 0, 0, 0, ph * 0.5, 3, col); ell(c, 0, 0, 6, 6, '#15171d'); ell(c, 0, 0, 4, 4, col); c.restore(); }
+  spanner(px + pw * 0.14, py + ph * 0.12, 0.05, '#aeb6c0'); spanner(px + pw * 0.28, py + ph * 0.1, -0.04, '#aeb6c0');
+  line(c, px + pw * 0.46, py + ph * 0.18, px + pw * 0.46, py + ph * 0.62, 4, '#15171d'); line(c, px + pw * 0.46, py + ph * 0.18, px + pw * 0.46, py + ph * 0.62, 2, '#8a5a2a'); box(c, px + pw * 0.46 - 9, py + ph * 0.12, 18, 9, '#9aa2ac', 1.5);
+  line(c, px + pw * 0.66, py + ph * 0.2, px + pw * 0.7, py + ph * 0.7, 4, '#15171d'); line(c, px + pw * 0.66, py + ph * 0.2, px + pw * 0.7, py + ph * 0.7, 2, '#d0482a');
+  c.beginPath(); c.moveTo(px + pw * 0.82, py + ph * 0.14); c.lineTo(px + pw * 0.95, py + ph * 0.22); c.lineTo(px + pw * 0.82, py + ph * 0.32); c.closePath(); c.fillStyle = '#c7ccd4'; c.fill(); c.lineWidth = 1.5; c.strokeStyle = '#15171d'; c.stroke();
+  // a calendar and a wall clock
+  var cx = W * 0.8, cy = hz * 0.12; box(c, cx, cy, 36, 46, '#f1ecdc', 1.5); R(c, cx, cy, 36, 12, '#c4352a'); for (i = 0; i < 3; i++) for (var j = 0; j < 4; j++) R(c, cx + 5 + i * 10, cy + 17 + j * 7, 7, 4, '#a39a84');
+  var ck = W * 0.9; ell(c, ck, cy + 24, 21, 21, '#15171d'); ell(c, ck, cy + 24, 18, 18, '#f1ecdc'); line(c, ck, cy + 24, ck, cy + 12, 2, '#15171d'); line(c, ck, cy + 24, ck + 9, cy + 28, 2, '#15171d');
+  // shelves with paint cans and oil
+  var sx = W * 0.5; R(c, sx, hz * 0.22, W * 0.16, 5, '#4a3322'); R(c, sx, hz * 0.45, W * 0.16, 5, '#4a3322');
+  [0, 1, 2, 3].forEach(function (k) { var cc = ['#d0482a', '#2f6fd6', '#f2c230', '#3fbf6a'][k]; box(c, sx + 8 + k * 26, hz * 0.22 - 22, 20, 22, cc, 1.5); R(c, sx + 8 + k * 26, hz * 0.22 - 22, 20, 4, 'rgba(255,255,255,0.3)'); });
+  for (i = 0; i < 4; i++) { box(c, sx + 10 + i * 24, hz * 0.45 - 26, 12, 26, i % 2 ? '#e8d6a0' : '#2a2d33', 1.5); R(c, sx + 13 + i * 24, hz * 0.45 - 32, 6, 6, '#c4352a'); }
+  // the floor: boards with dark seams and oil
+  var fy = hz; c.fillStyle = lg(c, 0, fy, 0, H, [[0, '#6b4e34'], [1, '#8a6842']]); c.fillRect(0, fy, W, H - fy);
+  var pwid = Math.max(28, W / 22);
+  for (x = 0; x < W; x += pwid) { c.fillStyle = 'rgba(' + (r() < 0.5 ? '0,0,0,0.12' : '255,220,170,0.08') + ')'; c.fillRect(x, fy, pwid, H - fy); line(c, x, fy, x - (x - W / 2) * 0.06, H, 2, 'rgba(25,14,6,0.55)'); }
+  for (i = 0; i < 4; i++) ell(c, W * (0.12 + r() * 0.76), fy + (H - fy) * (0.35 + r() * 0.55), 30 + r() * 40, 6 + r() * 7, 'rgba(10,6,4,0.32)');
+  R(c, 0, fy - 1, W, 3, 'rgba(0,0,0,0.35)');
+  // the bench and the tool chest at the sides
+  var tx = W * 0.01, tw = 54, tht = hz * 0.4; box(c, tx, hz - tht, tw, tht, '#c4352a', 2); for (i = 0; i < 4; i++) { R(c, tx + 4, hz - tht + 5 + i * (tht - 10) / 4, tw - 8, (tht - 10) / 4 - 3, '#a82a20'); R(c, tx + tw / 2 - 8, hz - tht + 11 + i * (tht - 10) / 4, 16, 3, '#e8dcc0'); } R(c, tx, hz - tht, tw, 4, 'rgba(255,255,255,0.25)');
+  var bx = W * 0.9; box(c, bx - 40, hz - hz * 0.34, 90, 8, '#8a6a46', 2); R(c, bx - 36, hz - hz * 0.34 + 8, 5, hz * 0.34 - 8, '#3a2a1a'); R(c, bx + 40, hz - hz * 0.34 + 8, 5, hz * 0.34 - 8, '#3a2a1a');
+  box(c, bx - 20, hz - hz * 0.34 - 14, 20, 14, '#5a6168', 1.5); box(c, bx - 6, hz - hz * 0.34 - 20, 5, 8, '#3c4249', 1);
+  vignette(c, W, H, 0.38);
+}
+function workshopLive(c, g, t) {
+  var W = g.W, H = g.H, hz = g.hz;
+  // two strip lights on chains; one of them has a flicker
+  [0.3, 0.7].forEach(function (f, i) {
+    var x = W * f, y = hz * 0.07, fl = i ? (Math.sin(t * 31) * Math.sin(t * 7.3) > 0.82 ? 0.45 : 1) : 1;
+    line(c, x - 30, 0, x - 30, y, 2, '#15171d'); line(c, x + 30, 0, x + 30, y, 2, '#15171d');
+    box(c, x - 40, y, 80, 8, '#d9d9d2', 1.5);
+    c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = fl;
+    R(c, x - 36, y + 4, 72, 4, '#ffffff');
+    c.fillStyle = lg(c, x, y + 8, x, H, [[0, 'rgba(235,250,255,0.28)'], [1, 'rgba(235,250,255,0)']]);
+    c.beginPath(); c.moveTo(x - 38, y + 8); c.lineTo(x + 38, y + 8); c.lineTo(x + W * 0.17, H); c.lineTo(x - W * 0.17, H); c.closePath(); c.fill(); c.restore();
+  });
+}
+
+/* ============================ 2. the garage ============================ */
+function garage(c, g) {
+  var W = g.W, H = g.H, hz = g.hz, r = rng(31), i, x, y;
+  // painted walls: pale above, charcoal below with a red line between
+  var dado = hz * 0.6;
+  c.fillStyle = lg(c, 0, 0, 0, hz, [[0, '#cfd3d6'], [1, '#e8eaec']]); c.fillRect(0, 0, W, hz);
+  R(c, 0, dado, W, hz - dado, '#3a3f47'); R(c, 0, dado, W, 5, '#c4352a'); R(c, 0, dado + 5, W, 2, 'rgba(255,255,255,0.18)');
+  for (x = 0; x < W; x += W / 12) R(c, x, 0, 2, dado, 'rgba(0,0,0,0.05)');
+  // the roller door in the middle: ribbed panels with a row of little windows
+  var dw = Math.min(W * 0.34, hz * 1.6), dx = W / 2 - dw / 2, dy = hz * 0.34, dh = hz * 0.62;
+  box(c, dx - 6, dy - 6, dw + 12, dh + 6, '#8a9098', 2); R(c, dx, dy, dw, dh, '#aab0b8');
+  var ph = dh / 8; for (i = 0; i < 8; i++) { c.fillStyle = lg(c, 0, dy + i * ph, 0, dy + (i + 1) * ph, [[0, '#c9ced4'], [1, '#8c939b']]); c.fillRect(dx, dy + i * ph, dw, ph - 1); }
+  for (i = 0; i < 5; i++) { R(c, dx + 8 + i * (dw - 16) / 5, dy + ph * 1.2, (dw - 16) / 5 - 6, ph * 0.5, '#2a3a4a'); R(c, dx + 10 + i * (dw - 16) / 5, dy + ph * 1.25, (dw - 16) / 5 - 10, ph * 0.12, 'rgba(160,210,255,0.5)'); }
+  // the dark board the neon sign is mounted on
+  var sh0 = Math.min(hz * 0.2, 46), bw = neonW('RIDGE RIOT', sh0) + 34;
+  box(c, W / 2 - bw / 2, 0, bw, sh0 + 16, '#1a1d24', 2); R(c, W / 2 - bw / 2 + 3, 3, bw - 6, 2, 'rgba(255,255,255,0.12)'); bolt(c, W / 2 - bw / 2 + 8, 9, 2.6); bolt(c, W / 2 + bw / 2 - 8, 9, 2.6);
+  // shelves with helmets, left
+  var sx = W * 0.03, sw = Math.min(W * 0.2, dx - sx - 14);
+  R(c, sx, hz * 0.2, sw, 5, '#4a4f58'); R(c, sx, hz * 0.45, sw, 5, '#4a4f58');
+  var hc = ['#d0482a', '#f2c230', '#2f6fd6', '#ffffff', '#3fbf6a'];
+  for (i = 0; i < 4; i++) { var hx2 = sx + 14 + i * (sw - 20) / 4; c.beginPath(); c.arc(hx2, hz * 0.2 - 2, 12, Math.PI, 0); c.lineTo(hx2 + 12, hz * 0.2 - 1); c.lineTo(hx2 - 12, hz * 0.2 - 1); c.fillStyle = hc[i]; c.fill(); c.lineWidth = 1.5; c.strokeStyle = '#15171d'; c.stroke(); R(c, hx2 + 1, hz * 0.2 - 12, 10, 6, '#15171d'); }
+  for (i = 0; i < 3; i++) { var tx2 = sx + 16 + i * (sw - 20) / 3; R(c, tx2, hz * 0.45 - 4, 18, 4, '#8a6a2a'); c.beginPath(); c.moveTo(tx2 + 3, hz * 0.45 - 4); c.lineTo(tx2 + 15, hz * 0.45 - 4); c.lineTo(tx2 + 12, hz * 0.45 - 20); c.lineTo(tx2 + 6, hz * 0.45 - 20); c.closePath(); c.fillStyle = '#f2c230'; c.fill(); c.lineWidth = 1.5; c.strokeStyle = '#15171d'; c.stroke(); }
+  // tyres on a wall rack, right
+  var rx = dx + dw + 24, rw = Math.min(W * 0.2, W - rx - 14);
+  R(c, rx, hz * 0.3, rw, 4, '#4a4f58'); R(c, rx, hz * 0.58, rw, 4, '#4a4f58');
+  for (i = 0; i < Math.floor(rw / 34); i++) { [0.3, 0.58].forEach(function (f) { var tx3 = rx + 17 + i * 34; ell(c, tx3, hz * f - 14, 14, 14, '#16181c'); ell(c, tx3, hz * f - 14, 6, 6, '#6b727c'); }); }
+  // the floor: sealed concrete with a yellow safety line and a drain
+  c.fillStyle = lg(c, 0, hz, 0, H, [[0, '#5d646c'], [1, '#79818a']]); c.fillRect(0, hz, W, H - hz);
+  for (i = 0; i < 6; i++) { var fx = W * i / 6; line(c, fx, hz, W / 2 + (fx - W / 2) * 1.6, H, 1.5, 'rgba(20,24,30,0.3)'); }
+  for (i = 1; i < 5; i++) { var fy2 = hz + (H - hz) * (i / 5) * (i / 5); line(c, 0, fy2, W, fy2, 1.5, 'rgba(20,24,30,0.22)'); }
+  c.fillStyle = lg(c, 0, hz, 0, hz + (H - hz) * 0.5, [[0, 'rgba(255,255,255,0.22)'], [1, 'rgba(255,255,255,0)']]); c.fillRect(0, hz, W, (H - hz) * 0.5);
+  R(c, 0, hz + 4, W, 3, '#d9b32a'); R(c, 0, hz - 1, W, 5, 'rgba(0,0,0,0.3)');
+  box(c, W * 0.5 - 22, H - (H - hz) * 0.2 - 8, 44, 12, '#2c3036', 1.5); for (i = 0; i < 5; i++) R(c, W * 0.5 - 18 + i * 8, H - (H - hz) * 0.2 - 5, 4, 6, '#101215');
+  vignette(c, W, H, 0.3);
+}
+/* the neon sign: the title letters, drawn as glowing outlines */
+function neonW(text, h) {
+  var GL = RR.UI && RR.UI.GLYPH, w = 0, i; if (!GL) return h * 6;
+  for (i = 0; i < text.length; i++) w += GL[text[i]] ? GL[text[i]][0] + 14 : 40;
+  return (w - 14) * h / 100;
+}
+function neonWord(c, text, x, y, h, col, glow, a) {
+  var GL = RR.UI && RR.UI.GLYPH; if (!GL) return;
+  var gx = 0, i, sc = h / 100;
+  c.save(); c.translate(x, y); c.scale(sc, sc); c.transform(1, 0, -0.19, 1, 0, 0);
+  for (i = 0; i < text.length; i++) {
+    var gl = GL[text[i]]; if (!gl) { gx += 40; continue; }
+    c.save(); c.translate(gx, 0); var p = new root.Path2D(gl[1]);
+    c.globalAlpha = 0.5 * a; c.lineWidth = 15; c.strokeStyle = glow; c.lineJoin = 'round'; c.stroke(p);
+    c.globalAlpha = a; c.lineWidth = 6; c.strokeStyle = col; c.stroke(p); c.lineWidth = 2.2; c.strokeStyle = '#ffffff'; c.globalAlpha = a * 0.9; c.stroke(p);
+    c.restore(); gx += gl[0] + 14;
+  }
+  c.restore(); return gx * sc;
+}
+function garageLive(c, g, t) {
+  var W = g.W, H = g.H, hz = g.hz, i;
+  // ceiling LED panels
+  c.save(); c.globalCompositeOperation = 'lighter';
+  for (i = 0; i < 4; i++) { var x = W * [0.1, 0.27, 0.73, 0.9][i], y = hz * 0.04; R(c, x - 36, y, 72, 8, 'rgba(230,245,255,0.95)'); c.fillStyle = lg(c, x, y + 8, x, H, [[0, 'rgba(225,240,255,0.2)'], [1, 'rgba(225,240,255,0)']]); c.beginPath(); c.moveTo(x - 36, y + 8); c.lineTo(x + 36, y + 8); c.lineTo(x + W * 0.13, H); c.lineTo(x - W * 0.13, H); c.closePath(); c.fill(); }
+  c.restore();
+  // the sign, with the odd flicker
+  var fl = Math.sin(t * 47) * Math.sin(t * 5.1) > 0.9 ? 0.35 : 1, sh = Math.min(hz * 0.2, 46);
+  var tw = (RR.UI && RR.UI.GLYPH) ? 0 : 0;
+  c.save(); c.globalCompositeOperation = 'lighter';
+  var wid = neonW('RIDGE RIOT', sh), sx = W * 0.5 - wid / 2; neonWord(c, 'RIDGE RIOT', sx, 6 + sh * 0.12, sh, '#ff7a6a', '#ff2a1a', fl);
+  c.restore();
+}
+
+/* ============================ 3. the dealership ============================ */
+function dealer(c, g) {
+  var W = g.W, H = g.H, hz = g.hz, r = rng(41), i, x, y;
+  R(c, 0, 0, W, hz, '#eef0f3');
+  // the glass front: three big panes showing a bright street
+  var gw = W / 3;
+  for (i = 0; i < 3; i++) {
+    var x0 = i * gw + 8, ww = gw - 16, y0 = hz * 0.08, hh = hz * 0.8;
+    c.save(); c.beginPath(); c.rect(x0, y0, ww, hh); c.clip();
+    c.fillStyle = lg(c, 0, y0, 0, y0 + hh, [[0, '#7fc4ff'], [0.7, '#d6efff'], [1, '#f6fbff']]); c.fillRect(x0, y0, ww, hh);
+    c.fillStyle = 'rgba(255,255,255,0.6)'; for (var k = 0; k < 4; k++) ell(c, x0 + r() * ww, y0 + hh * (0.1 + r() * 0.3), 30 + r() * 40, 8 + r() * 8, 'rgba(255,255,255,0.7)');
+    for (x = x0; x < x0 + ww; x += 40) { var bh = hh * (0.18 + r() * 0.3); R(c, x, y0 + hh * 0.9 - bh, 34, bh, 'rgba(112,138,168,0.55)'); for (var wy = 0; wy < bh - 8; wy += 9) R(c, x + 5, y0 + hh * 0.9 - bh + 4 + wy, 6, 4, 'rgba(235,245,255,0.6)'); }
+    R(c, x0, y0 + hh * 0.9, ww, hh * 0.1, '#8a929c');
+    c.fillStyle = lg(c, x0, y0, x0 + ww, y0 + hh, [[0, 'rgba(255,255,255,0.35)'], [0.4, 'rgba(255,255,255,0)'], [0.6, 'rgba(255,255,255,0.18)'], [1, 'rgba(255,255,255,0)']]); c.fillRect(x0, y0, ww, hh);
+    c.restore(); c.lineWidth = 5; c.strokeStyle = '#3a4048'; c.strokeRect(x0, y0, ww, hh);
+  }
+  // a blue stripe along the wall and a string of pennants above it
+  R(c, 0, hz * 0.88, W, hz * 0.07, '#2f6fd6'); R(c, 0, hz * 0.88, W, 2, 'rgba(255,255,255,0.4)'); R(c, 0, hz * 0.95, W, hz * 0.05, '#c9ced6');
+  c.beginPath(); c.moveTo(0, hz * 0.03); c.quadraticCurveTo(W / 2, hz * 0.12, W, hz * 0.03); c.lineWidth = 2; c.strokeStyle = '#3a4048'; c.stroke();
+  var pc = ['#d0482a', '#f2c230', '#2f6fd6', '#3fbf6a', '#ffffff'];
+  for (i = 0; i < 28; i++) { var f = (i + 0.5) / 28, px = W * f, py = hz * 0.03 + (hz * 0.09) * 4 * f * (1 - f) * 0.5 + 0; var yy = hz * 0.03 + 2 * hz * 0.045 * 4 * f * (1 - f) * 0.5 * 2; c.beginPath(); c.moveTo(px - 7, yy); c.lineTo(px + 7, yy); c.lineTo(px, yy + 17); c.closePath(); c.fillStyle = pc[i % 5]; c.fill(); c.lineWidth = 1; c.strokeStyle = 'rgba(10,12,16,0.7)'; c.stroke(); }
+  // the floor: glossy tiles that mirror the room
+  c.fillStyle = lg(c, 0, hz, 0, H, [[0, '#d7dce3'], [1, '#aeb6c0']]); c.fillRect(0, hz, W, H - hz);
+  for (i = -8; i <= 18; i++) line(c, W * i / 10, hz, W / 2 + (W * i / 10 - W / 2) * 2.4, H, 1.5, 'rgba(60,70,84,0.28)');
+  for (i = 1; i < 6; i++) { var fy = hz + (H - hz) * Math.pow(i / 6, 1.6); line(c, 0, fy, W, fy, 1.5, 'rgba(60,70,84,0.25)'); }
+  c.fillStyle = lg(c, 0, hz, 0, hz + (H - hz) * 0.6, [[0, 'rgba(255,255,255,0.55)'], [1, 'rgba(255,255,255,0)']]); c.fillRect(0, hz, W, (H - hz) * 0.6);
+  R(c, 0, hz - 1, W, 4, 'rgba(0,0,0,0.25)');
+  vignette(c, W, H, 0.18);
+}
+function dealerLive(c, g, t) {
+  var W = g.W, H = g.H, hz = g.hz, i;
+  c.save(); c.globalCompositeOperation = 'lighter';
+  // spotlights on a track, each with a soft pool of light that breathes
+  for (i = 0; i < 6; i++) {
+    var x = W * (0.1 + i * 0.16), y = hz * 0.14; ell(c, x, y, 7, 5, '#fffbe0');
+    var br = 0.85 + 0.15 * Math.sin(t * 0.9 + i * 1.7);
+    c.fillStyle = lg(c, x, y, x, H, [[0, 'rgba(255,250,225,' + (0.3 * br).toFixed(3) + ')'], [1, 'rgba(255,250,225,0)']]);
+    c.beginPath(); c.moveTo(x - 6, y); c.lineTo(x + 6, y); c.lineTo(x + W * 0.1, H); c.lineTo(x - W * 0.1, H); c.closePath(); c.fill();
+  }
+  // a slow glint crossing the glass
+  var gx = ((t * 0.07) % 1.4 - 0.2) * W; c.fillStyle = lg(c, gx, 0, gx + 80, 0, [[0, 'rgba(255,255,255,0)'], [0.5, 'rgba(255,255,255,0.2)'], [1, 'rgba(255,255,255,0)']]); c.fillRect(gx, hz * 0.08, 80, hz * 0.8);
+  c.restore();
+}
+
+/* ============================ 4. the showroom ============================ */
+function showroom(c, g) {
+  var W = g.W, H = g.H, hz = g.hz, r = rng(51), i, x, y;
+  // black marble panels framed in gold
+  c.fillStyle = lg(c, 0, 0, 0, hz, [[0, '#0c0d12'], [1, '#1b1c26']]); c.fillRect(0, 0, W, hz);
+  var pw = W / 7;
+  for (i = 0; i < 7; i++) {
+    var x0 = i * pw + 6, ww = pw - 12; c.fillStyle = lg(c, x0, 0, x0 + ww, hz, [[0, '#1e2030'], [1, '#12131b']]); c.fillRect(x0, hz * 0.06, ww, hz * 0.9);
+    c.save(); c.beginPath(); c.rect(x0, hz * 0.06, ww, hz * 0.9); c.clip();
+    for (var k = 0; k < 3; k++) { c.beginPath(); var vx = x0 + r() * ww, vy = hz * 0.06; c.moveTo(vx, vy); c.bezierCurveTo(vx + 30 - r() * 60, vy + hz * 0.3, vx - 40 + r() * 80, vy + hz * 0.6, vx + 20 - r() * 40, hz * 0.96); c.lineWidth = 0.8 + r() * 1.2; c.strokeStyle = 'rgba(210,214,235,' + (0.1 + r() * 0.16).toFixed(2) + ')'; c.stroke(); }
+    c.restore(); c.lineWidth = 2; c.strokeStyle = '#b8903a'; c.strokeRect(x0, hz * 0.06, ww, hz * 0.9); c.strokeStyle = 'rgba(255,225,140,0.35)'; c.strokeRect(x0 + 3, hz * 0.06 + 3, ww - 6, hz * 0.9 - 6);
+  }
+  R(c, 0, hz * 0.96, W, hz * 0.04, '#b8903a'); R(c, 0, hz * 0.96, W, 2, '#ffe9a8');
+  // velvet curtains at both sides
+  [[0, 1], [W, -1]].forEach(function (s) {
+    var cw = Math.min(W * 0.1, 110);
+    for (var k = 0; k < 7; k++) { var cx = s[0] + s[1] * k * cw / 7; c.fillStyle = lg(c, cx, 0, cx + s[1] * cw / 7, 0, k % 2 ? [[0, '#5a0f1c'], [1, '#8a1a2c']] : [[0, '#8a1a2c'], [1, '#3a0912']]); c.fillRect(Math.min(cx, cx + s[1] * cw / 7), 0, cw / 7 + 1, hz); }
+    R(c, Math.min(s[0], s[0] + s[1] * cw), 0, cw, hz * 0.05, '#b8903a');
+    c.fillStyle = rg(c, s[0] + s[1] * cw * 0.6, hz * 0.5, 0, hz * 0.6, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.45)']]); c.fillRect(Math.min(s[0], s[0] + s[1] * cw), 0, cw, hz);
+  });
+  // the floor: polished black marble, mirror bright near the wall
+  c.fillStyle = lg(c, 0, hz, 0, H, [[0, '#14151d'], [1, '#07080c']]); c.fillRect(0, hz, W, H - hz);
+  for (i = 0; i < 14; i++) { c.beginPath(); var vx2 = r() * W, vy2 = hz + r() * (H - hz) * 0.3; c.moveTo(vx2, vy2); c.bezierCurveTo(vx2 + 60, vy2 + 20, vx2 - 40, vy2 + 50, vx2 + 80 - r() * 160, H); c.lineWidth = 0.7 + r(); c.strokeStyle = 'rgba(200,205,230,' + (0.06 + r() * 0.1).toFixed(2) + ')'; c.stroke(); }
+  for (i = 1; i < 6; i++) { var fy = hz + (H - hz) * Math.pow(i / 6, 1.6); line(c, 0, fy, W, fy, 1.2, 'rgba(184,144,58,0.22)'); }
+  for (i = -6; i <= 16; i++) line(c, W * i / 10, hz, W / 2 + (W * i / 10 - W / 2) * 2.4, H, 1.2, 'rgba(184,144,58,0.18)');
+  R(c, 0, hz - 1, W, 3, 'rgba(255,225,140,0.35)');
+}
+function showroomLive(c, g, t) {
+  var W = g.W, H = g.H, hz = g.hz, i;
+  // the gold sign on the back wall, breathing
+  var sh = Math.min(hz * 0.2, 46), br = 0.85 + 0.15 * Math.sin(t * 1.4);
+  c.save(); c.globalCompositeOperation = 'lighter';
+  neonWord(c, 'RIDGE RIOT', W * 0.5 - neonW('RIDGE RIOT', sh) / 2, hz * 0.12, sh, '#ffe9a8', '#ffb520', br);
+  // a spotlight on every display slot, from a rail overhead; the beams sway a little
+  g.rows.forEach(function (row, ri) {
+    var cw = (g.x1 - g.x0) / row.n;
+    for (var k = 0; k < row.n; k++) {
+      var cx = g.x0 + cw * (k + 0.5), sway = Math.sin(t * 0.7 + k * 0.9 + ri) * 6, top = hz * 0.05;
+      ell(c, cx, top, 4, 3, '#fff6d0');
+      c.fillStyle = lg(c, cx, top, cx + sway, row.y1, [[0, 'rgba(255,240,200,0.26)'], [1, 'rgba(255,240,200,0.03)']]);
+      c.beginPath(); c.moveTo(cx - 3, top); c.lineTo(cx + 3, top); c.lineTo(cx + sway + cw * 0.34, row.y1); c.lineTo(cx + sway - cw * 0.34, row.y1); c.closePath(); c.fill();
+    }
+  });
+  // glints running along the gold trim
+  var gx = ((t * 0.12) % 1.3 - 0.15) * W; c.fillStyle = lg(c, gx, 0, gx + 140, 0, [[0, 'rgba(255,233,168,0)'], [0.5, 'rgba(255,233,168,0.5)'], [1, 'rgba(255,233,168,0)']]); c.fillRect(gx, hz * 0.96, 140, hz * 0.04);
+  c.restore();
+}
+
+var SCENES = [shed, workshop, garage, dealer, showroom], LIVES = [shedLive, workshopLive, garageLive, dealerLive, showroomLive];
+A.garageScene = function (c, g, level) { c.save(); SCENES[level](c, g); c.restore(); };
+A.garageLive = function (c, g, level, t) { c.save(); LIVES[level](c, g, t); c.restore(); };
+
+/* What a bike stands on, drawn in screen pixels: cx the middle, y the ground line, w the width the slot has. */
+A.garageStand = function (c, level, cx, y, w, t) {
+  var hw = w * 0.46;
+  if (level === 0) {                       // a pallet of planks
+    var ph = Math.max(5, w * 0.04);
+    for (var i = 0; i < 4; i++) { var px = cx - hw + i * (hw * 2 / 4); box(c, px, y - ph, hw * 2 / 4 - 3, ph + 2, i % 2 ? '#a07a48' : '#8f6c3e', 1.2); }
+    R(c, cx - hw, y + 2, hw * 2, 2, 'rgba(0,0,0,0.35)');
+  } else if (level === 1) {                // a low wooden platform on a rubber mat
+    ell(c, cx, y + 2, hw * 1.05, w * 0.045, 'rgba(0,0,0,0.35)');
+    box(c, cx - hw, y - 5, hw * 2, 7, '#7a5a38', 1.2); R(c, cx - hw, y - 5, hw * 2, 2, 'rgba(255,230,170,0.3)');
+  } else if (level === 2) {                // a rubber mat with a yellow edge
+    ell(c, cx, y, hw * 1.05, w * 0.05, 'rgba(0,0,0,0.3)');
+    c.beginPath(); c.ellipse(cx, y, hw, w * 0.04, 0, 0, TAU); c.fillStyle = '#2b2e34'; c.fill(); c.lineWidth = 2; c.strokeStyle = '#d9b32a'; c.stroke();
+  } else if (level === 3) {                // a white display plinth with a blue light strip
+    box(c, cx - hw, y - 8, hw * 2, 10, '#f4f6f8', 1.2); R(c, cx - hw, y - 8, hw * 2, 3, '#ffffff'); R(c, cx - hw + 3, y - 2, hw * 2 - 6, 3, '#3a86ff');
+    c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = rg(c, cx, y, 0, hw, [[0, 'rgba(80,140,255,0.25)'], [1, 'rgba(80,140,255,0)']]); c.fillRect(cx - hw, y - 6, hw * 2, 14); c.restore();
+  } else {                                 // a turntable: a round plinth with a ring of light that runs round
+    var ry = Math.max(5, w * 0.06);
+    c.beginPath(); c.ellipse(cx, y + 3, hw * 1.05, ry + 3, 0, 0, TAU); c.fillStyle = 'rgba(0,0,0,0.5)'; c.fill();
+    c.beginPath(); c.ellipse(cx, y + 2, hw, ry + 2, 0, 0, TAU); c.fillStyle = '#2a2c36'; c.fill(); c.lineWidth = 1.5; c.strokeStyle = '#b8903a'; c.stroke();
+    c.beginPath(); c.ellipse(cx, y - 2, hw, ry + 2, 0, 0, TAU); c.fillStyle = lg(c, cx - hw, 0, cx + hw, 0, [[0, '#4a4d5c'], [0.5, '#8a8ea0'], [1, '#3a3c48']]); c.fill(); c.lineWidth = 1.5; c.strokeStyle = '#15171d'; c.stroke();
+    c.save(); c.globalCompositeOperation = 'lighter';
+    for (var k = 0; k < 14; k++) { var a = k / 14 * TAU + t * 1.6, lx = cx + Math.cos(a) * hw * 0.92, ly = y - 2 + Math.sin(a) * (ry + 1) * 0.92, br = 0.35 + 0.65 * Math.max(0, Math.cos(a - t * 1.6 - t * 0)); ell(c, lx, ly, 2.2, 1.6, 'rgba(255,214,120,' + (0.35 + 0.65 * ((k + Math.floor(t * 6)) % 14 < 4 ? 1 : 0.2)).toFixed(2) + ')'); }
+    c.restore();
+  }
+};
+})(typeof window !== 'undefined' ? window : globalThis);
+
 /* ---- render.js ---- */
 /* Ridge Riot: drawing the world.
    Sky and the far scenery are painted once per world onto hidden canvases and
@@ -9368,9 +9880,9 @@ S.wipe = function (kind, v) {
     case 'fwump': noise(0.3, 'lowpass', 500, 150, 0.7, 0.6, 0, null, true, 0.01); tone('sine', 110, 60, 0.25, 0.4); break;
   }
 };
-/* nuggets and geodes */
+/* nuggets and crates */
 S.coin = function (n) { if (!ok) return; var c = Math.min(5, n || 1); for (var i = 0; i < c; i++) { tone('square', 1568, 1568, 0.05, 0.07, i * 0.07); tone('square', 2093, 2093, 0.1, 0.07, i * 0.07 + 0.045); } };
-S.geode = function (stage, rank) {
+S.crate = function (stage, rank) {
   if (!ok) return;
   var i, f;
   if (stage === 'tap') { noise(0.05, 'bandpass', 900, 0, 3, 0.35); tone('triangle', 180 + (rank || 0) * 30, 140, 0.07, 0.3); }
@@ -9459,8 +9971,8 @@ function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 /* ------------------------------------------------------------------ */
 var KEY = 'ridgeRiot.v1';
 var DEF = {
-  v: 2, best: {}, bike: 'scrapper', owned: { scrapper: 1 }, last: 0, seenHow: false,
-  nuggets: 0, paints: {}, riders: {}, fit: {}, geodes: { gold: 0, diamond: 0 }, opened: 0, pity: 0, paid: {}, got: {}, fresh: {}, kept: {},
+  v: 3, news: 0, best: {}, bike: 'scrapper', owned: { scrapper: 1 }, last: 0, seenHow: false,
+  nuggets: 0, paints: {}, riders: {}, fit: {}, crates: { rare: 0, epic: 0 }, garage: { level: 0, slots: [] }, opened: 0, pity: 0, paid: {}, got: {}, fresh: {}, kept: {},
   settings: { sfx: 0.8, engine: 0.7, music: 0.5, tilt: false, tiltSens: 0.8, tiltFlip: false, hints: true, ghost: true, unlockAll: false, quality: 'auto', buzz: true },
   stats: { flips: 0, bestAir: 0, crashes: 0, runs: 0, finishes: 0, bestJump: 0, bestFlips: 0, dist: 0, topSpeed: 0 }
 };
@@ -9485,10 +9997,16 @@ var Store = RR.Store = {
     if (raw) {
       try {
         var o = JSON.parse(raw);
-        for (k in o) if (k !== 'settings' && k !== 'stats' && k !== 'best' && k !== 'geodes' && k !== 'v' && k in d) d[k] = o[k];
+        for (k in o) if (k !== 'settings' && k !== 'stats' && k !== 'best' && k !== 'crates' && k !== 'garage' && k !== 'v' && k in d) d[k] = o[k];
         for (k in o.settings || {}) if (k in d.settings) d.settings[k] = o.settings[k];
         for (k in o.stats || {}) if (k in d.stats) d.stats[k] = o.stats[k];
-        for (k in o.geodes || {}) if (k in d.geodes) d.geodes[k] = o.geodes[k];
+        /* Version 2 saves had geodes: a gold geode (finish a world) is now a rare crate and a diamond geode (three stars on a world) an epic crate. */
+        if (o.crates) { for (k in o.crates) if (k in d.crates) d.crates[k] = Math.max(0, o.crates[k] | 0); }
+        else if (o.geodes) { d.crates.rare = Math.max(0, o.geodes.gold | 0); d.crates.epic = Math.max(0, o.geodes.diamond | 0); }
+        if (o.garage) {
+          d.garage.level = Math.max(0, Math.min(RR.GARAGES.length - 1, o.garage.level | 0));
+          if (Array.isArray(o.garage.slots)) for (i = 0; i < RR.GARAGE_MAX_SLOTS; i++) { var sv = o.garage.slots[i]; d.garage.slots[i] = typeof sv === 'string' ? sv : null; }
+        }
         if (o.times) {
           for (k in o.times) { i = RR.trackIndex(k); if (i >= 0) d.best[i] = o.times[k]; else Store.other[k] = o.times[k]; }
           i = RR.trackIndex(o.lastId || ''); d.last = i >= 0 ? i : 0;
@@ -9502,6 +10020,7 @@ var Store = RR.Store = {
       } catch (e) {}
     }
     if (!RR.BIKE[d.bike]) d.bike = 'scrapper';
+    for (i = 0; i < RR.GARAGE_MAX_SLOTS; i++) if (d.garage.slots[i] === undefined) d.garage.slots[i] = null;
     d.owned.scrapper = 1;
     /* Tracks that have been rebuilt since this save was written: the old best time was set on a
        different track, so it and its ghost go. The stars it earned are kept, so nothing that was
@@ -9542,6 +10061,7 @@ var Store = RR.Store = {
 };
 
 var P = RR.Progress = {
+  earned: [],      // trophies handed over since the last finish, so the results screen can announce them
   starsFor: function (i) {
     var b = Store.data.best[i], kept = Store.data.kept[RR.trackId(i)] || 0;
     if (!b) return kept;
@@ -9591,13 +10111,17 @@ var P = RR.Progress = {
   claim: function () {
     var out = [];
     RR.BIKES.forEach(function (d) { if (!Store.data.owned[d.id] && P.bikeMet(d)) { Store.data.owned[d.id] = 1; out.push(d); } });
+    P.claimTrophies().forEach(function (it) { P.earned.push(it); out.push(it); });
     return out;
   },
 
-  /* ---- the collection: nuggets, geodes, paint jobs and riders ---- */
-  owns: function (it) { return Store.data.settings.unlockAll || !!Store.data[it.kind === 'paint' ? 'paints' : 'riders'][it.id]; },
+  /* ---- the collection: nuggets, crates, paint jobs and riders ---- */
+  /* Trophies only come from achievements: the "unlock everything" switch does not open them. */
+  owns: function (it) { return (Store.data.settings.unlockAll && it.tier !== 'trophy') || !!Store.data[it.kind === 'paint' ? 'paints' : 'riders'][it.id]; },
   reallyOwns: function (it) { return !!Store.data[it.kind === 'paint' ? 'paints' : 'riders'][it.id]; },
+  /* how many of the things a crate can hold you have (trophies are counted on their own) */
   ownedCount: function () { var n = 0; RR.ITEMS.forEach(function (it) { if (P.reallyOwns(it)) n++; }); return n; },
+  trophyCount: function () { var n = 0; RR.TROPHIES.forEach(function (it) { if (P.reallyOwns(it)) n++; }); return n; },
   /* what a bike is wearing: { paint, rider }, either may be null for the stock look */
   look: function (bikeId) {
     var f = Store.data.fit[bikeId] || {}, p = RR.PAINT[f.p], r = RR.RIDER[f.r];
@@ -9608,10 +10132,10 @@ var P = RR.Progress = {
     f[kind === 'paint' ? 'p' : 'r'] = id || '';
   },
   /* Pay out anything owed for stars and finished worlds. Stars pay once each; finishing every
-     track in a world gives a gold geode, and three stars on all of them a diamond one.
+     track in a world gives a rare crate, and three stars on all of them an epic one.
      Old saves are owed for everything they already did, which this also covers. */
   settle: function () {
-    var d = Store.data, out = { stars: 0, nuggets: 0, geodes: [] }, i, w;
+    var d = Store.data, out = { stars: 0, nuggets: 0, crates: [] }, i, w;
     for (i = 0; i < RR.TRACK_COUNT; i++) {
       var id = RR.trackId(i), n = P.starsFor(i), was = d.paid[id] || 0;
       if (n > was) { out.stars += n - was; d.paid[id] = n; }
@@ -9619,28 +10143,89 @@ var P = RR.Progress = {
     out.nuggets = out.stars * RR.ECON.star; d.nuggets += out.nuggets;
     for (w = 0; w < RR.WORLDS.length; w++) {
       var W = RR.WORLDS[w];
-      if (!d.got['done:' + W.id] && P.worldDone(w)) { d.got['done:' + W.id] = 1; d.geodes.gold++; out.geodes.push({ kind: 'gold', why: 'Every ' + W.name + ' track finished' }); }
-      if (!d.got['aced:' + W.id] && P.worldStars(w) >= 24) { d.got['aced:' + W.id] = 1; d.geodes.diamond++; out.geodes.push({ kind: 'diamond', why: 'Three stars on every ' + W.name + ' track' }); }
+      if (!d.got['done:' + W.id] && P.worldDone(w)) { d.got['done:' + W.id] = 1; d.crates.rare++; out.crates.push({ kind: 'rare', why: 'Every ' + W.name + ' track finished' }); }
+      if (!d.got['aced:' + W.id] && P.worldStars(w) >= 24) { d.got['aced:' + W.id] = 1; d.crates.epic++; out.crates.push({ kind: 'epic', why: 'Three stars on every ' + W.name + ' track' }); }
     }
     return out;
   },
   itemsLeft: function () { var n = 0; RR.ITEMS.forEach(function (it) { if (!P.reallyOwns(it)) n++; }); return n; },
-  freeGeodes: function () { return Store.data.geodes.gold + Store.data.geodes.diamond; },
-  canCrack: function () { return P.itemsLeft() > 0 && (P.freeGeodes() > 0 || Store.data.nuggets >= RR.ECON.geode); },
-  /* open one geode: prize geodes first (best first), otherwise pay for an ordinary one */
-  crack: function () {
-    var d = Store.data, kind = 'any';
+  freeCrates: function () { return Store.data.crates.rare + Store.data.crates.epic; },
+  canOpen: function () { return P.itemsLeft() > 0 && (P.freeCrates() > 0 || Store.data.nuggets >= RR.ECON.crate); },
+  /* the crate that would be opened next: prize crates first (best first), otherwise an ordinary one for nuggets, or null */
+  nextCrate: function () {
+    var d = Store.data;
     if (P.itemsLeft() <= 0) return null;
-    if (d.geodes.diamond > 0) kind = 'diamond'; else if (d.geodes.gold > 0) kind = 'gold'; else if (d.nuggets < RR.ECON.geode) return null;
+    if (d.crates.epic > 0) return 'epic';
+    if (d.crates.rare > 0) return 'rare';
+    return d.nuggets >= RR.ECON.crate ? 'any' : null;
+  },
+  /* open one crate and keep what is inside. Returns { item, kind } or null if there is nothing to open. */
+  openCrate: function () {
+    var d = Store.data, kind = P.nextCrate();
+    if (!kind) return null;
     var pity = kind === 'any' && d.pity >= RR.ECON.pity;
-    var it = RR.rollGeode(kind, P.reallyOwns, Math.random, pity);
+    var it = RR.rollCrate(kind, P.reallyOwns, Math.random, pity);
     if (!it) return null;
-    if (kind === 'any') d.nuggets -= RR.ECON.geode; else d.geodes[kind]--;
+    if (kind === 'any') d.nuggets -= RR.ECON.crate; else d.crates[kind]--;
     d[it.kind === 'paint' ? 'paints' : 'riders'][it.id] = 1;
     d.fresh[it.id] = 1; d.opened++;
     d.pity = RR.TIER[it.tier].rank >= 2 ? 0 : d.pity + 1;
+    var tro = P.claimTrophies();       // the last item of the collection earns the Curator trophy on the spot
     Store.save();
-    return { item: it, kind: kind };
+    return { item: it, kind: kind, trophies: tro };
+  },
+
+  /* ---- trophies: earned by things the game already counts ---- */
+  /* what a trophy asks for, where you are, and 0..1 for the progress bar */
+  trophyNeed: function (it) {
+    var r = it.trophy, s = Store.data.stats, have = 0, need = r ? r.n || 1 : 1, now = '';
+    if (!r) return { text: '', now: '', k: 0, met: false };
+    if (r.type === 'finished') { need = RR.TRACK_COUNT; for (var i = 0; i < need; i++) if (P.done(i)) have++; now = have + ' of ' + need + ' tracks'; }
+    else if (r.type === 'stars') { need = RR.TRACK_COUNT * 3; have = P.total(); now = have + ' of ' + need + ' stars'; }
+    else if (r.type === 'flips') { have = Math.min(s.flips, need); now = have + ' of ' + need + ' flips'; }
+    else if (r.type === 'dist') { have = Math.min(s.dist, need); now = (have / 1000).toFixed(1) + ' of ' + (need / 1000) + ' km'; }
+    else if (r.type === 'crashes') { have = Math.min(s.crashes, need); now = have + ' of ' + need + ' crashes'; }
+    else if (r.type === 'collect') { need = RR.ITEMS.length; have = P.ownedCount(); now = have + ' of ' + need + ' collected'; }
+    return { text: r.text, now: now, k: have / need, met: have >= need };
+  },
+  /* hand over any trophy whose rule is now met; returns the newly earned ones */
+  claimTrophies: function () {
+    var out = [];
+    RR.TROPHIES.forEach(function (it) {
+      if (!it.trophy || P.reallyOwns(it) || !P.trophyNeed(it).met) return;
+      Store.data[it.kind === 'paint' ? 'paints' : 'riders'][it.id] = 1; Store.data.fresh[it.id] = 1; out.push(it);
+    });
+    return out;
+  },
+
+  /* ---- the garage you show your bikes in ---- */
+  garage: function () { return RR.GARAGES[Store.data.garage.level] || RR.GARAGES[0]; },
+  nextGarage: function () { return RR.GARAGES[Store.data.garage.level + 1] || null; },
+  buyGarage: function () {
+    var n = P.nextGarage(), g = Store.data.garage;
+    if (!n || Store.data.nuggets < n.price) return false;
+    Store.data.nuggets -= n.price; g.level++; Store.save(); return true;
+  },
+  /* The bike on each display slot: slots hold a bike id, '' for a slot left empty on purpose, or null for "not chosen yet".
+     Slots nobody has chosen fill themselves with bikes you own that are not on show, the ride you have picked first. */
+  garageFill: function () {
+    var g = Store.data.garage, n = P.garage().slots, shown = {}, i;
+    while (g.slots.length < RR.GARAGE_MAX_SLOTS) g.slots.push(null);
+    for (i = 0; i < n; i++) { var id = g.slots[i]; if (id && (!RR.BIKE[id] || !P.bikeOpen(RR.BIKE[id]) || shown[id])) g.slots[i] = id = null; if (id) shown[id] = 1; }
+    var order = [Store.data.bike].concat(RR.BIKES.map(function (b) { return b.id; })), k = 0;
+    for (i = 0; i < n; i++) {
+      if (g.slots[i] !== null) continue;
+      while (k < order.length && (shown[order[k]] || !RR.BIKE[order[k]] || !P.bikeOpen(RR.BIKE[order[k]]))) k++;
+      if (k < order.length) { g.slots[i] = order[k]; shown[order[k]] = 1; }
+    }
+    return g.slots.slice(0, n);
+  },
+  /* put a bike (or '' for nothing) on a slot; a bike already on show swaps places with whatever stood there */
+  garagePlace: function (slot, bikeId) {
+    var g = Store.data.garage, n = P.garage().slots, i, prev;
+    P.garageFill(); prev = g.slots[slot] || '';
+    if (bikeId) for (i = 0; i < n; i++) if (i !== slot && g.slots[i] === bikeId) g.slots[i] = prev;
+    g.slots[slot] = bikeId || '';
   }
 };
 
@@ -9806,14 +10391,14 @@ function copyPrev() {
 function finishRun() {
   var s = G.sim, i = G.track.index, t = Math.round(s.finishTime * 100) / 100, d = Store.data, E = RR.ECON;
   var old = d.best[i], isBest = !old || t < old, before = P.starsFor(i), totBefore = P.total();
-  d.stats.finishes++;
+  d.stats.finishes++; P.earned = [];
   if (isBest) { d.best[i] = t; Ghost.store(i, G.bikeDef.id); }
   var st = d.stats;
   if (s.bestAir > st.bestAir) st.bestAir = Math.round(s.bestAir * 100) / 100;
   if (s.bestJump > st.bestJump) st.bestJump = Math.round(s.bestJump * 10) / 10;
   if (s.flips > st.bestFlips) st.bestFlips = s.flips;
   bank();
-  var bikes = P.claim();
+  var bikes = P.claim().filter(function (x) { return !x.kind; });
   var worlds = [], tot = P.total();
   for (var w = 1; w < RR.WORLDS.length; w++) { var need = RR.WORLDS[w].need; if (tot >= need && totBefore < need) worlds.push(RR.WORLDS[w]); }
   // nuggets: a little for finishing, more for each new star, a bit for beating your own time
@@ -9823,7 +10408,7 @@ function finishRun() {
   pay.stars = owed.nuggets; pay.total = pay.finish + pay.best + pay.flips + pay.stars;
   Store.save();
   G.result = { time: t, old: old || 0, best: isBest, stars: P.starsForTime(i, t), starsBefore: before, bikes: bikes, worlds: worlds, flips: s.flips, air: s.bestAir, track: i,
-    pay: pay, geodes: owed.geodes };
+    pay: pay, crates: owed.crates, trophies: P.earned.slice() };
 }
 
 /* ------------------------------------------------------------------ */
@@ -10079,6 +10664,7 @@ function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&
 function fmt(t) { return t.toFixed(2); }
 function stars(n, cls) { var s = '<span class="stars ' + (cls || '') + '">'; for (var i = 0; i < 3; i++) s += '<i class="star' + (i < n ? ' on' : '') + '"></i>'; return s + '</span>'; }
 var NUG = '<i class="nug"></i>';
+UI.NUG = NUG; UI.esc = esc;
 
 var IC = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="#f6f2e7" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4 7 12l8 8"/></svg>',
@@ -10103,6 +10689,7 @@ var GLYPH = {
   O: [84, 'M42 0Q84 0 84 50Q84 100 42 100Q0 100 0 50Q0 0 42 0ZM42 24Q28 24 28 50Q28 76 42 76Q56 76 56 50Q56 24 42 24Z'],
   T: [76, 'M0 0H76V24H52V100H24V24H0Z']
 };
+UI.GLYPH = GLYPH;
 function word(text) {
   var x = 0, d = '', i;
   for (i = 0; i < text.length; i++) { var g = GLYPH[text[i]]; d += '<path transform="translate(' + x + ' 0)" d="' + g[1] + '"/>'; x += g[0] + 9; }
@@ -10147,7 +10734,8 @@ UI.init = function () {
       '<button class="btn go" data-act="resume">Keep riding</button><button class="btn" data-act="retry">Restart</button><button class="btn" data-act="quit">Tracks</button></div>' +
     '</section>' +
     '<section id="s-results" class="screen"><div class="res plate" id="res"></div></section>' +
-    '<section id="s-geode" class="screen shade full"><canvas id="geocv"></canvas><div class="gehint" id="gehint"></div><div class="gecard plate" id="gecard"></div></section>' +
+    '<section id="s-crate" class="screen shade full"><canvas id="cratecv"></canvas><div class="cratehint" id="cratehint"></div><div class="cratecard plate" id="cratecard"></div></section>' +
+    (RR.Showroom ? RR.Showroom.html() : '') +
     '<div id="toast" class="plate"></div>' +
     '<div id="rotate"><div class="ph"></div><div>Turn your phone sideways</div></div>';
 
@@ -10257,7 +10845,8 @@ function onKey(e) {
   }
   if (UI.cur === 'pause') { if (c === 'Escape' || c === 'KeyP' || c === 'Enter') act('resume'); else if (c === 'KeyR') act('retry'); return; }
   if (UI.cur === 'results') { if (c === 'Enter' || c === 'Space') { var b = doc.querySelector('#res .btn.go'); if (b) fire(b); e.preventDefault(); } else if (c === 'KeyR') act('retry'); else if (c === 'Escape') act('quit'); return; }
-  if (UI.cur === 'geode') { if (c === 'Enter' || c === 'Space') { geoHit(); e.preventDefault(); } else if (c === 'Escape' && geo.stage === 'show') act('geoDone'); return; }
+  if (UI.cur === 'crate') { if (c === 'Enter' || c === 'Space') { crateHit(); e.preventDefault(); } else if (c === 'Escape' && crt.stage === 'show') act('crateDone'); return; }
+  if (UI.cur === 'show') { if (c === 'Escape') act('showBack'); return; }
   if (UI.cur === 'garage') {
     if (c === 'Escape') act('garageBack');
     else if (UI.gtab === 'bikes' && (c === 'ArrowLeft' || c === 'KeyA' || c === 'ArrowRight' || c === 'KeyD')) { UI.gi = (UI.gi + (c === 'ArrowLeft' || c === 'KeyA' ? RR.BIKES.length - 1 : 1)) % RR.BIKES.length; Au.ui('swipe'); UI.garage(); }
@@ -10284,7 +10873,8 @@ UI.resize = function () {
   var portrait = h > w * 1.05 && w < 900;
   $('rotate').className = portrait ? 'on' : '';
   if (portrait && (G.state === 'run' || G.state === 'ready')) G.pause(true);
-  if (UI.cur === 'garage') { UI.garageDraw(); paintTiles(true); }
+  if (UI.cur === 'garage') { sizeTiles(); UI.garageDraw(); paintTiles(true); }
+  if (UI.cur === 'show' && RR.Showroom) RR.Showroom.layout();
   UI.measurePads();
 };
 /* work out where the touch zones divide from where the buttons actually sit */
@@ -10300,6 +10890,7 @@ UI.measurePads = function () {
 /* ------------------------------------------------------------------ */
 function act(a, el) {
   var it, d;
+  if (RR.Showroom && RR.Showroom.act(a, el)) return;
   switch (a) {
     case 'tracks': Au.ui('go'); UI.world = Math.floor((Store.data.last || 0) / 8); if (!P.worldOpen(UI.world)) UI.world = 0; UI.tracks(); UI.show('tracks'); break;
     case 'garage': Au.ui('go'); UI.from = UI.cur; UI.gi = RR.BIKE[Store.data.bike].index; UI.gtab = 'bikes'; UI.pick = null; UI.show('garage'); UI.garage(); break;
@@ -10313,7 +10904,9 @@ function act(a, el) {
       var ti = +el.getAttribute('data-i');
       if (!P.trackOpen(ti)) { Au.ui('no'); break; }
       Au.ui('go'); UI.show('hud'); G.play(ti); break;
-    case 'gtab': Au.ui('swipe'); UI.gtab = el.getAttribute('data-t'); UI.pick = null; UI.garage(); break;
+    case 'gtab':
+      if (el.getAttribute('data-t') === 'show') { Au.ui('go'); RR.Showroom.open('garage'); break; }
+      Au.ui('swipe'); UI.gtab = el.getAttribute('data-t'); UI.pick = null; tileScroll = 0; UI.garage(); break;
     case 'gdot': Au.ui('swipe'); UI.gi = +el.getAttribute('data-i'); UI.garage(); break;
     case 'gsel':
       d = RR.BIKES[UI.gi];
@@ -10322,17 +10915,17 @@ function act(a, el) {
       break;
     case 'gitem': Au.ui('swipe'); UI.pick = el.getAttribute('data-id') || ''; delete Store.data.fresh[UI.pick]; UI.garage(); break;
     case 'gwear':
-      it = itemOf(UI.gtab, UI.pick); d = RR.BIKES[UI.gi];
+      it = itemOf(UI.pick); d = RR.BIKES[UI.gi];
       if (it && !P.owns(it)) { Au.ui('no'); break; }
-      P.wear(d.id, UI.gtab === 'paint' ? 'paint' : 'rider', it ? it.id : ''); Store.save(); Au.ui('go'); UI.garage();
+      P.wear(d.id, it ? it.kind : UI.gtab === 'paint' ? 'paint' : 'rider', it ? it.id : ''); Store.save(); Au.ui('go'); UI.garage();
       break;
-    case 'crack': openGeode(); break;
-    case 'geoPut':
-      it = geo.item; d = RR.BIKE[Store.data.bike];
+    case 'crate': openCrate(); break;
+    case 'cratePut':
+      it = crt.item; d = RR.BIKE[Store.data.bike];
       if (it) { P.wear(d.id, it.kind, it.id); delete Store.data.fresh[it.id]; Store.save(); UI.toast(it.name + ' is on your ' + d.name); }
-      Au.ui('go'); closeGeode(); break;
-    case 'geoAgain': openGeode(); break;
-    case 'geoDone': Au.ui('back'); closeGeode(); break;
+      Au.ui('go'); closeCrate(); break;
+    case 'crateAgain': openCrate(); break;
+    case 'crateDone': Au.ui('back'); closeCrate(); break;
     case 'pause': Au.ui('tap'); G.pause(true); break;
     case 'resume': Au.ui('tap'); G.pause(false); break;
     case 'retry': Au.ui('tap'); if (G.state === 'pause') G.state = 'ready'; UI.show('hud'); G.retry(); break;
@@ -10353,21 +10946,28 @@ function fullscreen() {
     else doc.documentElement.requestFullscreen().then(function () { try { root.screen.orientation.lock('landscape').catch(function () {}); } catch (e) {} }).catch(function () {});
   } catch (e) {}
 }
-var SCREENS = ['title', 'tracks', 'garage', 'settings', 'hud', 'pause', 'results', 'geode'];
+var SCREENS = ['title', 'tracks', 'garage', 'settings', 'hud', 'pause', 'results', 'crate', 'show'];
 UI.show = function (name) {
   UI.cur = name;
   SCREENS.forEach(function (n) { var e = $('s-' + n); e.classList.toggle('on', n === name); });
   if (name !== 'garage' && gTimer) { root.cancelAnimationFrame(gTimer); gTimer = 0; }
+  if (RR.Showroom) RR.Showroom.shown(name === 'show');
 };
 UI.title = function () {
   var left = P.itemsLeft();
-  $('foot').innerHTML = 'Everything is earned by riding. No ads, nothing to buy.<br>' + P.total() + ' of ' + RR.TRACK_COUNT * 3 + ' stars. ' + Store.data.nuggets + ' nuggets. ' + P.ownedCount() + ' of ' + RR.ITEMS.length + ' collected.';
-  $('mgar').innerHTML = 'Garage' + (left > 0 && P.canCrack() ? '<i class="dotb" title="A geode is ready"></i>' : '');
+  $('foot').innerHTML = 'Everything is earned by riding. No ads, nothing to buy.<br>' + P.total() + ' of ' + RR.TRACK_COUNT * 3 + ' stars. ' + Store.data.nuggets + ' nuggets. ' + P.ownedCount() + ' of ' + RR.ITEMS.length + ' collected.' + (P.trophyCount() ? ' ' + P.trophyCount() + ' of ' + RR.TROPHIES.length + ' trophies.' : '');
+  $('mgar').innerHTML = 'Garage' + (left > 0 && P.canOpen() ? '<i class="dotb" title="A crate is ready"></i>' : '');
   UI.show('title');
 };
 var toastT = 0;
 UI.toast = function (text) { var t = $('toast'); t.textContent = text; t.className = 'plate on'; clearTimeout(toastT); toastT = setTimeout(function () { t.className = "plate"; }, Math.max(2800, text.length * 60)); };
-UI.toastBikes = function (list) { Au.unlocked(); UI.toast('New bike in the garage: ' + list.map(function (d) { return d.name; }).join(', ')); Store.save(); };
+UI.toastBikes = function (list) {
+  Au.unlocked();
+  var bikes = list.filter(function (x) { return !x.kind; }), tro = list.filter(function (x) { return x.kind; }), t = [];
+  if (bikes.length) t.push('New bike in the garage: ' + bikes.map(function (d) { return d.name; }).join(', '));
+  if (tro.length) t.push('Trophy earned: ' + tro.map(function (d) { return d.name; }).join(', '));
+  UI.toast(t.join('. ')); Store.save();
+};
 
 /* ------------------------------------------------------------------ */
 /* Track select                                                         */
@@ -10392,27 +10992,41 @@ UI.tracks = function () {
   $('grid').innerHTML = h;
   var cvs = $('grid').querySelectorAll('canvas');
   for (i = 0; i < cvs.length; i++) R.trackThumb(cvs[i], RR.getTrack(+cvs[i].getAttribute('data-thumb')), T.ground[0], T.crust === '#f6fbff' ? '#9db8e8' : T.id === 'race' ? '#3a3d46' : T.crust);
-  $('lockmsg').textContent = wopen ? (P.worldCount(w) < 8 ? 'Finish a track to open the next one.' : P.worldStars(w) < 24 ? 'Three stars on all eight earns a diamond geode.' : '') : W.name + ' opens at ' + W.need + ' stars. You have ' + tot + '.';
+  $('lockmsg').textContent = wopen ? (P.worldCount(w) < 8 ? 'Finish a track to open the next one.' : P.worldStars(w) < 24 ? 'Three stars on all eight earns an epic crate.' : '') : W.name + ' opens at ' + W.need + ' stars. You have ' + tot + '.';
 };
 
 /* ------------------------------------------------------------------ */
-/* Garage: bikes, paint, riders, geodes                                 */
+/* Garage: bikes, paint, riders, crates, trophies                       */
 /* ------------------------------------------------------------------ */
-var gTimer = 0, gSpin = 0, gBounce = 0, gT = 0, gFrame = 0;
-function itemOf(tab, id) { return tab === 'paint' ? RR.PAINT[id] || null : tab === 'riders' ? RR.RIDER[id] || null : null; }
+var gTimer = 0, gSpin = 0, gBounce = 0, gT = 0, gLast = 0, tileScroll = -1;
+/* seconds since the last frame, from the real clock so animation runs at the same speed at 60, 120 or 144 Hz */
+function frameDt(now, last) { return last ? Math.min(0.05, Math.max(0.001, (now - last) / 1000)) : 1 / 60; }
+function itemOf(id) { return id ? RR.PAINT[id] || RR.RIDER[id] || null : null; }
 function tierChip(t) { return '<span class="chip t-' + t + '">' + RR.TIER[t].name + '</span>'; }
 /* what the bike on show is wearing, counting whatever is being tried on */
 function previewLook() {
   var d = RR.BIKES[UI.gi], f = Store.data.fit[d.id] || {}, p = RR.PAINT[f.p] || null, r = RR.RIDER[f.r] || null;
   if (p && !P.owns(p)) p = null; if (r && !P.owns(r)) r = null;
-  if (UI.pick != null) { if (UI.gtab === 'paint') p = RR.PAINT[UI.pick] || null; else if (UI.gtab === 'riders') r = RR.RIDER[UI.pick] || null; }
+  if (UI.pick != null) {
+    var it = itemOf(UI.pick);
+    if (UI.gtab === 'paint') p = it && it.kind === 'paint' ? it : null;
+    else if (UI.gtab === 'riders') r = it && it.kind === 'rider' ? it : null;
+    else if (UI.gtab === 'trophies' && it) { if (it.kind === 'paint') p = it; else r = it; }
+  }
   return { paint: p, rider: r };
+}
+/* the items of one tab, lowest tier first (the order they were made in within a tier) */
+function sorted(list) { return list.slice().sort(function (a, b) { return RR.TIER[a.tier].rank - RR.TIER[b.tier].rank || a.index - b.index; }); }
+function setNote(it) {
+  if (!it.set || !RR.SETS[it.set]) return '';
+  var n = 0, all = RR.SETS[it.set]; all.forEach(function (x) { if (P.owns(x)) n++; });
+  return '<small class="setn">' + esc(it.set) + ' ' + n + '/' + all.length + '</small>';
 }
 UI.garage = function () {
   var d = RR.BIKES[UI.gi], open = P.bikeOpen(d), tab = UI.gtab, h = '', own = 0, i, k;
-  var free = P.freeGeodes(), ready = P.canCrack();
-  [['bikes', 'Bikes'], ['paint', 'Paint'], ['riders', 'Riders'], ['geodes', 'Geodes']].forEach(function (t) {
-    h += '<button class="gtab' + (t[0] === tab ? ' on' : '') + '" data-act="gtab" data-t="' + t[0] + '">' + t[1] + (t[0] === 'geodes' && ready ? '<i class="dotb"></i>' : '') + '</button>';
+  var ready = P.canOpen();
+  [['bikes', 'Bikes'], ['paint', 'Paint'], ['riders', 'Riders'], ['crates', 'Crates'], ['trophies', 'Trophies'], ['show', 'Showroom']].forEach(function (t) {
+    h += '<button class="gtab' + (t[0] === tab ? ' on' : '') + '" data-act="gtab" data-t="' + t[0] + '">' + t[1] + (t[0] === 'crates' && ready ? '<i class="dotb"></i>' : '') + (t[0] === 'trophies' && trophyNew() ? '<i class="dotb"></i>' : '') + '</button>';
   });
   $('gtabs').innerHTML = h;
   $('gnug').innerHTML = NUG + Store.data.nuggets;
@@ -10430,58 +11044,100 @@ UI.garage = function () {
     if (open) h += '<div class="need own">You have ' + own + ' of the ' + RR.BIKES.length + ' bikes.</div>' + (d.id === Store.data.bike ? '<button class="btn" disabled>This is your ride</button>' : '<button class="btn go" data-act="gsel">Ride this one</button>');
     else { var n = P.bikeNeed(d); h += '<div class="need">' + esc(n.text) + '. ' + esc(n.now) + '.<div class="bar"><i style="width:' + Math.round(Math.min(1, n.k) * 100) + '%"></i></div></div><button class="btn" disabled>Locked</button>'; }
     h += '</div>';
-  } else if (tab === 'paint' || tab === 'riders') {
-    var list = tab === 'paint' ? RR.PAINTS : RR.RIDERS, key = tab === 'paint' ? 'p' : 'r', worn = f[key] || '', cur = UI.pick == null ? worn : UI.pick, it = itemOf(tab, cur);
+  } else if (tab === 'paint' || tab === 'riders' || tab === 'trophies') {
+    var list = tab === 'paint' ? RR.PAINTS : tab === 'riders' ? RR.RIDERS : RR.TROPHIES, key = tab === 'paint' ? 'p' : 'r', worn = tab === 'trophies' ? '' : (f[key] || '');
+    var cur = UI.pick == null ? worn : UI.pick, it = itemOf(cur);
     if (it && UI.pick == null && !P.owns(it)) { cur = ''; it = null; }
-    h += '<div class="tiles ' + (tab === 'paint' ? 't9' : 't7') + '">';
-    h += '<button class="tile item' + (cur === '' ? ' cur' : '') + (worn === '' ? ' sel' : '') + '" data-act="gitem" data-id="" aria-label="Stock"><canvas data-item=""></canvas></button>';
-    list.forEach(function (x) { var o = P.owns(x); h += '<button class="tile item t-' + x.tier + (o ? '' : ' locked') + (x.id === cur ? ' cur' : '') + (x.id === worn && o ? ' sel' : '') + '" data-act="gitem" data-id="' + x.id + '" aria-label="' + esc(x.name) + '"><canvas data-item="' + x.id + '"></canvas>' + (Store.data.fresh[x.id] && o ? '<i class="new">New</i>' : '') + (o ? '' : '<span class="lock">' + IC.lock + '</span>') + '</button>'; });
+    if (tab === 'trophies' && UI.pick == null) { it = RR.TROPHIES[0]; cur = it.id; }
+    var wornAny = function (x) { var ff = Store.data.fit[d.id] || {}; return (x.kind === 'paint' ? ff.p : ff.r) === x.id; };
+    h += '<div class="tiles scroll ' + (tab === 'paint' ? 't9' : tab === 'riders' ? 't7' : 't6') + '" id="tiles">';
+    if (tab !== 'trophies') h += '<button class="tile item' + (cur === '' ? ' cur' : '') + (worn === '' ? ' sel' : '') + '" data-act="gitem" data-id="" aria-label="Stock"><canvas data-item=""></canvas></button>';
+    var lastTier = '';
+    sorted(list).forEach(function (x) {
+      var o = P.owns(x);
+      if (tab !== 'trophies' && x.tier !== lastTier) {
+        lastTier = x.tier; var have = 0, tot = 0; list.forEach(function (y) { if (y.tier === x.tier) { tot++; if (P.owns(y)) have++; } });
+        h += '<div class="sep t-' + x.tier + '"><b>' + RR.TIER[x.tier].name + '</b><i>' + have + ' of ' + tot + '</i></div>';
+      }
+      h += '<button class="tile item t-' + x.tier + (o ? '' : ' locked') + (x.id === cur ? ' cur' : '') + (wornAny(x) && o ? ' sel' : '') + '" data-act="gitem" data-id="' + x.id + '" aria-label="' + esc(x.name) + '"><canvas data-item="' + x.id + '"></canvas>' + (Store.data.fresh[x.id] && o ? '<i class="new">New</i>' : '') + (o ? '' : '<span class="lock">' + IC.lock + '</span>') + '</button>';
+    });
     h += '</div><div class="info">';
     if (!it) h += '<div class="nm"><h3>Stock ' + (tab === 'paint' ? 'paint' : 'rider') + '</h3></div><p>' + (tab === 'paint' ? 'The colours the ' + esc(d.name) + ' left the factory in.' : 'The rider who comes with the ' + esc(d.name) + '.') + '</p>';
-    else h += '<div class="nm"><h3>' + esc(it.name) + '</h3>' + tierChip(it.tier) + '</div><p>' + (it.blurb ? esc(it.blurb) : paintWords(it)) + '</p>';
+    else {
+      h += '<div class="nm"><h3>' + esc(it.name) + '</h3>' + tierChip(it.tier) + setNote(it) + '</div>';
+      if (it.tier === 'trophy' && !P.reallyOwns(it)) { var tn = P.trophyNeed(it); h += '<div class="need">' + esc(tn.text) + '. ' + esc(tn.now) + '.<div class="bar"><i style="width:' + Math.round(Math.min(1, tn.k) * 100) + '%"></i></div></div>'; }
+      else h += '<p>' + (it.tier === 'trophy' ? 'Earned: ' + esc(it.trophy.text.charAt(0).toLowerCase() + it.trophy.text.slice(1)) + '. ' : '') + (it.blurb ? esc(it.blurb) : paintWords(it)) + '</p>';
+    }
+    var isWorn = it && wornAny(it);
     if (!open) h += '<button class="btn" disabled>You do not have this bike yet</button>';
-    else if (it && !P.owns(it)) h += '<button class="btn" disabled>Found in geodes</button>';
+    else if (it && !P.owns(it)) h += '<button class="btn" disabled>' + (it.tier === 'trophy' ? 'A trophy: earn it to wear it' : 'Found in crates') + '</button>';
+    else if (tab === 'trophies') h += isWorn ? '<button class="btn" disabled>On the ' + esc(d.name) + '</button>' : '<button class="btn go" data-act="gwear">Put it on the ' + esc(d.name) + '</button>';
     else if (cur === worn) h += '<button class="btn" disabled>On the ' + esc(d.name) + '</button>';
     else h += '<button class="btn go" data-act="gwear">Put it on the ' + esc(d.name) + '</button>';
     h += '</div>';
   } else {
-    var left = P.itemsLeft(), E = RR.ECON, dd = Store.data;
-    h += '<div class="geo"><div class="gl"><canvas id="georock"></canvas></div><div class="gr">';
-    h += '<p><b>Crack one open for a paint job or a rider.</b> You never get the same thing twice.</p>';
+    var left = P.itemsLeft(), E = RR.ECON, dd = Store.data, next = P.nextCrate();
+    h += '<div class="geo"><div class="gl"><canvas id="cratemini"></canvas></div><div class="gr">';
+    h += '<p><b>Pry one open for a paint job or a rider.</b> You never get the same thing twice.</p>';
     h += '<div class="odds">'; RR.TIERS.slice().reverse().forEach(function (t) { h += '<span class="chip t-' + t.id + '">' + t.name + ' ' + t.odds + '%</span>'; }); h += '</div>';
-    h += '<p class="sm">' + P.ownedCount() + ' of ' + RR.ITEMS.length + ' collected. Nuggets come from finishing tracks, new stars and landed flips. Finish a whole world for a gold geode. Three stars on all of it earns a diamond one.</p>';
+    h += '<p class="sm">' + P.ownedCount() + ' of ' + RR.ITEMS.length + ' collected. Nuggets come from finishing tracks, new stars and landed flips. Finish a whole world for a rare crate and three-star it for an epic one. Trophies never come out of a crate.</p>';
     h += '</div></div>';
     if (left <= 0) h += '<button class="btn" disabled>You have the lot</button>';
-    else if (dd.geodes.diamond > 0) h += '<button class="btn go" data-act="crack">Crack a diamond geode (' + dd.geodes.diamond + ' waiting)</button>';
-    else if (dd.geodes.gold > 0) h += '<button class="btn go" data-act="crack">Crack a gold geode (' + dd.geodes.gold + ' waiting)</button>';
-    else if (dd.nuggets >= E.geode) h += '<button class="btn go" data-act="crack">Crack a geode for ' + E.geode + ' nuggets</button>';
-    else h += '<button class="btn" disabled>' + (E.geode - dd.nuggets) + ' more nuggets for the next geode</button>';
+    else if (next === 'epic') h += '<button class="btn go" data-act="crate">Pry open an epic crate (' + dd.crates.epic + ' waiting)</button>';
+    else if (next === 'rare') h += '<button class="btn go" data-act="crate">Pry open a rare crate (' + dd.crates.rare + ' waiting)</button>';
+    else if (next === 'any') h += '<button class="btn go" data-act="crate">Open a parts crate for ' + E.crate + ' nuggets</button>';
+    else h += '<button class="btn" disabled>' + (E.crate - dd.nuggets) + ' more nuggets for the next crate</button>';
   }
   $('gpanel').innerHTML = h;
   $('gpanel').className = 'gright plate tab-' + tab;
+  var tl = $('tiles');
+  if (tl) {
+    if (tileScroll < 0) { var c0 = tl.querySelector('.tile.cur'); tl.scrollTop = c0 ? Math.max(0, c0.offsetTop - tl.clientHeight / 2 + c0.offsetHeight / 2) : 0; tileScroll = tl.scrollTop; }
+    else tl.scrollTop = tileScroll;
+    tl.addEventListener('scroll', function () { tileScroll = tl.scrollTop; paintTiles(false); }, { passive: true });
+  }
   gBounce = 1;
+  sizeTiles();
   paintTiles(true);
-  if (!gTimer) gLoop();
+  if (!gTimer) { gLast = 0; gTimer = root.requestAnimationFrame(gLoop); }
 };
+/* the height of a tile in the long lists: a column's width times the tile's shape */
+function sizeTiles() {
+  var tl = $('tiles'); if (!tl || !tl.clientWidth) return;
+  var cols = tl.classList.contains('t9') ? 9 : tl.classList.contains('t7') ? 7 : 6, cs = root.getComputedStyle(tl);
+  var w = (tl.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0) - (parseFloat(cs.columnGap) || 0) * (cols - 1)) / cols;
+  tl.style.setProperty('--th', (w * (cols === 9 ? 0.92 : 1)).toFixed(2) + 'px');
+}
+/* a trophy has been earned and not looked at yet */
+function trophyNew() { var n = false; RR.TROPHIES.forEach(function (it) { if (Store.data.fresh[it.id] && P.reallyOwns(it)) n = true; }); return n; }
 function paintWords(p) {
   var t = p.pat ? p.pat.t : '';
-  var w = t === 'metal' ? 'Polished metal. The highlight slides along it as you ride.' : t === 'gem' ? 'Cut like a gemstone. It glints, the wheels glow and it leaves a ribbon of light at speed.' :
-    t === 'opal' ? 'The colour never sits still. Glowing wheels and a rainbow ribbon behind you.' : t === 'fade' ? 'One colour melting into the next.' : 'A paint job for any bike you own. Your stock rider dresses to match.';
-  return w;
+  if (p.tier === 'trophy') return 'A finish that is earned, never found. Glowing wheels, a ribbon of light and a shine that keeps moving.';
+  if (p.live) return 'The finish never sits still. Glowing wheels and a ribbon of light behind you.';
+  if (p.glow) return 'Glints in the light, with glowing wheels and a ribbon of light at speed.';
+  if (t === 'metal' || (p.pat && p.pat.slide)) return 'Polished finish. The highlight slides along it as you ride.';
+  if (t === 'fade') return 'One colour melting into the next.';
+  return 'A paint job for any bike you own. Your stock rider dresses to match.';
 }
-/* the little pictures in the garage grids. Ones that move are repainted as time passes. */
-function paintTiles(all) {
-  var cvs = $('gpanel').querySelectorAll('canvas[data-bike], canvas[data-item]'), d = RR.BIKES[UI.gi], i;
+/* the little pictures in the garage grids. Ones that move are repainted every frame, the rest once, and only
+   the ones you can see (the list scrolls). */
+function paintTiles(force) {
+  var panel = $('gpanel'), cvs = panel.querySelectorAll('canvas[data-bike], canvas[data-item]'), d = RR.BIKES[UI.gi], i;
+  var box = $('tiles'), br = box ? box.getBoundingClientRect() : null;
   for (i = 0; i < cvs.length; i++) {
     var cv = cvs[i];
     if (!cv.clientWidth) continue;
-    if (cv.hasAttribute('data-bike')) { if (all) bikeTile(cv, RR.BIKES[+cv.getAttribute('data-bike')]); continue; }
-    var id = cv.getAttribute('data-item'), it = itemOf(UI.gtab, id);
-    if (!all && !(it && it.live)) continue;
-    if (UI.gtab === 'paint') A.swatch(cv, it, d, gT); else A.portrait(cv, it, d, gT);
+    if (br) { var r = cv.getBoundingClientRect(); if (r.bottom < br.top || r.top > br.bottom) { continue; } }
+    if (force) cv._d = 0;
+    if (cv.hasAttribute('data-bike')) { if (!cv._d) { bikeTile(cv, RR.BIKES[+cv.getAttribute('data-bike')]); cv._d = 1; } continue; }
+    var id = cv.getAttribute('data-item'), it = itemOf(id), moving = it && A.moves(it);
+    if (cv._d && !moving) continue;
+    cv._d = 1;
+    if (!it) { if (UI.gtab === 'paint') A.swatch(cv, null, d, gT); else A.portrait(cv, null, d, gT); }
+    else if (it.kind === 'paint') A.swatch(cv, it, d, gT); else A.portrait(cv, it, d, gT);
   }
-  var rock = $('georock');
-  if (rock && rock.clientWidth) drawRock(rock, 0, 0, gT, null);
+  var mini = $('cratemini');
+  if (mini && mini.clientWidth) drawCrate(mini, 0, 0, gT, null, P.nextCrate() || 'any');
 }
 function bikeTile(cv, b) {
   var dpr = Math.min(2, root.devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
@@ -10491,12 +11147,13 @@ function bikeTile(cv, b) {
   A.bike(c, b, { rider: false, lp: 0, stand: 0, look: P.bikeOpen(b) ? P.look(b.id) : null, t: 1 });
   if (!P.bikeOpen(b)) { c.globalCompositeOperation = 'source-atop'; c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = 'rgba(23,26,34,0.82)'; c.fillRect(0, 0, cv.width, cv.height); c.globalCompositeOperation = 'source-over'; }
 }
-function gLoop() {
+function gLoop(now) {
   gTimer = root.requestAnimationFrame(gLoop);
   if (UI.cur !== 'garage') return;
-  gSpin -= 0.035; gBounce *= 0.9; gT += 1 / 60; gFrame++;
+  var dt = frameDt(now, gLast); gLast = now;
+  gSpin -= 2.1 * dt; gBounce *= Math.pow(0.9, dt * 60); gT += dt;
   UI.garageDraw();
-  if (gFrame % 3 === 0) paintTiles(false);
+  paintTiles(false);
 }
 UI.garageDraw = function () {
   var cv = $('gcv'); if (!cv || !cv.clientWidth) return;
@@ -10515,113 +11172,84 @@ UI.garageDraw = function () {
 };
 
 /* ------------------------------------------------------------------ */
-/* Cracking a geode                                                     */
+/* Opening a crate: three pries, then the lid goes                      */
 /* ------------------------------------------------------------------ */
-var geo = { stage: '', hits: 0, t: 0, shake: 0, item: null, tier: null, raf: 0, bits: [], from: '' };
-var ROCK = [-1.0, -0.2, -0.86, 0.5, -0.4, 0.92, 0.2, 0.98, 0.78, 0.62, 1.0, 0.0, 0.8, -0.62, 0.24, -0.9, -0.5, -0.82];
-var CRACKS = [[0.05, 0.9, -0.1, 0.5, 0.12, 0.2, -0.08, -0.1], [-0.08, -0.1, 0.16, -0.45, 0.02, -0.88], [0.12, 0.2, 0.5, 0.3, 0.8, 0.1], [-0.1, 0.5, -0.5, 0.36, -0.86, 0.5]];
-function tierGlow(t, time) { return !t ? '#f2c230' : t.id === 'opal' ? 'hsl(' + ((time * 160) % 360).toFixed(0) + ',100%,72%)' : t.col; }
-/* the rock, drawn in a box 2.4 units wide centred on the canvas */
-function drawRock(cv, hits, open, time, tier) {
+var crt = { tro: [], stage: '', hits: 0, t: 0, shake: 0, item: null, tier: null, raf: 0, bits: [], from: '', kind: 'any', open: 0, last: 0 };
+/* the colour of the light inside: the tier colour, and for the top tier the colour keeps shifting */
+function tierGlow(t, time) { return !t ? '#f2c230' : t.id === 'legendary' ? 'hsl(' + ((time * 160) % 360).toFixed(0) + ',100%,66%)' : t.col; }
+/* the crate, drawn into a canvas */
+function drawCrate(cv, hits, open, time, tier, kind) {
   var dpr = Math.min(2, root.devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
   if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
-  var c = cv.getContext('2d'), S = Math.min(w, h) / (cv.id === 'geocv' ? 4.4 : 2.5), i, k, glow = tierGlow(tier, time);
+  var c = cv.getContext('2d'), big = cv.id === 'cratecv', S = big ? Math.min(w / 6.2, h / 4.6) : Math.min(w / 3.1, h / 2.5);
   c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
-  var sx = geo.shake && cv.id === 'geocv' ? (Math.random() - 0.5) * geo.shake * 0.12 : 0, sy = geo.shake && cv.id === 'geocv' ? (Math.random() - 0.5) * geo.shake * 0.12 : 0;
-  c.setTransform(dpr * S, 0, 0, -dpr * S, dpr * (w / 2 + sx * S), dpr * (h * (cv.id === 'geocv' ? 0.46 : 0.5) + sy * S));
-  c.lineJoin = 'round'; c.lineCap = 'round';
-  if (open > 0) {
-    // light pouring out
-    c.save(); c.rotate(time * 0.5); c.globalCompositeOperation = 'lighter';
-    for (i = 0; i < 12; i++) { c.rotate(Math.PI / 6); c.globalAlpha = 0.16 * Math.min(1, open * 2) * (i % 2 ? 1 : 0.6); c.fillStyle = glow; c.beginPath(); c.moveTo(0, 0); c.lineTo(-0.3, 4); c.lineTo(0.3, 4); c.closePath(); c.fill(); }
-    c.restore(); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
-  }
-  c.fillStyle = 'rgba(0,0,0,0.35)'; c.beginPath(); c.ellipse(0, -1.0, 1.0 + open * 0.5, 0.14, 0, 0, 6.3); c.fill();
-  var gap = open * 0.9, bob = cv.id === 'geocv' && !open ? Math.sin(time * 2.4) * 0.03 : 0;
-  for (var half = 0; half < (open > 0 ? 2 : 1); half++) {
-    c.save(); c.translate((half ? 1 : -1) * gap, bob - open * 0.2); c.rotate((half ? -1 : 1) * open * 0.5);
-    if (open > 0) { c.beginPath(); c.rect(half ? 0.02 : -3, -3, 3, 6); c.clip(); }
-    A.shape(c, ROCK, '#7d7468', 0.06);
-    c.beginPath(); c.moveTo(ROCK[0], ROCK[1]); for (i = 2; i < ROCK.length; i += 2) c.lineTo(ROCK[i], ROCK[i + 1]); c.closePath(); c.save(); c.clip();
-    c.fillStyle = '#5f574d'; c.beginPath(); c.moveTo(-1.2, -1); c.lineTo(1.2, -1); c.lineTo(1.2, -0.3); c.quadraticCurveTo(0, -0.7, -1.2, -0.1); c.fill();
-    c.fillStyle = '#978d7f'; c.beginPath(); c.ellipse(-0.3, 0.55, 0.42, 0.2, 0.3, 0, 6.3); c.fill();
-    c.fillStyle = '#4f483f'; [[0.4, 0.2, 0.09], [-0.5, -0.3, 0.07], [0.1, -0.5, 0.06], [0.6, -0.3, 0.05], [-0.6, 0.2, 0.05]].forEach(function (q) { c.beginPath(); c.arc(q[0], q[1], q[2], 0, 6.3); c.fill(); });
-    if (open > 0) {
-      // the crystal lining on the broken face
-      var gx = half ? 0.02 : -0.02;
-      c.fillStyle = glow; c.beginPath(); c.moveTo(gx, 0.95);
-      for (k = 0; k <= 8; k++) c.lineTo(gx + (half ? 1 : -1) * (0.16 + (k % 2) * 0.16), 0.95 - k * 0.24);
-      c.lineTo(gx, -0.95); c.closePath(); c.fill();
-      c.fillStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.moveTo(gx, 0.9); for (k = 0; k <= 8; k++) c.lineTo(gx + (half ? 1 : -1) * (0.05 + (k % 2) * 0.08), 0.9 - k * 0.225); c.lineTo(gx, -0.9); c.closePath(); c.fill();
-    }
-    c.restore();
-    // cracks, with the colour of what is inside showing through
-    if (!open) for (i = 0; i < Math.min(hits * 2, CRACKS.length); i++) { A.line(c, CRACKS[i], 0.1, OUTC); A.line(c, CRACKS[i], 0.045, glow); }
-    c.restore();
-  }
+  var sx = crt.shake && big ? (Math.random() - 0.5) * crt.shake * 0.12 : 0, sy = crt.shake && big ? (Math.random() - 0.5) * crt.shake * 0.12 : 0;
+  var bob = big && !hits && !open ? Math.sin(time * 2.4) * 0.03 : 0;
+  c.setTransform(dpr * S, 0, 0, -dpr * S, dpr * (w / 2 + (sx - 0.15) * S), dpr * (h * (big ? 0.5 : 0.56) + (sy - bob) * S));
+  A.crate(c, { hits: hits, open: open, t: time, kind: kind, glow: kind !== 'any' && !tier ? RR.TIER[kind].col : tierGlow(tier, time), shake: big ? crt.shake : 0 });
 }
-var OUTC = '#15171d';
-function openGeode() {
-  var got = P.crack();
+function openCrate() {
+  var got = P.openCrate();
   if (!got) { Au.ui('no'); return; }
-  geo.item = got.item; geo.tier = RR.TIER[got.item.tier]; geo.kind = got.kind;
-  geo.stage = 'rock'; geo.hits = 0; geo.t = 0; geo.shake = 0; geo.open = 0; geo.bits = [];
-  if (UI.cur !== 'geode') geo.from = UI.cur;
-  $('gecard').className = 'gecard plate'; $('gecard').innerHTML = '';
-  $('gehint').textContent = ('ontouchstart' in root ? 'Tap' : 'Click') + ' the rock';
-  $('gehint').className = 'gehint on';
-  UI.show('geode');
+  crt.item = got.item; crt.tier = RR.TIER[got.item.tier]; crt.kind = got.kind; crt.tro = got.trophies || [];
+  crt.stage = 'closed'; crt.hits = 0; crt.t = 0; crt.shake = 0; crt.open = 0; crt.bits = [];
+  if (UI.cur !== 'crate') crt.from = UI.cur;
+  $('cratecard').className = 'cratecard plate'; $('cratecard').innerHTML = '';
+  $('cratehint').textContent = ('ontouchstart' in root ? 'Tap' : 'Click') + ' the crate';
+  $('cratehint').className = 'cratehint on';
+  UI.show('crate');
   Au.ui('go');
-  if (!geo.raf) geoLoop();
+  if (!crt.raf) { crt.last = 0; crt.raf = root.requestAnimationFrame(crateLoop); }
 }
-function closeGeode() {
-  if (geo.raf) { root.cancelAnimationFrame(geo.raf); geo.raf = 0; }
-  geo.stage = '';
-  if (geo.from === 'results') UI.results(G.result, true);
+function closeCrate() {
+  if (crt.raf) { root.cancelAnimationFrame(crt.raf); crt.raf = 0; }
+  crt.stage = '';
+  if (crt.from === 'results') UI.results(G.result, true);
   else { UI.show('garage'); UI.garage(); }
 }
-function geoHit() {
-  if (geo.stage !== 'rock') return;
-  geo.hits++; geo.shake = 1;
-  if (geo.hits < 3) { Au.geode(geo.hits === 1 ? 'tap' : 'crack', geo.hits); return; }
-  geo.stage = 'burst'; geo.t = 0;
-  Au.geode('open', geo.tier.rank);
-  $('gehint').className = 'gehint';
-  for (var i = 0; i < 34; i++) { var a = Math.random() * 6.283, sp = 2 + Math.random() * 5; geo.bits.push({ x: 0, y: 0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp + 1.5, r: 0.04 + Math.random() * 0.09, rock: i % 3 === 0, rot: Math.random() * 6, life: 0.8 + Math.random() * 0.7 }); }
-  setTimeout(showGeoCard, 620);
+function crateHit() {
+  if (crt.stage !== 'closed') return;
+  crt.hits++; crt.shake = 1;
+  if (crt.hits < 3) { Au.crate(crt.hits === 1 ? 'tap' : 'crack', crt.hits); return; }
+  crt.stage = 'burst'; crt.t = 0;
+  Au.crate('open', crt.tier.rank);
+  $('cratehint').className = 'cratehint';
+  for (var i = 0; i < 34; i++) { var a = Math.random() * 6.283, sp = 2 + Math.random() * 5; crt.bits.push({ x: 0.15, y: 0.5, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp + 1.5, r: 0.04 + Math.random() * 0.09, wood: i % 3 === 0, rot: Math.random() * 6, life: 0.8 + Math.random() * 0.7 }); }
+  setTimeout(showCrateCard, 620);
 }
-function showGeoCard() {
-  if (UI.cur !== 'geode' || !geo.item) return;
-  var it = geo.item, h = '', bike = RR.BIKE[Store.data.bike];
-  geo.stage = 'show';
-  h += '<canvas id="geoitem"></canvas><div class="gi"><div class="k">' + (it.kind === 'paint' ? 'Paint job' : 'Rider') + ' ' + tierChip(it.tier) + '</div><h3>' + esc(it.name) + '</h3><p>' + (it.blurb ? esc(it.blurb) : paintWords(it)) + '</p>' +
-    '<div class="btns"><button class="btn go" data-act="geoPut">Put it on</button>' + (P.canCrack() ? '<button class="btn" data-act="geoAgain">Crack another</button>' : '') + '<button class="btn small" data-act="geoDone">Done</button></div></div>';
-  var card = $('gecard'); card.innerHTML = h; card.className = 'gecard plate on t-' + it.tier;
-  UI.title && ($('gnug').innerHTML = NUG + Store.data.nuggets);
+function showCrateCard() {
+  if (UI.cur !== 'crate' || !crt.item) return;
+  var it = crt.item, h = '';
+  crt.stage = 'show';
+  h += '<canvas id="crateitem"></canvas><div class="gi"><div class="k">' + (it.kind === 'paint' ? 'Paint job' : 'Rider') + ' ' + tierChip(it.tier) + '</div><h3>' + esc(it.name) + '</h3><p>' + (it.blurb ? esc(it.blurb) : paintWords(it)) + '</p>' +
+    crt.tro.map(function (x) { return '<div class="unl gold">Trophy earned: ' + esc(x.name) + '</div>'; }).join('') + '<div class="btns"><button class="btn go" data-act="cratePut">Put it on</button>' + (P.canOpen() ? '<button class="btn" data-act="crateAgain">Open another</button>' : '') + '<button class="btn small" data-act="crateDone">Done</button></div></div>';
+  var card = $('cratecard'); card.innerHTML = h; card.className = 'cratecard plate on t-' + it.tier;
+  $('gnug').innerHTML = NUG + Store.data.nuggets;
 }
-function geoLoop() {
-  geo.raf = root.requestAnimationFrame(geoLoop);
-  if (UI.cur !== 'geode') return;
-  var dt = 1 / 60; geo.t += dt; gT += dt;
-  geo.shake = Math.max(0, geo.shake - dt * 4);
-  if (geo.stage !== 'rock') geo.open = Math.min(1, geo.open + dt * 3.2);
-  var cv = $('geocv');
-  drawRock(cv, geo.hits, geo.open, gT, geo.tier);
+function crateLoop(now) {
+  crt.raf = root.requestAnimationFrame(crateLoop);
+  if (UI.cur !== 'crate') return;
+  var dt = frameDt(now, crt.last); crt.last = now; crt.t += dt; gT += dt;
+  crt.shake = Math.max(0, crt.shake - dt * 4);
+  if (crt.stage !== 'closed') crt.open = Math.min(1, crt.open + dt * 3.2);
+  var cv = $('cratecv');
+  drawCrate(cv, Math.min(2, crt.hits), crt.open, gT, crt.tier, crt.kind);
   // flying chips and sparks, in the same picture
-  if (geo.bits.length) {
-    var c = cv.getContext('2d'), col = tierGlow(geo.tier, gT), i;
-    for (i = geo.bits.length - 1; i >= 0; i--) {
-      var b = geo.bits[i]; b.life -= dt; if (b.life <= 0) { geo.bits.splice(i, 1); continue; }
+  if (crt.bits.length) {
+    var c = cv.getContext('2d'), col = tierGlow(crt.tier, gT), i;
+    for (i = crt.bits.length - 1; i >= 0; i--) {
+      var b = crt.bits[i]; b.life -= dt; if (b.life <= 0) { crt.bits.splice(i, 1); continue; }
       b.vy -= 9 * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.rot += 6 * dt;
       c.globalAlpha = Math.min(1, b.life * 2.5);
-      if (b.rock) { c.save(); c.translate(b.x, b.y); c.rotate(b.rot); c.fillStyle = '#7d7468'; c.fillRect(-b.r, -b.r, b.r * 2, b.r * 2); c.restore(); }
+      if (b.wood) { c.save(); c.translate(b.x, b.y); c.rotate(b.rot); c.fillStyle = '#b98a54'; c.fillRect(-b.r * 1.6, -b.r * 0.6, b.r * 3.2, b.r * 1.2); c.lineWidth = 0.02; c.strokeStyle = OUTC; c.strokeRect(-b.r * 1.6, -b.r * 0.6, b.r * 3.2, b.r * 1.2); c.restore(); }
       else { c.globalCompositeOperation = 'lighter'; A.star4(c, b.x, b.y, b.r * 1.6, col); c.globalCompositeOperation = 'source-over'; }
     }
     c.globalAlpha = 1;
   }
-  var ic = $('geoitem');
-  if (ic && ic.clientWidth && geo.item) { if (geo.item.kind === 'paint') A.swatch(ic, geo.item, RR.BIKE[Store.data.bike], gT); else A.portrait(ic, geo.item, RR.BIKE[Store.data.bike], gT); }
+  var ic = $('crateitem');
+  if (ic && ic.clientWidth && crt.item) { if (crt.item.kind === 'paint') A.swatch(ic, crt.item, RR.BIKE[Store.data.bike], gT); else A.portrait(ic, crt.item, RR.BIKE[Store.data.bike], gT); }
 }
+var OUTC = '#15171d';
 
 /* ------------------------------------------------------------------ */
 /* Settings                                                             */
@@ -10726,16 +11354,17 @@ UI.results = function (r, again) {
   }
   for (k = 0; k < r.bikes.length; k++) h += '<div class="unl">New bike in the garage: ' + esc(r.bikes[k].name) + '</div>';
   for (k = 0; k < r.worlds.length; k++) h += '<div class="unl">New world open: ' + esc(r.worlds[k].name) + '</div>';
-  for (k = 0; k < (r.geodes || []).length; k++) h += '<div class="unl">' + esc(r.geodes[k].why) + ': a ' + r.geodes[k].kind + ' geode for you</div>';
+  for (k = 0; k < (r.crates || []).length; k++) h += '<div class="unl">' + esc(r.crates[k].why) + ': a ' + r.crates[k].kind + ' crate for you</div>';
+  for (k = 0; k < (r.trophies || []).length; k++) h += '<div class="unl gold">Trophy earned: ' + esc(r.trophies[k].name) + '</div>';
   h += '<div class="btns">' + (next >= 0 ? '<button class="btn go" data-act="nextTrack" data-i="' + next + '">Next track</button>' : '') +
        '<button class="btn' + (next >= 0 ? '' : ' go') + '" data-act="retry">Ride it again</button>' +
-       (P.canCrack() ? '<button class="btn small gem" data-act="crack">Crack a geode</button>' : '') +
+       (P.canOpen() ? '<button class="btn small gem" data-act="crate">Open a crate</button>' : '') +
        '<button class="btn small" data-act="garage">Garage</button><button class="btn small" data-act="quit">Tracks</button></div>';
   $('res').innerHTML = h;
   UI.show('results');
   if (again) return;
   for (k = 0; k < r.stars; k++) (function (n) { setTimeout(function () { var e = $('rs' + n); if (e && UI.cur === 'results') { e.className = 'star on'; Au.star(n); } }, 350 + n * 330); })(k);
-  setTimeout(function () { if (UI.cur !== 'results') return; if (r.bikes.length || r.worlds.length || (r.geodes || []).length) Au.unlocked(); else if (r.best && r.old) Au.newBest(); else if (pay) Au.coin(2); }, 350 + r.stars * 330 + 150);
+  setTimeout(function () { if (UI.cur !== 'results') return; if (r.bikes.length || r.worlds.length || (r.crates || []).length || (r.trophies || []).length) Au.unlocked(); else if (r.best && r.old) Au.newBest(); else if (pay) Au.coin(2); }, 350 + r.stars * 330 + 150);
 };
 
 /* ------------------------------------------------------------------ */
@@ -10743,17 +11372,289 @@ RR.boot = function () {
   Store.load();
   P.claim();
   var owed = P.settle();      // old saves are paid for the stars and worlds they already have
-  if (owed.nuggets || owed.geodes.length) Store.save();
+  var news = Store.data.news < 3;
+  if (owed.nuggets || owed.crates.length || news) { Store.data.news = 3; Store.save(); }
   R.init($('stage'));
   UI.init();
-  // the rock on the geode screen answers to a tap anywhere
-  $('geocv').addEventListener('pointerdown', function (e) { e.preventDefault(); Au.unlock(); afterUnlock(); geoHit(); });
+  // the crate answers to a tap anywhere
+  $('cratecv').addEventListener('pointerdown', function (e) { e.preventDefault(); Au.unlock(); afterUnlock(); crateHit(); });
   G.menu();
   UI.title();
-  if (owed.nuggets || owed.geodes.length) setTimeout(function () { UI.toast('New: paint jobs and riders. You have ' + Store.data.nuggets + ' nuggets' + (owed.geodes.length ? ' and ' + owed.geodes.length + ' prize geode' + (owed.geodes.length > 1 ? 's' : '') : '') + ' waiting in the Garage.'); }, 900);
-  if (Store.rebuilt) setTimeout(function () { UI.toast(Store.rebuilt + ' track' + (Store.rebuilt > 1 ? 's have' : ' has') + ' been rebuilt and now bite back. You keep your stars on them. Best times start again.'); }, owed.nuggets || owed.geodes.length ? 6500 : 900);
+  if (owed.nuggets || owed.crates.length || news) setTimeout(function () { UI.toast('New: crates, trophies and a showroom for your bikes, and far more paint jobs and riders. You have ' + Store.data.nuggets + ' nuggets' + (P.freeCrates() ? ' and ' + P.freeCrates() + ' prize crate' + (P.freeCrates() > 1 ? 's' : '') : '') + '.'); }, 900);
+  if (Store.rebuilt) setTimeout(function () { UI.toast(Store.rebuilt + ' track' + (Store.rebuilt > 1 ? 's have' : ' has') + ' been rebuilt and now bite back. You keep your stars on them. Best times start again.'); }, owed.nuggets || owed.crates.length || news ? 7500 : 900);
   root.requestAnimationFrame(G.frame);
 };
+})(typeof window !== 'undefined' ? window : globalThis);
+
+/* ---- showroom.js ---- */
+/* Ridge Riot: the showroom. Your bikes standing in a garage, each wearing its own paint and rider.
+   The garage you own decides how many bikes can stand on show (3 in the shed, up to 15 in the showroom) and
+   how the place looks. It is only for looking at: every bike you own can be ridden from the normal bike list.
+   Tapping a bike on show makes it your ride. "Arrange" lets you choose who stands where.
+
+   How it is drawn: the room is painted once into a picture (A.garageScene) and reused. Each frame the picture is
+   copied over, then the bikes (still pictures for plain looks, redrawn every frame for animated paints and riders),
+   then the moving lights on top (A.garageLive). Every frame runs at the screen's own refresh rate. */
+(function (root) {
+'use strict';
+var RR = root.RR, A = RR.Art, UI = RR.UI, Au = RR.Audio, Store = RR.Store, P = RR.Progress, doc = root.document;
+function $(id) { return doc.getElementById(id); }
+function esc(s) { return UI.esc(s); }
+
+/* rows of display slots at each garage level, back row first */
+var ROWS = [[3], [3, 3], [5, 4], [6, 6], [5, 5, 5]];
+var PERSP = { 1: [1], 2: [0.86, 1], 3: [0.76, 0.88, 1] };      // bikes at the back are drawn a little smaller
+var STAND = [4, 7, 5, 10, 12];                                  // how far the stand sticks out below the ground line, in pixels at 1x
+var REFLECT = [false, false, false, true, true];
+
+var S = { cost: 0, vs: 16.7, ring: [], rk: 0, shed: false, shedFrames: 0, frames: 0, on: false, raf: 0, last: 0, t: 0, arrange: false, picking: -1, level: -1, W: 0, H: 0, dpr: 1, g: null, scene: null, cells: [], sprites: {}, flash: 0, pop: -1, popT: 0, ctx: null };
+
+RR.Showroom = {
+  html: function () {
+    var back = '<svg viewBox="0 0 24 24" fill="none" stroke="#f6f2e7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>';
+    return '<section id="s-show" class="screen full">' +
+      '<canvas id="showcv"></canvas>' +
+      '<div id="showslots"></div>' +
+      '<div class="head showhead" id="showhead"><button class="back" data-act="showBack">' + back + '<span>Back</span></button><span class="count" id="showname"></span><span class="fill"></span><span class="count" id="shownug"></span></div>' +
+      '<div class="showfoot" id="showfoot"><div class="showcap plate" id="showcap"></div><div class="showbtns"><button class="btn small" data-act="showArrange" id="showarr">Arrange</button><button class="btn small gem" data-act="showUp" id="showup"></button></div></div>' +
+      '<div class="showpick" id="showpick"><div class="pickbox plate" id="pickbox"></div></div>' +
+      '</section>';
+  },
+  /* called by the menu when the screen is shown or hidden */
+  shown: function (on) {
+    if (on === S.on) { if (on) RR.Showroom.layout(); return; }
+    S.on = on;
+    if (on) { S.cost = 0; S.ring = []; S.rk = 0; S.shed = false; S.frames = 0; S.skipped = 0; S.last = 0; S.arrange = false; S.picking = -1; S.pop = -1; RR.Showroom.layout(); S.raf = root.requestAnimationFrame(frame); }
+    else { root.cancelAnimationFrame(S.raf); S.raf = 0; S.sprites = {}; S.scene = null; S.level = -1; }
+  },
+  open: function () {
+    P.garageFill(); Au.ui('go');
+    UI.show('show');
+  },
+  /* the menu hands every button press here first; true means it was ours */
+  act: function (a, el) {
+    var g = Store.data.garage, i, id, d, n;
+    switch (a) {
+      case 'showBack':
+        if (S.picking >= 0) { closePick(); Au.ui('back'); return true; }
+        Au.ui('back'); Store.save(); UI.gtab = 'bikes'; UI.show('garage'); UI.garage(); return true;
+      case 'showArrange':
+        S.arrange = !S.arrange; Au.ui('toggle'); refresh(); return true;
+      case 'showUp':
+        n = P.nextGarage(); if (!n) return true;
+        if (Store.data.nuggets < n.price) { Au.ui('no'); UI.toast('The ' + n.name + ' costs ' + n.price + ' nuggets. You need ' + (n.price - Store.data.nuggets) + ' more.'); return true; }
+        P.buyGarage(); P.garageFill(); Au.unlocked(); S.flash = 1; S.sprites = {};
+        UI.toast('You have a ' + P.garage().name + ' now. Room for ' + P.garage().slots + ' bikes.');
+        RR.Showroom.layout(); return true;
+      case 'slot':
+        i = +el.getAttribute('data-i'); id = P.garageFill()[i];
+        if (id && !S.arrange) {
+          d = RR.BIKE[id]; S.pop = i; S.popT = 0;
+          if (Store.data.bike === id) Au.ui('tap');
+          else { Store.data.bike = id; Store.save(); Au.ui('go'); }
+          refresh();
+        } else openPick(i);
+        return true;
+      case 'slotPut':
+        if (S.picking < 0) return true;
+        id = el.getAttribute('data-id') || '';
+        P.garagePlace(S.picking, id); Store.save(); Au.ui('go'); closePick(); refresh(); return true;
+      case 'slotCancel': Au.ui('back'); closePick(); return true;
+    }
+    return false;
+  },
+  layout: layout
+};
+
+/* ---------------- what is shown ---------------- */
+function look(b) { return P.bikeOpen(b) ? P.look(b.id) : null; }
+function moving(lk) { return !!(lk && ((lk.paint && A.moves(lk.paint)) || (lk.rider && A.moves(lk.rider)))); }
+function refresh() {
+  var gar = P.garage(), slots = P.garageFill(), nx = P.nextGarage(), i, shown = 0;
+  for (i = 0; i < slots.length; i++) if (slots[i]) shown++;
+  $('showname').textContent = gar.name;
+  $('shownug').innerHTML = UI.NUG + Store.data.nuggets;
+  $('showcap').innerHTML = '<b>' + esc(gar.name) + ': ' + shown + ' of ' + gar.slots + ' on show</b>' + (S.arrange ? 'Tap a spot to choose which bike stands there.' : 'Your ride: ' + esc(RR.BIKE[Store.data.bike].name) + '. Tap a bike to ride it. You can ride any bike you own, shown or not.');
+  $('showarr').textContent = S.arrange ? 'Done' : 'Arrange';
+  $('showarr').classList.toggle('go', S.arrange);
+  var up = $('showup');
+  if (nx) { up.style.display = ''; up.innerHTML = 'Upgrade: ' + esc(nx.name) + ' ' + UI.NUG + nx.price; up.setAttribute('aria-label', 'Upgrade to the ' + nx.name + ' for ' + nx.price + ' nuggets, ' + nx.slots + ' slots'); up.classList.toggle('poor', Store.data.nuggets < nx.price); }
+  else up.style.display = 'none';
+  var bs = $('showslots').children;
+  for (i = 0; i < bs.length; i++) {
+    var id = slots[i], b = id && RR.BIKE[id];
+    bs[i].setAttribute('aria-label', b ? b.name + (Store.data.bike === id ? ', your ride' : '') + (S.arrange ? ', change' : ', ride it') : 'Empty spot, choose a bike');
+  }
+  S.sprites = {};
+}
+
+/* ---------------- sizes and the room ---------------- */
+function layout() {
+  var cv = $('showcv'); if (!cv || !cv.clientWidth) return;
+  var W = cv.clientWidth, H = cv.clientHeight, dpr = Math.min(2, root.devicePixelRatio || 1);
+  var level = Math.min(ROWS.length - 1, Math.max(0, Store.data.garage.level)), rows = ROWS[level], R = rows.length, k, i;
+  S.W = W; S.H = H; S.dpr = dpr; S.level = level;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  S.ctx = cv.getContext('2d');
+  refresh();
+  var cr = cv.getBoundingClientRect(), hr = $('showhead').getBoundingClientRect(), fr = $('showfoot').getBoundingClientRect(), cs = root.getComputedStyle($('s-show'));
+  var x0 = parseFloat(cs.paddingLeft) || 0, x1 = W - (parseFloat(cs.paddingRight) || 0);
+  var top = hr.bottom - cr.top + 8, bot = fr.top - cr.top - 4, avail = Math.max(60, bot - top), AW = x1 - x0;
+  var wts = PERSP[R], plan = [], bhSum = 0, fixed = 0, f;
+  for (k = 0; k < R; k++) {
+    var cw = AW / rows[k], s = wts[k] * cw * 0.96 / 3.4;
+    plan.push({ n: rows[k], cw: cw, s: s, lab: cw >= 80 ? 15 : 0, stand: STAND[level] + 3, bh: 2.3 * s });
+  }
+  // the bikes shrink to fit the height there is. A name under every bike costs height, so when that would shrink the
+  // bikes a lot the names go and the bike you ride is marked on its stand instead (its name is in the caption).
+  function fitting() { bhSum = 0; fixed = 0; plan.forEach(function (p) { bhSum += 2.3 * p.s; fixed += p.lab + p.stand + 3; }); return Math.min(1, Math.max(0.2, (avail - fixed) / bhSum)); }
+  f = fitting();
+  if (f < 0.72) { plan.forEach(function (p) { p.lab = 0; }); f = fitting(); }
+  var total = 0;
+  plan.forEach(function (p) { p.s *= f; p.bh = 2.3 * p.s; total += p.bh + p.lab + p.stand + 3; });
+  var spare = Math.max(0, avail - total), y = bot - spare * 0.3;
+  var slot = 0; S.cells = [];
+  for (k = R - 1; k >= 0; k--) {
+    var p = plan[k], ground = y - p.lab - p.stand, rowTop = ground - p.bh;
+    p.ground = ground; p.top = rowTop; p.bottom = y;
+    y = rowTop - 3;
+  }
+  for (k = 0; k < R; k++) {
+    var p2 = plan[k];
+    for (i = 0; i < p2.n; i++) S.cells.push({ x: x0 + i * p2.cw, w: p2.cw, ground: p2.ground, top: p2.top, bottom: p2.bottom, s: p2.s, row: k, lab: p2.lab, stand: p2.stand });
+  }
+  var back = plan[0], hz = Math.max(top + 24, back.ground - back.bh * 0.2);
+  S.g = { W: W, H: H, hz: hz, x0: x0, x1: x1, rows: plan.map(function (p) { return { y0: p.top, y1: p.ground, n: p.n }; }) };
+  // the room, painted once
+  var sc = doc.createElement('canvas'); sc.width = cv.width; sc.height = cv.height;
+  var c = sc.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  A.garageScene(c, S.g, level); S.scene = sc; S.sprites = {};
+  // an invisible button over every spot
+  var h = '';
+  S.cells.forEach(function (cl, n) { var y0 = Math.max(cl.top, top - 2); h += '<button class="slotb" data-act="slot" data-i="' + n + '" style="left:' + (cl.x + 1).toFixed(1) + 'px;top:' + y0.toFixed(1) + 'px;width:' + (cl.w - 2).toFixed(1) + 'px;height:' + (cl.bottom - y0).toFixed(1) + 'px"></button>'; });
+  $('showslots').innerHTML = h;
+  refresh();
+}
+
+/* ---------------- bike pictures ---------------- */
+/* one bike, wearing its look, in a canvas: [bike][room for a reflection under it] */
+function spriteFor(cl, b, lk, slot, redraw) {
+  var anim = moving(lk), key = slot + '|' + b.id + '|' + (lk && lk.paint ? lk.paint.id : '') + '|' + (lk && lk.rider ? lk.rider.id : '');
+  var sp = S.sprites[key];
+  if (sp && (!anim || !redraw)) return sp;
+  var dpr = S.dpr, wM = b.wb + b.rr + b.rf + 0.9, hM = b.kind === 'bumper' ? 2.7 : 2.3;
+  if (!sp) {
+    var s = Math.min(cl.s, cl.w * 0.96 / wM, cl.s * 2.3 / hM), px = s * dpr, refl = REFLECT[S.level] ? 0.7 : 0;
+    var cv = doc.createElement('canvas'); cv.width = Math.ceil(wM * px); cv.height = Math.ceil((hM + refl) * px);
+    sp = S.sprites[key] = { cv: cv, s: s, px: px, wM: wM, hM: hM, refl: refl, ox: b.rr + 0.5, anim: anim };
+    if (anim) { var c0 = cv.getContext('2d'); c0.imageSmoothingEnabled = true; }
+  }
+  var c = sp.cv.getContext('2d'), px2 = sp.px, gy = (sp.hM - 0.06) * px2;
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, sp.cv.width, sp.cv.height);
+  c.setTransform(px2, 0, 0, -px2, sp.ox * px2, gy);
+  A.bike(c, b, { rider: true, lp: 0, stand: 0, look: lk, t: anim ? S.t : 1 });
+  if (sp.refl) {
+    var rh = Math.round(sp.refl * px2), gap = Math.round(0.03 * px2);
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.save(); c.globalAlpha = 0.34; c.translate(0, 2 * gy + gap); c.scale(1, -1);
+    c.drawImage(sp.cv, 0, gy - rh, sp.cv.width, rh, 0, gy - rh, sp.cv.width, rh);
+    c.restore();
+    c.globalCompositeOperation = 'destination-out';
+    var gr = c.createLinearGradient(0, gy + gap, 0, gy + gap + rh); gr.addColorStop(0, 'rgba(0,0,0,0.15)'); gr.addColorStop(1, 'rgba(0,0,0,1)');
+    c.fillStyle = gr; c.fillRect(0, gy + gap, sp.cv.width, rh + 2);
+    c.globalCompositeOperation = 'source-over';
+  }
+  return sp;
+}
+
+function pill(c, text, cx, y, mine) {
+  c.font = 'italic 800 11px "Avenir Next Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif';
+  var w = c.measureText(text).width + 12;
+  c.beginPath(); if (c.roundRect) c.roundRect(cx - w / 2, y, w, 14, 7); else c.rect(cx - w / 2, y, w, 14);
+  c.fillStyle = mine ? '#f2c230' : 'rgba(20,23,30,0.74)'; c.fill();
+  c.lineWidth = 1.2; c.strokeStyle = mine ? '#171a22' : 'rgba(246,242,231,0.5)'; c.stroke();
+  c.fillStyle = mine ? '#171a22' : '#f6f2e7'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, cx, y + 7.5);
+}
+
+/* ---------------- a frame ---------------- */
+function frame(now) {
+  if (!S.on) return;
+  S.raf = root.requestAnimationFrame(frame);
+  var dt = S.last ? Math.min(0.05, Math.max(0.001, (now - S.last) / 1000)) : 1 / 60; S.last = now; S.t += dt;
+  if (S.flash > 0) S.flash = Math.max(0, S.flash - dt * 1.6);
+  if (S.pop >= 0) { S.popT += dt; if (S.popT > 0.45) S.pop = -1; }
+  var t0 = root.performance.now();
+  draw();
+  S.cost = S.cost * 0.9 + (root.performance.now() - t0) * 0.1; S.frames++;
+  // Safety valve for slow phones: every animated bike is redrawn every frame (60 or more times a second), unless the drawing
+  // itself is eating most of the frame. Then the bikes other than your ride take turns, each redrawn every second frame.
+  S.ring[S.rk++ % 90] = dt * 1000;
+  if (S.frames % 20 === 0 && S.ring.length >= 20) {
+    var r = S.ring.slice().sort(function (a, b) { return a - b; }); S.vs = Math.min(16.7, Math.max(4, r[Math.floor(r.length * 0.2)]));       // 60 Hz is assumed unless frames are seen arriving faster
+    if (!S.shed && S.cost > S.vs * 0.75) S.shed = true; else if (S.shed && S.cost < S.vs * 0.4) S.shed = false;
+  }
+}
+/* for tools/perf.js: how hard the showroom is working and whether it had to share the work out */
+RR.Showroom.stats = function () { return { costMs: +S.cost.toFixed(2), frameMs: +S.vs.toFixed(2), shared: S.shed, frames: S.frames, skippedRedraws: S.skipped || 0 }; };
+RR.Showroom.draw = draw;
+RR.Showroom.state = S;
+function draw() {
+  var c = S.ctx, g = S.g, level = S.level, dpr = S.dpr; if (!c || !g || !S.scene) return;
+  c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+  c.drawImage(S.scene, 0, 0);
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  var slots = Store.data.garage.slots, mine = Store.data.bike, i, cl;
+  var items = [];
+  for (i = 0; i < S.cells.length; i++) {
+    cl = S.cells[i];
+    var id = slots[i], b = id && RR.BIKE[id], cx = cl.x + cl.w / 2;
+    A.garageStand(c, level, cx, cl.ground, Math.min(cl.w * 0.9, (b ? (b.wb + b.rr + b.rf + 0.9) * cl.s : cl.w * 0.6)), S.t);
+    if (!b) {
+      // an empty spot: a dashed outline and a plus
+      c.save(); c.setLineDash([6, 5]); c.lineWidth = 2; c.strokeStyle = S.arrange ? 'rgba(242,194,48,0.95)' : 'rgba(246,242,231,0.4)';
+      var bx = cl.x + cl.w * 0.12, bw = cl.w * 0.76; c.strokeRect(bx, cl.top + (cl.ground - cl.top) * 0.28, bw, (cl.ground - cl.top) * 0.64);
+      c.setLineDash([]); c.lineWidth = 3; c.lineCap = 'round'; var py = cl.top + (cl.ground - cl.top) * 0.6, pr = Math.min(10, cl.w * 0.07);
+      c.beginPath(); c.moveTo(cx - pr, py); c.lineTo(cx + pr, py); c.moveTo(cx, py - pr); c.lineTo(cx, py + pr); c.stroke(); c.restore();
+      continue;
+    }
+    var again = !S.shed || id === mine || ((S.frames + i) & 1) === 0; if (!again) S.skipped = (S.skipped || 0) + 1;
+    var sp = spriteFor(cl, b, look(b), i, again), sw = sp.cv.width / dpr, sh = sp.cv.height / dpr;
+    var gyc = (sp.hM - 0.06) * sp.s, dx = cx - sw / 2, dy = cl.ground - gyc;
+    if (S.pop === i) {
+      var k = S.popT / 0.45, hop = Math.sin(k * Math.PI) * cl.s * 0.18 * (1 - k * 0.4);
+      c.drawImage(sp.cv, dx, dy - hop, sw, sh);
+    } else c.drawImage(sp.cv, dx, dy, sw, sh);
+    if (mine === b.id) { c.save(); c.strokeStyle = '#f2c230'; c.lineWidth = 3; c.shadowColor = '#f2c230'; c.shadowBlur = 8; c.beginPath(); c.ellipse(cx, cl.ground + cl.stand * 0.45, Math.min(cl.w * 0.46, sw * 0.5), Math.max(3, cl.stand * 0.4), 0, 0, 6.2832); c.stroke(); c.restore(); }
+    if (S.arrange) { c.save(); c.setLineDash([6, 5]); c.lineWidth = 2; c.strokeStyle = 'rgba(242,194,48,0.95)'; c.strokeRect(cl.x + 3, cl.top - 1, cl.w - 6, cl.bottom - cl.top + 1); c.restore(); }
+    if (cl.lab) pill(c, b.name + (S.arrange ? '' : ''), cx, cl.ground + cl.stand + 1, mine === b.id);
+  }
+  A.garageLive(c, g, level, S.t);
+  if (S.flash > 0) { c.fillStyle = 'rgba(255,248,210,' + (S.flash * 0.7).toFixed(3) + ')'; c.fillRect(0, 0, S.W, S.H); }
+}
+
+/* ---------------- choosing who stands on a spot ---------------- */
+function openPick(i) {
+  S.picking = i; Au.ui('swipe');
+  var slots = P.garageFill(), at = {}, h = '', n;
+  slots.forEach(function (id, k) { if (id) at[id] = k + 1; });
+  h += '<h3>Which bike stands in spot ' + (i + 1) + '?</h3><div class="pickgrid scroll">';
+  RR.BIKES.forEach(function (b) {
+    if (!P.bikeOpen(b)) return;
+    h += '<button class="pk' + (slots[i] === b.id ? ' cur' : '') + '" data-act="slotPut" data-id="' + b.id + '" aria-label="' + esc(b.name) + '"><canvas data-bike="' + b.id + '"></canvas><b>' + esc(b.name) + '</b><i>' + (slots[i] === b.id ? 'Here now' : at[b.id] ? 'Spot ' + at[b.id] : 'In the garage') + '</i></button>';
+  });
+  h += '</div><div class="btns"><button class="btn small" data-act="slotPut" data-id="">Leave it empty</button><button class="btn small" data-act="slotCancel">Cancel</button></div>';
+  $('pickbox').innerHTML = h; $('showpick').classList.add('on');
+  var cvs = $('pickbox').querySelectorAll('canvas');
+  for (n = 0; n < cvs.length; n++) thumb(cvs[n], RR.BIKE[cvs[n].getAttribute('data-bike')]);
+}
+function closePick() { S.picking = -1; $('showpick').classList.remove('on'); }
+function thumb(cv, b) {
+  var dpr = Math.min(2, root.devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  var c = cv.getContext('2d'), span = b.wb + b.rr + b.rf + 0.3, tall = b.kind === 'bumper' ? 2.7 : 2.3, S2 = Math.min(w / span, h / tall) * dpr;
+  c.setTransform(S2, 0, 0, -S2, (cv.width - span * S2) / 2 + (b.rr + 0.15) * S2, cv.height - 0.08 * S2);
+  A.bike(c, b, { rider: true, lp: 0, stand: 0, look: look(b), t: 1 });
+}
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>

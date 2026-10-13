@@ -393,9 +393,9 @@ S.wipe = function (kind, v) {
     case 'fwump': noise(0.3, 'lowpass', 500, 150, 0.7, 0.6, 0, null, true, 0.01); tone('sine', 110, 60, 0.25, 0.4); break;
   }
 };
-/* nuggets and geodes */
+/* nuggets and crates */
 S.coin = function (n) { if (!ok) return; var c = Math.min(5, n || 1); for (var i = 0; i < c; i++) { tone('square', 1568, 1568, 0.05, 0.07, i * 0.07); tone('square', 2093, 2093, 0.1, 0.07, i * 0.07 + 0.045); } };
-S.geode = function (stage, rank) {
+S.crate = function (stage, rank) {
   if (!ok) return;
   var i, f;
   if (stage === 'tap') { noise(0.05, 'bandpass', 900, 0, 3, 0.35); tone('triangle', 180 + (rank || 0) * 30, 140, 0.07, 0.3); }
