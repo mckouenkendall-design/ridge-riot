@@ -248,6 +248,9 @@ RR.prepBike = function (def) {
   b.pivot = def.pivot || null;
   b.glide = def.glide || null;
   b.smash = def.smash || 0;                          // speed (m/s) needed to break a log
+  b.turboT = def.turbo ? def.turbo.build : 0;        // seconds of held gas to reach full boost
+  b.turboPow = def.turbo ? def.turbo.power : 0;      // extra push at full boost, share of normal
+  b.turboTop = def.turbo ? def.turbo.top : 0;        // extra top speed at full boost, share of normal
   // a tyre that grips some surfaces better than others: per material grip and rolling drag
   if (def.surf) {
     b.matMu = []; b.matRoll = [];
@@ -334,7 +337,7 @@ RR.resetSim = function (s) {
   s.flips = 0; s.bestAir = 0; s.jumpX = 0; s.bestJump = 0; s.maxSpeed = 0; s.wheelieT = 0;
   s.finishTime = 0; s.sinceCrash = 0; s.driveF = 0; s.body = false;
   s._pvx = [0, 0]; s._pvy = [0, 0]; s.pendFlip = null;
-  s.hopReady = 1; s.btn = 0; s.stickT = b.stickMax; s.lift = 0;
+  s.hopReady = 1; s.btn = 0; s.stickT = b.stickMax; s.lift = 0; s.turbo = 0;
   if (s.smash) for (i = 0; i < s.smash.length; i++) s.smash[i] = 0;
   s.events.length = 0;
   // let the suspension settle before the clock starts
@@ -409,8 +412,8 @@ function substep(s, inp, dt) {
     if (i === 0) {
       var Fd = 0;
       if (gas && s.airW[0] < 0.12) {
-        var vmax = b.vmax * (boost ? 1.22 : 1);
-        Fd = s.thrust * (boost ? 1.45 : 1);
+        var vmax = b.vmax * (boost ? 1.22 : 1) * (1 + b.turboTop * s.turbo);
+        Fd = s.thrust * (boost ? 1.45 : 1) * (1 + b.turboPow * s.turbo);
         var vv = wv > 1 ? wv : 1;
         if (vv > b.vp) Fd *= b.vp / vv;
         if (boost) Fd = Math.max(Fd, s.thrust * 0.7);
@@ -593,6 +596,13 @@ function tick(s, inp, settling) {
     }
   }
   s.btn = btn;
+  // the turbo bike: boost builds for as long as the gas is held, and is gone the moment you let off
+  if (b.turboT && !settling) {
+    if (inp.gas && !inp.brake && !s.crashed && !s.finished) {
+      var was = s.turbo; s.turbo = Math.min(1, s.turbo + DT / b.turboT);
+      if (was < 1 && s.turbo >= 1) s.events.push({ t: 'spool', x: s.x, y: s.y });
+    } else { if (s.turbo > 0.3) s.events.push({ t: 'dump', x: s.x, y: s.y, k: s.turbo }); s.turbo = 0; }
+  }
   for (i = 0; i < NSUB; i++) substep(s, inp, H);
   // sticky tyres let go after b.stickMax seconds on anything steep, and recover on gentle ground
   if (b.stick) {
@@ -686,7 +696,7 @@ function tick(s, inp, settling) {
 RR.tick = function (s, inp) { tick(s, inp, false); };
 
 /* Copy of everything that changes, so the test bot can rewind. */
-var NUMS = ['x', 'y', 'a', 'vx', 'vy', 'w', 'time', 'lp', 'airT', 'rot', 'boost', 'flips', 'bestAir', 'jumpX', 'bestJump', 'maxSpeed', 'wheelieT', 'finishTime', 'sinceCrash', 'driveF', 'pl', 'relT', 'padT', 'bonks', 'bonkT', 'hopReady', 'btn', 'stickT', 'lift'];
+var NUMS = ['x', 'y', 'a', 'vx', 'vy', 'w', 'time', 'lp', 'airT', 'rot', 'boost', 'flips', 'bestAir', 'jumpX', 'bestJump', 'maxSpeed', 'wheelieT', 'finishTime', 'sinceCrash', 'driveF', 'pl', 'relT', 'padT', 'bonks', 'bonkT', 'hopReady', 'btn', 'stickT', 'lift', 'turbo'];
 var ARRS = ['wx', 'wy', 'wvx', 'wvy', 'wa', 'ww', 'comp', 'compV', 'gnd', 'load', 'slip', 'mat', 'nrmX', 'nrmY', 'bot', 'airW', '_pvx', '_pvy'];
 RR.snapshot = function (s) {
   var o = {}, i;

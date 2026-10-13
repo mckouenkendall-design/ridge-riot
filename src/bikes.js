@@ -200,17 +200,15 @@ RR.BIKES = [
     unlock: { type: 'gears', n: 6, text: 'Find 6 hidden gears' }
   },
   {
-    id: 'hopper', name: 'Grasshopper', kind: 'springer', tag: 'Legs like a grasshopper', wipe: 'boingo',
-    blurb: 'A pit bike on stilts, with legs far longer than a bike this small has any right to.',
-    trick: 'Nearly half a metre of suspension, more than any other bike: big drops and bad landings that bottom out everything else are swallowed whole.',
-    mass: 140, kgyr: 0.47, wb: 1.12, rr: 0.25, rf: 0.25, com: [0.56, 0.78], wheelMass: [5.5, 5], rake: 26, swing: 12,
-    sus: [{ travel: 0.44, freq: 2.0, sag: 0.25, zc: 0.42, zr: 0.95 }, { travel: 0.46, freq: 1.95, sag: 0.25, zc: 0.40, zr: 0.92 }],
-    accel: 0.62, vp: 10.5, vmax: 16.2, grip: 1.0, brake: 0.8, leanAcc: 13, spin: 6.0, cda: 0.5,
-    rider: { seat: [0.30, 0.95], peg: [0.40, 0.52], grip: [0.80, 1.18], scale: 1, torso: 0.30 },
-    // no tail to lean back on: tipped too far back, it falls on the rider rather than skating along on its rear mudguard
-    body: [[0.5, 0.26, 0.12], [-0.05, 0.5, 0.08], [0.88, 1.0, 0.09], [0.66, 1.12, 0.07], [0.3, 0.98, 0.1]],
-    col: ['#7ac943', '#2a2f1e', '#f2e14a'], suit: ['#2a2f1e', '#7ac943', '#f2e14a'],
-    snd: { type: 'springer', pitch: 1.35, gears: 4 },
+    id: 'turbo', name: 'Spool 600', kind: 'turbo', tag: 'Hold the gas and it keeps pulling', wipe: 'blowoff',
+    blurb: 'A street tracker with a turbocharger the size of a melon bolted to the side.',
+    trick: 'Turbo: the longer you hold the gas, the harder it pulls, up to half as much again after two seconds. Let off for a moment and the boost is gone.',
+    mass: 205, kgyr: 0.47, wb: 1.45, rr: 0.32, rf: 0.32, com: [0.68, 0.76], wheelMass: [12, 10], rake: 26, swing: 9,
+    sus: [{ travel: 0.18, freq: 2.3, sag: 0.3, zc: 0.46, zr: 1.0 }, { travel: 0.19, freq: 2.25, sag: 0.3, zc: 0.44, zr: 0.95 }],
+    accel: 0.64, vp: 10, vmax: 16.6, grip: 1.04, brake: 0.95, leanAcc: 13.5, spin: 5.8, cda: 0.5, turbo: { build: 2.2, power: 0.5, top: 0.16 },
+    rider: { seat: [0.40, 0.86], peg: [0.50, 0.40], grip: [0.98, 1.06], scale: 1, torso: 0.5 },
+    col: ['#ff6a00', '#1b1d24', '#f2f2f2'], suit: ['#1b1d24', '#ff6a00', '#f2f2f2'],
+    snd: { type: 'turbo', pitch: 1.0, gears: 5 },
     unlock: { type: 'jump', n: 25, text: 'Clear 25 m in one jump' }
   },
   {
