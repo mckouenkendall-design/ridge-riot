@@ -69,24 +69,27 @@ function ik(ax, ay, bx, by, l1, l2, dir, out) {
 A.ik = ik;
 
 /* ------------------------------ wheels ------------------------------ */
-A.wheel = function (ctx, x, y, r, ang, st, rate) {
+/* st (wheel style) hooks for the newer bikes: st.rub = tyre colour, st.tread(ctx, r, ri, st, v, rate) = extra
+   tread (studs, paddles, pads) drawn turning with the wheel. v is the view object A.bike was given. */
+A.wheel = function (ctx, x, y, r, ang, st, rate, v) {
   var ri = r * (1 - st.tyre), i;
   ctx.save(); ctx.translate(x, y);
   // tyre
   ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.moveTo(ri, 0); ctx.arc(0, 0, ri, 0, TAU, true);
-  ctx.fillStyle = RUB; ctx.fill();
+  ctx.fillStyle = st.rub || RUB; ctx.fill();
   ctx.save(); ctx.rotate(ang);
   if (st.knob) {
     var nk = st.knob === 2 ? 10 : Math.max(12, Math.round(r * 52)), seg = TAU * r / nk;
     ctx.setLineDash(st.knob === 2 ? [seg * 0.28, seg * 0.72] : [seg * 0.55, seg * 0.45]);
     ctx.beginPath(); ctx.arc(0, 0, r + (st.knob === 2 ? 0.03 : 0.008), 0, TAU);
-    ctx.lineWidth = st.knob === 2 ? 0.09 : 0.04; ctx.strokeStyle = RUB; ctx.stroke();
+    ctx.lineWidth = st.knob === 2 ? 0.09 : 0.04; ctx.strokeStyle = st.rub || RUB; ctx.stroke();
     ctx.beginPath(); ctx.arc(0, 0, r - r * st.tyre * 0.42, 0, TAU);
     ctx.lineWidth = r * st.tyre * 0.3; ctx.strokeStyle = '#30323b'; ctx.stroke();
     ctx.setLineDash([]);
   }
   ctx.restore();
   ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.lineWidth = 0.024; ctx.strokeStyle = OUT; ctx.stroke();
+  if (st.tread) { ctx.save(); ctx.rotate(ang); st.tread(ctx, r, ri, st, v || {}, rate || 0); ctx.restore(); }
   // rim
   ctx.beginPath(); ctx.arc(0, 0, ri - 0.012, 0, TAU); ctx.lineWidth = 0.045; ctx.strokeStyle = OUT; ctx.stroke();
   ctx.beginPath(); ctx.arc(0, 0, ri - 0.012, 0, TAU); ctx.lineWidth = 0.028; ctx.strokeStyle = st.rim; ctx.stroke();
@@ -600,7 +603,7 @@ A.helmet = function (ctx, x, y, r, ang, d, kind) {
   var s = d.suit, c = d.col;
   ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(r, r);
   var lw = 0.028 / r;
-  var open = kind === 'scooter' || kind === 'chopper';
+  var open = kind === 'scooter' || kind === 'chopper' || !!(KIND[kind] && KIND[kind].openFace);
   if (!open) {
     // chin bar
     ctx.beginPath(); ctx.moveTo(-0.3, -0.5); ctx.quadraticCurveTo(0.5, -0.2, 1.12, -0.38); ctx.quadraticCurveTo(1.2, -0.95, 0.5, -1.08); ctx.quadraticCurveTo(-0.2, -1.1, -0.6, -0.7); ctx.closePath();
@@ -694,12 +697,17 @@ A.rider = function (ctx, d, v, layer) {
 };
 
 /* ------------------------------ whole bike ------------------------------ */
-/* v: { RA, FA, spinR, spinF, rateR, rateF, lp, stand, crouch, rider (bool), look: { paint, rider }, t } */
+/* v: { RA, FA, spinR, spinF, rateR, rateF, lp, stand, crouch, rider (bool), look: { paint, rider }, t }
+   optional per-kind hooks (used by the bikes in art-bike2.js): K.back (far side of the bike, drawn before
+   anything else), K.rim(d) (rim colour), K.fork (replaces the standard fork), K.top (after the bars, before
+   the rider's body). Every pass can read the view object as g.v. */
 A.bike = function (ctx, d0, v) {
   var d = v.look && A.dress ? A.dress(ctx, d0, v.look, v.t || 0) : d0, p = d._paint || null;
   var K = KIND[d.kind], g = A.geom(d, v.RA, v.FA), c = d.col;
   g.wrecked = v.rider === false && v.wrecked;
+  g.v = v;
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  if (K.back) K.back(ctx, d, g);
   if (v.rider !== false) A.rider(ctx, d, v, 0);
   var w0 = K.wheel[0], w1 = K.wheel[1];
   var rim = d.kind === 'electric' ? '#3a4050' : CHROME;
@@ -708,19 +716,25 @@ A.bike = function (ctx, d0, v) {
   if (d.kind === 'fat' || d.kind === 'mini') rim = typeof c[2] === 'string' ? c[2] : CHROME;
   if (d.kind === 'penny') rim = typeof c[1] === 'string' ? c[1] : CHROME;
   if (d.kind === 'drag') rim = typeof c[1] === 'string' ? c[1] : CHROME;
+  if (K.rim) rim = K.rim(d);
   if (p && p.rim) rim = p.rim;
   w0.rim = w1.rim = rim;
   w0.glow2 = w1.glow2 = p ? A.paintGlow(p, v.t || 0) : null;
-  A.wheel(ctx, g.RA[0], g.RA[1], d.rr, v.spinR || 0, w0, v.rateR || 0);
-  A.wheel(ctx, g.FA[0], g.FA[1], d.rf, v.spinF || 0, w1, v.rateF || 0);
+  A.wheel(ctx, g.RA[0], g.RA[1], d.rr, v.spinR || 0, w0, v.rateR || 0, v);
+  A.wheel(ctx, g.FA[0], g.FA[1], d.rf, v.spinF || 0, w1, v.rateF || 0, v);
   K.under(ctx, d, g);
-  fork(ctx, g, K.chromeFork ? CHROME : '#2b2f38', K.guard ? c[0] : null, K.goldFork ? '#e0b23a' : CHROME);
+  if (K.fork) K.fork(ctx, d, g);
+  else fork(ctx, g, K.chromeFork ? CHROME : '#2b2f38', K.guard ? c[0] : null, K.goldFork ? '#e0b23a' : CHROME);
   K.over(ctx, d, g);
   if (p && p.glint && A.glints) A.glints(ctx, d, p, v.t || 0);
   bars(ctx, g, K.chromeFork ? CHROME : '#2b2f38', K.bars);
+  if (K.top) K.top(ctx, d, g);
   if (v.rider !== false) { A.rider(ctx, d, v, 1); A.rider(ctx, d, v, 2); }
 };
 A.KIND = KIND;
+/* the shared parts and colours, for painters defined in other files */
+A.parts = { fins: fins, cases: cases, fork: fork, swingarm: swingarm, shock: shock, bars: bars, chain: chain, mxUnder: mxUnder, mxOver: mxOver,
+  OUT: OUT, FRAME: FRAME, ENG: ENG, ENGD: ENGD, CHROME: CHROME, RUB: RUB, STEEL: STEEL };
 
 /* where the exhaust (or jet nozzle) ends, for smoke and flames */
 A.exhaust = function (d) {
