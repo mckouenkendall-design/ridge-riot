@@ -180,9 +180,10 @@ RR.GARAGES = [
   { id: 'workshop', name: 'Workshop',   slots: 6,  price: 300,  blurb: 'Brick walls, a workbench and a pegboard of tools.' },
   { id: 'garage',   name: 'Garage',     slots: 9,  price: 700,  blurb: 'Painted walls, a roller door and proper lighting.' },
   { id: 'dealer',   name: 'Dealership', slots: 12, price: 1300, blurb: 'Glass front, shiny floor, a bike on every stand.' },
-  { id: 'showroom', name: 'Showroom',   slots: 15, price: 2200, blurb: 'Marble, spotlights and a turntable under every bike.' }
+  { id: 'showroom', name: 'Showroom',   slots: 15, price: 2200, blurb: 'Marble, spotlights and a turntable under every bike.' },
+  { id: 'hall',     name: 'Hall of Fame', slots: 24, price: 3500, blurb: 'Stone arches, banners and three oak tiers: room for every bike there is.' }
 ];
-RR.GARAGE_MAX_SLOTS = 15;
+RR.GARAGE_MAX_SLOTS = 24;
 
 if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);

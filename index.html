@@ -833,9 +833,9 @@ function substep(s, inp, dt) {
     s.lift = 0;
     if (b.glide && s.air0 && !s.gnd[0] && !s.gnd[1] && s.vx > 1.5) {
       var gam = Math.atan2(s.vy, s.vx), aoa = wrap(s.a - gam) + b.glide.inc, aab = aoa < 0 ? -aoa : aoa;
-      var cl = clamp(aoa * 2.2, -0.5, 1.1);
+      var cl = clamp(aoa * 2.2, 0, 1.1);         // lift only: a wing pointed down just stops lifting, it never presses the bike down
       if (aab > 0.55) cl *= Math.max(0, 1 - (aab - 0.55) * 2.5);           // stalls if pointed too far off its line
-      var Lf = clamp(b.glide.k * cl * sp * sp, -0.5 * b.Mtot * g, b.glide.cap * b.Mtot * g), Df = b.glide.k * 0.22 * cl * cl * sp * sp;
+      var Lf = Math.min(b.glide.k * cl * sp * sp, b.glide.cap * b.Mtot * g), Df = b.glide.k * 0.22 * cl * cl * sp * sp;
       fx += (-s.vy * Lf - s.vx * Df) / sp; fy += (s.vx * Lf - s.vy * Df) / sp;
       s.lift = Lf / (b.Mtot * g);
     }
@@ -1481,7 +1481,7 @@ RR.BIKES = [
   {
     id: 'puffin', name: 'Puffin 150', kind: 'puffer', tag: 'One extra hop in mid-air', wipe: 'puffball',
     blurb: 'A light trail bike with a tank of compressed air and a nozzle under the seat.',
-    trick: 'Tap brake in the air for one puff straight out of the bottom of the bike. One per jump; landing refills it.',
+    trick: 'Tap brake in the air for one puff of air out of the bottom of the bike. Landing refills it.',
     mass: 170, kgyr: 0.46, wb: 1.40, rr: 0.32, rf: 0.33, com: [0.62, 0.80], wheelMass: [10, 9], rake: 27, swing: 10,
     sus: [{ travel: 0.25, freq: 2.0, sag: 0.3, zc: 0.42, zr: 0.95 }, { travel: 0.26, freq: 1.95, sag: 0.28, zc: 0.40, zr: 0.90 }],
     accel: 0.62, vp: 9, vmax: 15.8, grip: 1.0, brake: 0.85, leanAcc: 15, spin: 6.2, cda: 0.5, hop: 3.0,
@@ -1491,13 +1491,15 @@ RR.BIKES = [
     unlock: { type: 'gears', n: 6, text: 'Find 6 hidden gears' }
   },
   {
-    id: 'hopper', name: 'Grasshopper', kind: 'springer', tag: 'Half a metre of suspension', wipe: 'boingo',
-    blurb: 'A pit bike on stilts. Its legs have twice the travel of anything else, so it floats over bumps and swallows any landing.',
-    trick: 'Bottomless suspension: drops, bumps and logs that rattle every other bike barely move this one. Lands soft from anything, but sags on the lip of a jump, so it flies a little shorter.',
-    mass: 140, kgyr: 0.43, wb: 1.12, rr: 0.25, rf: 0.25, com: [0.50, 0.78], wheelMass: [5.5, 5], rake: 26, swing: 12,
-    sus: [{ travel: 0.48, freq: 1.45, sag: 0.3, zc: 0.40, zr: 0.95 }, { travel: 0.50, freq: 1.45, sag: 0.3, zc: 0.38, zr: 0.92 }],
-    accel: 0.58, vp: 8, vmax: 15.0, grip: 1.0, brake: 0.8, leanAcc: 14, spin: 6.4, cda: 0.5,
+    id: 'hopper', name: 'Grasshopper', kind: 'springer', tag: 'Legs like a grasshopper', wipe: 'boingo',
+    blurb: 'A pit bike on stilts, with legs far longer than a bike this small has any right to.',
+    trick: 'Nearly half a metre of suspension, more than any other bike: big drops and bad landings that bottom out everything else are swallowed whole.',
+    mass: 140, kgyr: 0.47, wb: 1.12, rr: 0.25, rf: 0.25, com: [0.56, 0.78], wheelMass: [5.5, 5], rake: 26, swing: 12,
+    sus: [{ travel: 0.44, freq: 2.0, sag: 0.25, zc: 0.42, zr: 0.95 }, { travel: 0.46, freq: 1.95, sag: 0.25, zc: 0.40, zr: 0.92 }],
+    accel: 0.62, vp: 10.5, vmax: 16.2, grip: 1.0, brake: 0.8, leanAcc: 13, spin: 6.0, cda: 0.5,
     rider: { seat: [0.30, 0.95], peg: [0.40, 0.52], grip: [0.80, 1.18], scale: 1, torso: 0.30 },
+    // no tail to lean back on: tipped too far back, it falls on the rider rather than skating along on its rear mudguard
+    body: [[0.5, 0.26, 0.12], [-0.05, 0.5, 0.08], [0.88, 1.0, 0.09], [0.66, 1.12, 0.07], [0.3, 0.98, 0.1]],
     col: ['#7ac943', '#2a2f1e', '#f2e14a'], suit: ['#2a2f1e', '#7ac943', '#f2e14a'],
     snd: { type: 'springer', pitch: 1.35, gears: 4 },
     unlock: { type: 'jump', n: 25, text: 'Clear 25 m in one jump' }
@@ -1505,7 +1507,7 @@ RR.BIKES = [
   {
     id: 'couple', name: 'Odd Couple', kind: 'sidecar', tag: 'Cannot flip, cannot tip', wipe: 'tandem',
     blurb: 'An old sidecar outfit with a passenger who leans for you. It will not flip, and it will not tip over either.',
-    trick: 'Your passenger keeps the bike close to the line it is travelling, in the air and on the ground. No flips ever, so no flip boosts, but no wheelie or bad landing ever throws you on your head.',
+    trick: 'The passenger keeps the bike near its line: no flips, so no flip boosts, but it never tips over.',
     mass: 300, kgyr: 0.55, wb: 1.56, rr: 0.32, rf: 0.33, com: [0.72, 0.72], wheelMass: [13, 10], rake: 28, swing: 8,
     sus: [{ travel: 0.18, freq: 2.0, sag: 0.3, zc: 0.48, zr: 1.0 }, { travel: 0.20, freq: 1.95, sag: 0.3, zc: 0.45, zr: 0.95 }],
     accel: 0.80, vp: 10, vmax: 18.4, grip: 1.12, brake: 0.95, leanAcc: 10, spin: 3.6, cda: 0.7, rail: 0.6,
@@ -1517,7 +1519,7 @@ RR.BIKES = [
   {
     id: 'gecko', name: 'Gecko', kind: 'gecko', tag: 'Sticks to walls for a moment', wipe: 'splat',
     blurb: 'Soft, tacky tyres that suck onto whatever they touch. Lands like it is glued down.',
-    trick: 'Sticky tyres: they hold you onto steep faces, walls and the top of a loop for about a second, then let go until you are back on gentle ground.',
+    trick: 'Tacky tyres hold you onto walls, steep faces and loop tops for about a second, then let go until you reach gentle ground.',
     mass: 178, kgyr: 0.45, wb: 1.36, rr: 0.30, rf: 0.31, com: [0.62, 0.72], wheelMass: [10, 9], rake: 26, swing: 9,
     sus: [{ travel: 0.22, freq: 2.1, sag: 0.3, zc: 0.45, zr: 0.95 }, { travel: 0.23, freq: 2.05, sag: 0.3, zc: 0.42, zr: 0.9 }],
     accel: 0.68, vp: 9, vmax: 16.2, grip: 1.18, brake: 0.9, leanAcc: 15.5, spin: 6.0, cda: 0.5, stick: { f: 1.2, t: 1.2 },
@@ -1529,7 +1531,7 @@ RR.BIKES = [
   {
     id: 'sandpiper', name: 'Sandpiper', kind: 'paddle', tag: 'Flies on sand, skates on rock', wipe: 'sandstorm',
     blurb: 'A desert racer with a paddle tyre. On loose ground nothing touches it. On rock, tarmac and steel the paddles skate.',
-    trick: 'The paddle tyre: much more grip and much less drag on sand, snow, moon dust and dirt, and a lot less grip on rock, wood, tarmac and steel.',
+    trick: 'Paddle tyre: big grip and little drag on sand, snow, dust and dirt. It skates on rock, wood, tarmac and steel.',
     mass: 196, kgyr: 0.48, wb: 1.54, rr: 0.36, rf: 0.345, com: [0.68, 0.84], wheelMass: [13, 10], rake: 28, swing: 10,
     sus: [{ travel: 0.30, freq: 1.8, sag: 0.3, zc: 0.44, zr: 0.98 }, { travel: 0.31, freq: 1.75, sag: 0.28, zc: 0.42, zr: 0.95 }],
     accel: 0.78, vp: 10, vmax: 18.0, grip: 1.0, brake: 0.85, leanAcc: 13.5, spin: 5.8, cda: 0.55,
@@ -1542,7 +1544,7 @@ RR.BIKES = [
   {
     id: 'whiplash', name: 'Whiplash', kind: 'freestyle', tag: 'Hand brake for air pivots', wipe: 'spinout',
     blurb: 'A freestyle bike with a hand brake on a huge flywheel. In the air it turns where you tell it and stops where you tell it.',
-    trick: 'Hold brake in the air: with a lean the bike spins almost twice as fast, without one it stops turning dead. Flips on demand, landed exactly.',
+    trick: 'Hold brake in the air: lean as well and it spins nearly twice as fast; lean nothing and it stops turning dead.',
     mass: 166, kgyr: 0.45, wb: 1.46, rr: 0.33, rf: 0.345, com: [0.64, 0.82], wheelMass: [10, 9], rake: 27, swing: 10,
     sus: [{ travel: 0.29, freq: 1.9, sag: 0.3, zc: 0.42, zr: 0.95 }, { travel: 0.30, freq: 1.9, sag: 0.28, zc: 0.40, zr: 0.9 }],
     accel: 0.70, vp: 9.5, vmax: 16.8, grip: 1.02, brake: 0.9, leanAcc: 16, spin: 6.6, cda: 0.5, pivot: { spin: 1.7, tq: 1.8, lock: 22 },
@@ -1554,7 +1556,7 @@ RR.BIKES = [
   {
     id: 'icepick', name: 'Icepick', kind: 'ice', tag: 'Spiked tyres bite into ice', wipe: 'shiver',
     blurb: 'A snow racer on tyres full of steel studs. Ice is like dirt to it. Hard ground is not, quite.',
-    trick: 'Studded tyres: full grip on ice and better grip on snow and oil, so it can brake and climb where nothing else can. A little less grip on rock, tarmac and steel.',
+    trick: 'Studded tyres: full grip on ice, more on snow and oil, a little less on rock, tarmac and steel.',
     mass: 195, kgyr: 0.47, wb: 1.44, rr: 0.33, rf: 0.34, com: [0.66, 0.80], wheelMass: [12, 10], rake: 27, swing: 10,
     sus: [{ travel: 0.26, freq: 1.95, sag: 0.3, zc: 0.44, zr: 0.98 }, { travel: 0.27, freq: 1.9, sag: 0.28, zc: 0.42, zr: 0.95 }],
     accel: 0.70, vp: 9.5, vmax: 17.0, grip: 1.0, brake: 1.0, leanAcc: 14.5, spin: 6.0, cda: 0.55,
@@ -1567,10 +1569,10 @@ RR.BIKES = [
   {
     id: 'rhino', name: 'Rhino', kind: 'ram', tag: 'Smashes straight through logs', wipe: 'stampede',
     blurb: 'A huge adventure bike with a steel bull bar. Heavy, slow to turn, and a log in its way is firewood.',
-    trick: 'The bull bar: logs, rocks and tyres lying on the track break apart when the Rhino hits them faster than a jog. Everything else bounces over them.',
+    trick: 'Bull bar: logs, rocks and tyres on the track break apart if you hit them faster than a jog.',
     mass: 330, kgyr: 0.54, wb: 1.62, rr: 0.38, rf: 0.40, com: [0.78, 0.80], wheelMass: [17, 14], rake: 28, swing: 9,
     sus: [{ travel: 0.24, freq: 1.8, sag: 0.3, zc: 0.46, zr: 1.0 }, { travel: 0.26, freq: 1.75, sag: 0.3, zc: 0.44, zr: 0.95 }],
-    accel: 0.80, vp: 11, vmax: 18.5, grip: 1.08, brake: 0.9, leanAcc: 12.5, spin: 5.2, cda: 0.7, smash: 2.5,
+    accel: 0.80, vp: 11, vmax: 16.8, grip: 1.08, brake: 0.9, leanAcc: 13.5, spin: 5.4, cda: 0.7, smash: 2.5,
     rider: { seat: [0.46, 1.00], peg: [0.58, 0.48], grip: [1.06, 1.26], scale: 1, torso: 0.34 },
     col: ['#5f6b4e', '#2a2d26', '#e0a43a'], suit: ['#3a3f30', '#e0a43a', '#2a2d26'],
     snd: { type: 'ram', pitch: 0.7, gears: 6 },
@@ -1579,7 +1581,7 @@ RR.BIKES = [
   {
     id: 'albatross', name: 'Albatross', kind: 'glider', tag: 'Wings that hold you up', wipe: 'nosedive',
     blurb: 'A bike with a pair of wings bolted to the frame. Pull the nose up in the air and it floats; push it down and it dives.',
-    trick: 'The wings: the faster you go and the higher you hold the nose, the more they lift, so you can stretch a jump or come down gently. No air on the moon, so in Low Orbit they do nothing.',
+    trick: 'Wings: the faster you go and the higher the nose, the more they lift. No air in Low Orbit, so no lift there.',
     mass: 182, kgyr: 0.50, wb: 1.48, rr: 0.32, rf: 0.33, com: [0.68, 0.78], wheelMass: [10, 9], rake: 27, swing: 9,
     sus: [{ travel: 0.22, freq: 2.0, sag: 0.3, zc: 0.45, zr: 0.98 }, { travel: 0.23, freq: 1.95, sag: 0.3, zc: 0.42, zr: 0.95 }],
     accel: 0.68, vp: 10, vmax: 17.0, grip: 1.0, brake: 0.9, leanAcc: 12, spin: 4.8, airDamp: 2.2, cda: 0.6, glide: { k: 5.5, inc: -0.04, cap: 0.7 },
@@ -1954,9 +1956,10 @@ RR.GARAGES = [
   { id: 'workshop', name: 'Workshop',   slots: 6,  price: 300,  blurb: 'Brick walls, a workbench and a pegboard of tools.' },
   { id: 'garage',   name: 'Garage',     slots: 9,  price: 700,  blurb: 'Painted walls, a roller door and proper lighting.' },
   { id: 'dealer',   name: 'Dealership', slots: 12, price: 1300, blurb: 'Glass front, shiny floor, a bike on every stand.' },
-  { id: 'showroom', name: 'Showroom',   slots: 15, price: 2200, blurb: 'Marble, spotlights and a turntable under every bike.' }
+  { id: 'showroom', name: 'Showroom',   slots: 15, price: 2200, blurb: 'Marble, spotlights and a turntable under every bike.' },
+  { id: 'hall',     name: 'Hall of Fame', slots: 24, price: 3500, blurb: 'Stone arches, banners and three oak tiers: room for every bike there is.' }
 ];
-RR.GARAGE_MAX_SLOTS = 15;
+RR.GARAGE_MAX_SLOTS = 24;
 
 if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -4226,26 +4229,37 @@ KIND.ram = {
 /* =============================== 9. Albatross =============================== */
 /* a road-trail bike with a pair of wings bolted to the frame, swept back over the rear wheel, and a tail fin */
 function wing(c, k, ox, oy, lift, far) {
-  var f = lift * 0.07;                       // wingtip flex
-  var le = [0.98 + ox, 0.68 + oy, 0.5 + ox, 0.8 + oy, 0.0 + ox, 0.95 + oy, -0.4 + ox, 1.08 + oy + f * 0.5, -0.66 + ox, 1.17 + oy + f];
-  var te = [-0.7 + ox, 1.1 + oy + f, -0.42 + ox, 0.98 + oy + f * 0.4, -0.06 + ox, 0.84 + oy, 0.4 + ox, 0.67 + oy, 0.7 + ox, 0.56 + oy];
-  var q = smooth(le, 6).concat(smooth(te, 6));
-  shape(c, q, far ? shade(k[0], 0.62) : k[0], 0.026);
-  if (far) return;
-  // a darker band along the leading edge, ribs, a flap line, and a yellow tip
-  ribbon(c, [0.94 + ox, 0.665 + oy, 0.5 + ox, 0.785 + oy, 0.0 + ox, 0.935 + oy, -0.4 + ox, 1.065 + oy + f * 0.5, -0.62 + ox, 1.15 + oy + f], 0.04, 0.02, k[1], 0.0);
-  var i, rb = [[0.5, 0.79, 0.42, 0.68], [0.2, 0.88, 0.12, 0.76], [-0.1, 0.96, -0.16, 0.86], [-0.38, 1.05, -0.42, 0.99]];
-  for (i = 0; i < rb.length; i++) line(c, [rb[i][0] + ox, rb[i][1] + oy + (i > 2 ? f * 0.5 : 0), rb[i][2] + ox, rb[i][3] + oy + (i > 2 ? f * 0.4 : 0)], 0.01, shade(k[0], 0.75));
-  curve(c, [0.6 + ox, 0.61 + oy, 0.2 + ox, 0.725 + oy, -0.2 + ox, 0.85 + oy, -0.52 + ox, 1.02 + oy + f * 0.6], 0.008, shade(k[0], 0.6), 0);
-  // yellow tip with a little winglet turned up
-  shape(c, [-0.54 + ox, 1.14 + oy + f * 0.8, -0.66 + ox, 1.17 + oy + f, -0.7 + ox, 1.1 + oy + f, -0.56 + ox, 1.04 + oy + f * 0.7], k[2], 0.016);
-  shape(c, [-0.62 + ox, 1.16 + oy + f, -0.7 + ox, 1.26 + oy + f * 1.1, -0.75 + ox, 1.25 + oy + f * 1.1, -0.7 + ox, 1.11 + oy + f], k[2], 0.016);
+  /* Seen from a little above and to the side, the two wings make a V: the far one rises up and back
+     behind the rider, the near one sweeps down and back past the rear wheel. f lifts both tips. */
+  var f = lift * 0.08, i;
+  if (far) {
+    var P = [0.62, 0.86, 0.2, 0.98, -0.24, 1.14 + f * 0.5, -0.56, 1.28 + f, -0.66, 1.25 + f, -0.48, 1.12 + f, -0.08, 0.96, 0.3, 0.86];
+    shape(c, smooth(P, 3), shade(k[0], 0.66), 0.026);
+    line(c, [0.5, 0.88, 0.1, 1.0, -0.3, 1.16 + f * 0.5, -0.55, 1.26 + f], 0.03, shade(k[1], 0.75));
+    shape(c, [-0.56, 1.28 + f, -0.66, 1.25 + f, -0.6, 1.2 + f, -0.5, 1.23 + f], k[2], 0.016);
+    return;
+  }
+  // near wing: fabric over ribs, a navy leading edge, a flap, and a yellow tip with a winglet.
+  // Drawn a little smaller about its root so the rear wheel still shows through the gap.
+  c.save(); c.translate(0.6, 0.78); c.scale(0.8, 0.8); c.translate(-0.6, -0.78);
+  var tip = [-0.28 + ox, 0.2 + oy + f], tipR = [-0.6 + ox, 0.3 + oy + f];
+  var Q = [0.7 + ox, 0.72 + oy, 0.36 + ox, 0.55 + oy, 0.04 + ox, 0.36 + oy + f * 0.6, tip[0], tip[1], tipR[0], tipR[1], -0.36 + ox, 0.48 + oy + f * 0.5, -0.04 + ox, 0.7 + oy, 0.24 + ox, 0.84 + oy];
+  shape(c, smooth(Q, 3), k[0], 0.028);
+  // shading toward the trailing edge, so it reads as a curved surface
+  shape(c, smooth([-0.04 + ox, 0.7 + oy, -0.36 + ox, 0.48 + oy + f * 0.5, tipR[0], tipR[1], -0.46 + ox, 0.34 + oy + f, -0.1 + ox, 0.6 + oy, 0.2 + ox, 0.78 + oy], 2), shade(k[0], 0.82), 0);
+  line(c, [0.7 + ox, 0.72 + oy, 0.36 + ox, 0.55 + oy, 0.04 + ox, 0.36 + oy + f * 0.6, tip[0], tip[1]], 0.045, k[1]);
+  var rb = [[0.5, 0.64, 0.16, 0.8], [0.26, 0.5, -0.06, 0.72], [0.02, 0.36, -0.26, 0.6], [-0.18, 0.25, -0.44, 0.46]];
+  for (i = 0; i < rb.length; i++) line(c, [rb[i][0] + ox, rb[i][1] + oy + (i > 1 ? f * 0.6 : 0), rb[i][2] + ox, rb[i][3] + oy + (i > 1 ? f * 0.5 : 0)], 0.012, shade(k[0], 0.62));
+  curve(c, [0.16 + ox, 0.8 + oy, -0.14 + ox, 0.64 + oy, -0.42 + ox, 0.42 + oy + f * 0.6], 0.01, shade(k[0], 0.5), 0);
+  shape(c, [tip[0], tip[1], tipR[0], tipR[1], -0.55 + ox, 0.35 + oy + f, -0.3 + ox, 0.27 + oy + f], k[2], 0.018);
+  shape(c, [tipR[0], tipR[1], -0.7 + ox, 0.42 + oy + f, -0.66 + ox, 0.45 + oy + f, -0.55 + ox, 0.35 + oy + f], k[2], 0.016);
+  c.restore();
 }
 KIND.glider = {
   back: function (c, d, g) {
     // the far wing peeks out above the near one
     if (g.wrecked) return;
-    wing(c, d.col, 0.06, 0.1, Math.max(0, Math.min(1, vv(g).lift || 0)), true);
+    wing(c, d.col, 0, 0, Math.max(0, Math.min(1, vv(g).lift || 0)), true);
   },
   under: function (c, d, g) {
     var k = d.col;
@@ -4270,9 +4284,8 @@ KIND.glider = {
     circ(c, -0.34, 0.97, 0.022, '#e8483a', 0.012);
     // the near wing, its two struts and the root fairing
     if (!g.wrecked) {
-      tube(c, [0.22, 0.7, 0.44, 0.48], 0.022, STEEL, 0.022);
-      tube(c, [-0.18, 0.82, 0.04, 0.82], 0.02, STEEL, 0.022);
       wing(c, k, 0, 0, lift, false);
+      tube(c, [0.5, 0.64, 0.42, 0.82], 0.02, STEEL, 0.02);
       blob(c, [0.6, 0.6, 0.98, 0.66, 1.04, 0.58, 0.72, 0.52], k[1], 0.02);
       bolt(c, 0.84, 0.6); bolt(c, 0.7, 0.57);
     }
@@ -8396,12 +8409,12 @@ A.crate = function (c, o) {
 })(typeof window !== 'undefined' ? window : globalThis);
 
 /* ---- art-garage.js ---- */
-/* Ridge Riot: the five places you can keep your bikes (the showroom screen).
+/* Ridge Riot: the six places you can keep your bikes (the showroom screen).
    A scene is painted once into a picture when the screen is sized (A.garageScene), and the bits that move are
    painted over it every frame (A.garageLive: swinging lamps, flickering signs, drifting dust, sweeping lights).
    Everything is in screen pixels. g describes the room: { W, H, hz, rows } where hz is the y of the floor line
    and rows are the rows of display slots, back row first, each { y0, y1, n }.
-   Levels: 0 shed, 1 workshop, 2 garage, 3 dealership, 4 showroom. */
+   Levels: 0 shed, 1 workshop, 2 garage, 3 dealership, 4 showroom, 5 hall of fame. */
 (function (root) {
 'use strict';
 var RR = root.RR, A = RR.Art, K = A.kit, TAU = K.TAU, rng = K.rng, OUT = K.OUT;
@@ -8679,7 +8692,76 @@ function showroomLive(c, g, t) {
   c.restore();
 }
 
-var SCENES = [shed, workshop, garage, dealer, showroom], LIVES = [shedLive, workshopLive, garageLive, dealerLive, showroomLive];
+
+/* ============================ 5. the hall of fame ============================ */
+/* A museum hall built for the whole collection: stone arches with a night sky behind them, banners
+   hanging between the columns, and three stepped tiers of oak and brass for 24 bikes. */
+function hall(c, g) {
+  var W = g.W, H = g.H, hz = g.hz, r = rng(61), i, x, y;
+  // the back wall: warm sandstone blocks
+  c.fillStyle = lg(c, 0, 0, 0, hz, [[0, '#3b2f28'], [1, '#6b5644']]); c.fillRect(0, 0, W, hz);
+  var bh = Math.max(10, hz / 16), bw = bh * 2.6;
+  for (y = 0; y < hz; y += bh) { var off = (Math.round(y / bh) % 2) * bw / 2; for (x = -off; x < W; x += bw) { c.fillStyle = 'rgba(255,225,180,' + (0.03 + r() * 0.06).toFixed(3) + ')'; c.fillRect(x + 1, y + 1, bw - 2, bh - 2); } line(c, 0, y, W, y, 1, 'rgba(20,12,8,0.35)'); }
+  // arched windows onto a night sky with stars and a moon
+  var n = Math.max(3, Math.round(W / 190)), aw = W / n;
+  for (i = 0; i < n; i++) {
+    var cx = aw * (i + 0.5), ww = aw * 0.44, top = hz * 0.12, bot = hz * 0.8;
+    c.save(); c.beginPath(); c.moveTo(cx - ww / 2, bot); c.lineTo(cx - ww / 2, top + ww / 2); c.arc(cx, top + ww / 2, ww / 2, Math.PI, 0); c.lineTo(cx + ww / 2, bot); c.closePath(); c.clip();
+    c.fillStyle = lg(c, 0, top, 0, bot, [[0, '#0b1230'], [0.7, '#1f2f63'], [1, '#3d4f8a']]); c.fillRect(cx - ww, top, ww * 2, bot - top);
+    for (var k = 0; k < 22; k++) ell(c, cx - ww / 2 + r() * ww, top + r() * (bot - top) * 0.8, 0.6 + r() * 1.1, 0.6 + r() * 1.1, 'rgba(255,255,255,' + (0.4 + r() * 0.6).toFixed(2) + ')');
+    if (i === 1 % n) { ell(c, cx + ww * 0.15, top + ww * 0.4, ww * 0.13, ww * 0.13, '#fff6d8'); ell(c, cx + ww * 0.19, top + ww * 0.37, ww * 0.11, ww * 0.11, '#1f2f63'); }
+    for (var mx = cx - ww / 2; mx < cx + ww / 2; mx += ww / 4) line(c, mx, top, mx, bot, 2, 'rgba(30,22,16,0.9)');
+    line(c, cx - ww / 2, (top + bot) * 0.55, cx + ww / 2, (top + bot) * 0.55, 2, 'rgba(30,22,16,0.9)');
+    c.restore();
+    c.beginPath(); c.moveTo(cx - ww / 2, bot); c.lineTo(cx - ww / 2, top + ww / 2); c.arc(cx, top + ww / 2, ww / 2, Math.PI, 0); c.lineTo(cx + ww / 2, bot); c.lineWidth = 6; c.strokeStyle = '#a8865c'; c.stroke(); c.lineWidth = 2; c.strokeStyle = '#2a1e16'; c.stroke();
+    R(c, cx - ww / 2 - 6, bot, ww + 12, 6, '#a8865c');
+  }
+  // columns between the windows, with fluting and capitals
+  for (i = 0; i <= n; i++) {
+    var px = aw * i, pw = Math.min(26, aw * 0.12);
+    c.fillStyle = lg(c, px - pw / 2, 0, px + pw / 2, 0, [[0, '#8a7258'], [0.4, '#d9c3a0'], [1, '#6b5644']]); c.fillRect(px - pw / 2, hz * 0.06, pw, hz * 0.94);
+    for (var f = 1; f < 4; f++) line(c, px - pw / 2 + pw * f / 4, hz * 0.1, px - pw / 2 + pw * f / 4, hz * 0.96, 1, 'rgba(60,44,30,0.4)');
+    R(c, px - pw * 0.8, hz * 0.04, pw * 1.6, hz * 0.04, '#c9b08a'); R(c, px - pw * 0.8, hz * 0.04, pw * 1.6, 2, '#f2e2c4');
+  }
+  // the frieze across the top
+  R(c, 0, 0, W, hz * 0.045, '#2a1e16'); R(c, 0, hz * 0.045, W, 3, '#b8903a');
+  // the floor: dark oak boards under three brass-edged tiers (the stands draw the edges)
+  c.fillStyle = lg(c, 0, hz, 0, H, [[0, '#4a2f1c'], [1, '#2a190e']]); c.fillRect(0, hz, W, H - hz);
+  for (i = -10; i <= 20; i++) line(c, W * i / 10, hz, W / 2 + (W * i / 10 - W / 2) * 2.2, H, 1.2, 'rgba(0,0,0,0.25)');
+  g.rows.forEach(function (row, ri) { if (ri === 0) return; var ty = row.y0 - 4; c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, ty, W, 4); });
+  // a red carpet runner down the middle
+  c.fillStyle = lg(c, W * 0.44, 0, W * 0.56, 0, [[0, '#5a0f1c'], [0.5, '#9a2232'], [1, '#5a0f1c']]);
+  c.beginPath(); c.moveTo(W * 0.46, hz); c.lineTo(W * 0.54, hz); c.lineTo(W * 0.62, H); c.lineTo(W * 0.38, H); c.closePath(); c.fill();
+  line(c, W * 0.46, hz, W * 0.38, H, 2, '#d9b05a'); line(c, W * 0.54, hz, W * 0.62, H, 2, '#d9b05a');
+  R(c, 0, hz - 1, W, 3, 'rgba(255,225,140,0.3)');
+  vignette(c, W, H, 0.35);
+}
+function hallLive(c, g, t) {
+  var W = g.W, H = g.H, hz = g.hz, n = Math.max(3, Math.round(W / 190)), aw = W / n, i;
+  // banners in the bikes' colours hang between the columns and stir in a draught
+  var cols = [['#f2c230', '#1d2233'], ['#d91e36', '#f5f1e6'], ['#2bb3c0', '#ff8a3d'], ['#3ccf6e', '#1b1d24'], ['#ff3d7f', '#1b1d24'], ['#2f6fd6', '#f5f1e6'], ['#e8b04a', '#3a2a1e']];
+  for (i = 0; i <= n; i++) {
+    var bx = aw * i, bw2 = Math.min(22, aw * 0.1), by = hz * 0.09, bl = hz * 0.42, sw = Math.sin(t * 1.1 + i * 1.7) * 3, cl = cols[i % cols.length];
+    c.beginPath(); c.moveTo(bx - bw2, by); c.lineTo(bx + bw2, by); c.lineTo(bx + bw2 + sw, by + bl); c.lineTo(bx + sw, by + bl - bw2 * 0.8); c.lineTo(bx - bw2 + sw, by + bl); c.closePath();
+    c.fillStyle = cl[0]; c.fill(); c.lineWidth = 1.5; c.strokeStyle = '#15171d'; c.stroke();
+    c.beginPath(); c.moveTo(bx + sw * 0.5, by + bl * 0.2); c.lineTo(bx + sw * 0.6, by + bl * 0.75); c.lineWidth = Math.max(2, bw2 * 0.35); c.strokeStyle = cl[1]; c.stroke();
+    R(c, bx - bw2 - 3, by - 3, bw2 * 2 + 6, 4, '#b8903a');
+  }
+  c.save(); c.globalCompositeOperation = 'lighter';
+  // moonlight falling through the arches, drifting slowly
+  for (i = 0; i < n; i++) {
+    var cx = aw * (i + 0.5), ww = aw * 0.44, d = Math.sin(t * 0.2 + i) * 10;
+    c.fillStyle = lg(c, cx, hz * 0.5, cx + 60, H, [[0, 'rgba(170,190,255,0.12)'], [1, 'rgba(170,190,255,0)']]);
+    c.beginPath(); c.moveTo(cx - ww / 2, hz * 0.8); c.lineTo(cx + ww / 2, hz * 0.8); c.lineTo(cx + ww * 0.9 + d, H); c.lineTo(cx - ww * 0.1 + d, H); c.closePath(); c.fill();
+  }
+  // a warm lamp over every tier, breathing
+  g.rows.forEach(function (row, ri) { var br = 0.8 + 0.2 * Math.sin(t * 0.8 + ri * 2); c.fillStyle = lg(c, 0, row.y0, 0, row.y1, [[0, 'rgba(255,215,140,0)'], [1, 'rgba(255,215,140,' + (0.12 * br).toFixed(3) + ')']]); c.fillRect(0, row.y0, W, row.y1 - row.y0); });
+  // dust motes in the light
+  for (i = 0; i < 30; i++) { var mx = (K.rng ? (i * 97.3 + t * (6 + i % 5)) % W : 0), my = hz * 0.2 + ((i * 53.1 + t * (3 + i % 3)) % (H - hz * 0.2)); ell(c, mx, my, 1, 1, 'rgba(255,240,210,0.25)'); }
+  c.restore();
+}
+
+var SCENES = [shed, workshop, garage, dealer, showroom, hall], LIVES = [shedLive, workshopLive, garageLive, dealerLive, showroomLive, hallLive];
 A.garageScene = function (c, g, level) { c.save(); SCENES[level](c, g); c.restore(); };
 A.garageLive = function (c, g, level, t) { c.save(); LIVES[level](c, g, t); c.restore(); };
 
@@ -8699,6 +8781,9 @@ A.garageStand = function (c, level, cx, y, w, t) {
   } else if (level === 3) {                // a white display plinth with a blue light strip
     box(c, cx - hw, y - 8, hw * 2, 10, '#f4f6f8', 1.2); R(c, cx - hw, y - 8, hw * 2, 3, '#ffffff'); R(c, cx - hw + 3, y - 2, hw * 2 - 6, 3, '#3a86ff');
     c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = rg(c, cx, y, 0, hw, [[0, 'rgba(80,140,255,0.25)'], [1, 'rgba(80,140,255,0)']]); c.fillRect(cx - hw, y - 6, hw * 2, 14); c.restore();
+  } else if (level === 5) {                // an oak tier step edged in brass, with a small brass plaque
+    box(c, cx - hw, y - 6, hw * 2, 8, '#6b4528', 1.2); R(c, cx - hw, y - 6, hw * 2, 2, '#d9b05a'); R(c, cx - hw, y + 1, hw * 2, 1.5, '#8a6a2a');
+    box(c, cx - Math.min(14, hw * 0.3), y - 4, Math.min(28, hw * 0.6), 4, '#d9b05a', 0.8);
   } else {                                 // a turntable: a round plinth with a ring of light that runs round
     var ry = Math.max(5, w * 0.06);
     c.beginPath(); c.ellipse(cx, y + 3, hw * 1.05, ry + 3, 0, 0, TAU); c.fillStyle = 'rgba(0,0,0,0.5)'; c.fill();
@@ -9710,12 +9795,21 @@ function drawBeams(c, G, T, xl, xr, yt) {
   }
 }
 
+/* what is left of a log the Rhino went through: a few flat splinters over the bump in the ground */
+function drawStump(c, ft, m, T) {
+  var col = m === 4 ? '#9b6a3e' : m === 12 ? '#1c1d22' : m === 2 ? '#bfeeff' : T.speck[0], r = ft.r, i;
+  for (i = 0; i < 4; i++) {
+    var x = ft.x + (i - 1.5) * r * 0.6, h = r * (0.25 + 0.2 * hash(ft.x + i));
+    A.shape(c, [x - r * 0.32, ft.y - r * 0.05, x - r * 0.2, ft.y + r * 0.62 + h * 0.3, x + r * 0.05, ft.y + r * 0.5 + h * 0.4, x + r * 0.3, ft.y - r * 0.05], col, 0.035);
+  }
+}
 function drawFeats(c, G, T, xl, xr, behind) {
   var f = G.track.feats, i, tr = G.track;
   for (i = 0; i < f.length; i++) {
     var ft = f[i];
     if (ft.t === 'log' && !behind) {
       if (ft.x < xl - 1 || ft.x > xr + 1) continue;
+      if (G.sim && G.sim.smash && G.sim.smash[ft.id]) { drawStump(c, ft, RR.WORLDS[tr.worldIndex].logMat, T); continue; }
       var m = RR.WORLDS[tr.worldIndex].logMat;
       if (m === 12) {      // a tyre lying in the road
         A.circ(c, ft.x, ft.y, ft.r, '#1c1d22', 0.05);
@@ -9838,7 +9932,8 @@ function bikeView(G, v, def) {
     RA: [W0.ax + cm[0] + W0.ux * v.comp[0], W0.ay + cm[1] + W0.uy * v.comp[0]],
     FA: [W1.ax + cm[0] + W1.ux * v.comp[1], W1.ay + cm[1] + W1.uy * v.comp[1]],
     spinR: v.wa[0], spinF: v.wa[1], rateR: v.ww[0], rateF: v.ww[1],
-    lp: v.lp, stand: v.stand, crouch: v.crouch, rider: !v.noRider, headTilt: v.headTilt, look: G.look, t: G.t, wrecked: !!G.wipe
+    lp: v.lp, stand: v.stand, crouch: v.crouch, rider: !v.noRider, headTilt: v.headTilt, look: G.look, t: G.t, wrecked: !!G.wipe,
+    puff: v.puff || 0, stick: v.stick == null ? null : v.stick, lift: v.lift || 0
   };
 }
 
@@ -11654,6 +11749,7 @@ var KEY = 'ridgeRiot.v1';
 var DEF = {
   v: 3, news: 0, best: {}, bike: 'scrapper', owned: { scrapper: 1 }, last: 0, seenHow: false,
   nuggets: 0, paints: {}, riders: {}, fit: {}, crates: { rare: 0, epic: 0 }, garage: { level: 0, slots: [] }, opened: 0, pity: 0, paid: {}, got: {}, fresh: {}, kept: {},
+  gears: {}, chal: {}, flipst: {},
   settings: { sfx: 0.8, engine: 0.7, music: 0.5, tilt: false, tiltSens: 0.8, tiltFlip: false, hints: true, ghost: true, unlockAll: false, quality: 'auto', buzz: true },
   stats: { flips: 0, bestAir: 0, crashes: 0, runs: 0, finishes: 0, bestJump: 0, bestFlips: 0, dist: 0, topSpeed: 0 }
 };
@@ -11773,8 +11869,18 @@ var P = RR.Progress = {
     if (u.type === 'dist') return s.dist >= u.n;
     if (u.type === 'crashes') return s.crashes >= u.n;
     if (u.type === 'speed') return s.topSpeed >= u.n;
+    if (u.type === 'jump') return s.bestJump >= u.n;
+    if (u.type === 'finishes') return s.finishes >= u.n;
+    if (u.type === 'gears') return P.gearCount() >= u.n;
+    if (u.type === 'worldgears') return P.gearCount(RR.WORLD[u.w].index) >= u.n;
+    if (u.type === 'challenges') return P.chalCount() >= u.n;
+    if (u.type === 'flipstars') return P.flipStars() >= u.n;
     return false;
   },
+  /* Phase 2 collectables: one hidden gear and one challenge per track, and the flip star (filed by track name) */
+  gearCount: function (w) { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) if ((w == null || Math.floor(i / 8) === w) && Store.data.gears[RR.trackId(i)]) n++; return n; },
+  chalCount: function () { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) if (Store.data.chal[RR.trackId(i)]) n++; return n; },
+  flipStars: function () { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) if (Store.data.flipst[RR.trackId(i)]) n++; return n; },
   bikeOpen: function (d) { return Store.data.settings.unlockAll || !!Store.data.owned[d.id]; },
   /* what a locked bike still needs: the rule, where you are now, and 0..1 for the bar */
   bikeNeed: function (d) {
@@ -11786,6 +11892,11 @@ var P = RR.Progress = {
     if (u.type === 'dist') { have = Math.min(s.dist, need); return { text: u.text, now: (have / 1000).toFixed(1) + ' of ' + (need / 1000) + ' km', k: have / need }; }
     if (u.type === 'crashes') { have = Math.min(s.crashes, need); return { text: u.text, now: have + ' of ' + need + ' crashes', k: have / need }; }
     if (u.type === 'speed') { have = Math.min(s.topSpeed, need); return { text: u.text, now: 'Fastest so far ' + Math.round(have * 3.6) + ' km/h', k: have / need }; }
+    if (u.type === 'jump') { have = Math.min(s.bestJump, need); return { text: u.text, now: 'Longest so far ' + have.toFixed(1) + ' m', k: have / need }; }
+    if (u.type === 'finishes') { have = Math.min(s.finishes, need); return { text: u.text, now: have + ' of ' + need + ' runs', k: have / need }; }
+    if (u.type === 'gears' || u.type === 'worldgears') { have = Math.min(P.gearCount(u.type === 'gears' ? null : RR.WORLD[u.w].index), need); return { text: u.text, now: have + ' of ' + need + ' gears', k: have / need }; }
+    if (u.type === 'challenges') { have = Math.min(P.chalCount(), need); return { text: u.text, now: have + ' of ' + need + ' challenges', k: have / need }; }
+    if (u.type === 'flipstars') { have = Math.min(P.flipStars(), need); return { text: u.text, now: have + ' of ' + need + ' flip stars', k: have / need }; }
     return { text: 'Yours from the start', now: '', k: 1 };
   },
   /* hand over anything newly earned; returns the list so the game can announce it */
@@ -11999,7 +12110,7 @@ G.zeroTilt = function () { In.tiltZero = In.tiltRaw; };
 /* Starting, restarting, finishing                                      */
 /* ------------------------------------------------------------------ */
 var prev = { x: 0, y: 0, a: 0, comp: [0, 0], wa: [0, 0], lp: 0 };
-var vis = G.vis = { x: 0, y: 0, a: 0, comp: [0, 0], wa: [0, 0], ww: [0, 0], lp: 0, stand: 0, crouch: 0, noRider: false, headTilt: 0 };
+var vis = G.vis = { x: 0, y: 0, a: 0, comp: [0, 0], wa: [0, 0], ww: [0, 0], lp: 0, stand: 0, crouch: 0, noRider: false, headTilt: 0, puff: 0, stick: null, lift: 0 };
 var gp = {}, acc = 0, emitT = 0, exT = 0, tickN = 0, botP = {}, botOut = { lean: 0, brake: false, gas: true };
 
 G.load = function (trackIndex, bikeId, attract) {
@@ -12029,9 +12140,13 @@ G.reset = function (snapCam) {
   if (!G.attract && RR.UI) RR.UI.onReset();
 };
 G.play = function (trackIndex) {
-  Store.data.last = trackIndex; Store.data.stats.runs++; Store.save();
+  Store.data.last = trackIndex; Store.data.stats.runs++;
   Au.music(false);
   G.load(trackIndex, Store.data.bike, false);
+  // the first ride on a bike with a trick says what the trick is
+  var def = RR.BIKE[Store.data.bike];
+  if (def.trick && !Store.data.got['trick:' + def.id]) { Store.data.got['trick:' + def.id] = 1; setTimeout(function () { if (RR.UI) RR.UI.toast(def.name + ': ' + def.trick); }, 700); }
+  Store.save();
 };
 /* add this run's distance and top speed to the lifetime totals (some bikes unlock on them) */
 function bank() {
@@ -12079,7 +12194,7 @@ function finishRun() {
   if (s.bestJump > st.bestJump) st.bestJump = Math.round(s.bestJump * 10) / 10;
   if (s.flips > st.bestFlips) st.bestFlips = s.flips;
   bank();
-  var bikes = P.claim().filter(function (x) { return !x.kind; });
+  var bikes = P.claim().filter(function (x) { return !!x.unlock; });
   var worlds = [], tot = P.total();
   for (var w = 1; w < RR.WORLDS.length; w++) { var need = RR.WORLDS[w].need; if (tot >= need && totBefore < need) worlds.push(RR.WORLDS[w]); }
   // nuggets: a little for finishing, more for each new star, a bit for beating your own time
@@ -12133,6 +12248,15 @@ function onEvents() {
     } else if (e.t === 'pad') {
       Au.pad();
       for (k = 0; k < 8; k++) R.emit(2, e.x + rnd(-0.3, 0.3), e.y - G.bike.wh[0].r + 0.05, s.vx * 0.4 + rnd(-3, 1), rnd(1, 5), rnd(0.15, 0.35), 0.05, k % 2 ? '#ffe23d' : '#ff8a1f', { g: 1, front: 1 });
+    } else if (e.t === 'hop') {
+      Au.hop(); vis.puff = 1; buzz(15);
+      var hca = Math.cos(e.a), hsa = Math.sin(e.a);
+      for (k = 0; k < 14; k++) R.emit(0, e.x + rnd(-0.2, 0.2), e.y - 0.4, hsa * rnd(2, 5) + s.vx * 0.5 + rnd(-1, 1), -hca * rnd(2, 5) + rnd(-1, 1), rnd(0.3, 0.6), rnd(0.12, 0.24), '#ffffff', { gr: 1.4, a: 0.6, drag: 3, front: 1 });
+    } else if (e.t === 'smash') {
+      var lm = RR.WORLDS[G.track.worldIndex].logMat;
+      Au.smash(lm); buzz(25); G.cam.shake = Math.max(G.cam.shake, 0.3);
+      var lc = lm === 4 ? ['#9b6a3e', '#e0bb86'] : lm === 12 ? ['#1c1d22', '#6a6f7a'] : lm === 2 ? ['#bfeeff', '#ffffff'] : [T.speck[0], T.ground[0]];
+      for (k = 0; k < 16; k++) R.emit(1, e.x + rnd(-0.3, 0.3), e.y, s.vx * rnd(0.3, 0.9) + rnd(-2, 2), rnd(2, 7), rnd(0.6, 1.2), rnd(0.05, 0.12), lc[k % 2], { g: 1, vr: rnd(-14, 14), front: 1 });
     } else if (e.t === 'bonk') {
       G.bonked = true;
       Au.bonk(); buzz(40);
@@ -12252,6 +12376,11 @@ function tickOnce() {
     if (G.stuckT > 3.5 && !G.stuckSaid) { G.stuckSaid = true; if (RR.UI) RR.UI.toast('Stuck? The round arrow at the top left restarts.'); }
   }
   tickN++;
+  // the tricks that are not events: the hand brake grabbing in the air, sticky tyres letting go
+  var bk = G.bike;
+  if (bk.pivot && input.brake && !G.brkWas && !s.gnd[0] && !s.gnd[1] && !s.crashed) Au.pivot();
+  G.brkWas = input.brake;
+  if (bk.stick) { if (G.stickWas > 0 && s.stickT <= 0 && !s.crashed) Au.unstick(); G.stickWas = s.stickT; }
   onEvents();
   trailFx();
   if (G.wipe) G.wipe.step(DT);
@@ -12286,6 +12415,9 @@ G.frame = function (ts) {
   vis.stand += ((s.air && s.airT > 0.12 ? 0.75 : 0.1) - vis.stand) * (1 - Math.exp(-dt * 6));
   vis.crouch += (clamp((sq - 0.45) * 2.4, 0, 1) - vis.crouch) * k;
   vis.headTilt = clamp(-s.w * 0.03, -0.2, 0.2);
+  vis.puff = Math.max(0, (vis.puff || 0) - dt * 3);
+  vis.stick = b.stick ? s.stickT / b.stickMax : null;
+  vis.lift += ((b.glide ? clamp(s.lift / b.glide.cap, 0, 1) : 0) - (vis.lift || 0)) * k;
   if (G.state !== 'pause') {
     var fs = { x: vis.x, y: vis.y, vx: s.vx, vy: s.vy };
     if (G.wipe && G.state === 'crash') { fs.x = (vis.x + G.wipe.fx) * 0.5; fs.y = (vis.y + G.wipe.fy) * 0.5; fs.vx *= 0.3; fs.vy *= 0.3; }
@@ -12644,7 +12776,7 @@ var toastT = 0;
 UI.toast = function (text) { var t = $('toast'); t.textContent = text; t.className = 'plate on'; clearTimeout(toastT); toastT = setTimeout(function () { t.className = "plate"; }, Math.max(2800, text.length * 60)); };
 UI.toastBikes = function (list) {
   Au.unlocked();
-  var bikes = list.filter(function (x) { return !x.kind; }), tro = list.filter(function (x) { return x.kind; }), t = [];
+  var bikes = list.filter(function (x) { return !!x.unlock; }), tro = list.filter(function (x) { return !x.unlock; }), t = [];
   if (bikes.length) t.push('New bike in the garage: ' + bikes.map(function (d) { return d.name; }).join(', '));
   if (tro.length) t.push('Trophy earned: ' + tro.map(function (d) { return d.name; }).join(', '));
   UI.toast(t.join('. ')); Store.save();
@@ -12712,7 +12844,7 @@ UI.garage = function () {
   $('gtabs').innerHTML = h;
   $('gnug').innerHTML = NUG + Store.data.nuggets;
   var f = Store.data.fit[d.id] || {}, look = previewLook();
-  $('gcap').innerHTML = '<b>' + esc(d.name) + '</b>' + (tab === 'bikes' ? '<i>' + esc(d.tag) + '</i>' + esc(d.blurb) : (look.paint ? esc(look.paint.name) + ' paint' : 'Stock paint') + ', ' + (look.rider ? esc(look.rider.name) : 'stock rider') + '.');
+  $('gcap').innerHTML = '<b>' + esc(d.name) + '</b>' + (tab === 'bikes' ? '<i>' + esc(d.tag) + '</i>' + esc(d.trick || d.blurb) : (look.paint ? esc(look.paint.name) + ' paint' : 'Stock paint') + ', ' + (look.rider ? esc(look.rider.name) : 'stock rider') + '.');
   h = '';
   if (tab === 'bikes') {
     RR.BIKES.forEach(function (b) { if (P.bikeOpen(b)) own++; });
@@ -13069,7 +13201,7 @@ RR.boot = function () {
 
 /* ---- showroom.js ---- */
 /* Ridge Riot: the showroom. Your bikes standing in a garage, each wearing its own paint and rider.
-   The garage you own decides how many bikes can stand on show (3 in the shed, up to 15 in the showroom) and
+   The garage you own decides how many bikes can stand on show (3 in the shed, up to 24 in the hall of fame) and
    how the place looks. It is only for looking at: every bike you own can be ridden from the normal bike list.
    Tapping a bike on show makes it your ride. "Arrange" lets you choose who stands where.
 
@@ -13083,10 +13215,10 @@ function $(id) { return doc.getElementById(id); }
 function esc(s) { return UI.esc(s); }
 
 /* rows of display slots at each garage level, back row first */
-var ROWS = [[3], [3, 3], [5, 4], [6, 6], [5, 5, 5]];
+var ROWS = [[3], [3, 3], [5, 4], [6, 6], [5, 5, 5], [8, 8, 8]];
 var PERSP = { 1: [1], 2: [0.86, 1], 3: [0.76, 0.88, 1] };      // bikes at the back are drawn a little smaller
-var STAND = [4, 7, 5, 10, 12];                                  // how far the stand sticks out below the ground line, in pixels at 1x
-var REFLECT = [false, false, false, true, true];
+var STAND = [4, 7, 5, 10, 12, 8];                                  // how far the stand sticks out below the ground line, in pixels at 1x
+var REFLECT = [false, false, false, true, true, false];
 
 var S = { cost: 0, vs: 16.7, ring: [], rk: 0, shed: false, shedFrames: 0, frames: 0, on: false, raf: 0, last: 0, t: 0, arrange: false, picking: -1, level: -1, W: 0, H: 0, dpr: 1, g: null, scene: null, cells: [], sprites: {}, flash: 0, pop: -1, popT: 0, ctx: null };
 

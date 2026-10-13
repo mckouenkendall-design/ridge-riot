@@ -526,9 +526,9 @@ function substep(s, inp, dt) {
     s.lift = 0;
     if (b.glide && s.air0 && !s.gnd[0] && !s.gnd[1] && s.vx > 1.5) {
       var gam = Math.atan2(s.vy, s.vx), aoa = wrap(s.a - gam) + b.glide.inc, aab = aoa < 0 ? -aoa : aoa;
-      var cl = clamp(aoa * 2.2, -0.5, 1.1);
+      var cl = clamp(aoa * 2.2, 0, 1.1);         // lift only: a wing pointed down just stops lifting, it never presses the bike down
       if (aab > 0.55) cl *= Math.max(0, 1 - (aab - 0.55) * 2.5);           // stalls if pointed too far off its line
-      var Lf = clamp(b.glide.k * cl * sp * sp, -0.5 * b.Mtot * g, b.glide.cap * b.Mtot * g), Df = b.glide.k * 0.22 * cl * cl * sp * sp;
+      var Lf = Math.min(b.glide.k * cl * sp * sp, b.glide.cap * b.Mtot * g), Df = b.glide.k * 0.22 * cl * cl * sp * sp;
       fx += (-s.vy * Lf - s.vx * Df) / sp; fy += (s.vx * Lf - s.vy * Df) / sp;
       s.lift = Lf / (b.Mtot * g);
     }

@@ -1,9 +1,9 @@
-/* Ridge Riot: the five places you can keep your bikes (the showroom screen).
+/* Ridge Riot: the six places you can keep your bikes (the showroom screen).
    A scene is painted once into a picture when the screen is sized (A.garageScene), and the bits that move are
    painted over it every frame (A.garageLive: swinging lamps, flickering signs, drifting dust, sweeping lights).
    Everything is in screen pixels. g describes the room: { W, H, hz, rows } where hz is the y of the floor line
    and rows are the rows of display slots, back row first, each { y0, y1, n }.
-   Levels: 0 shed, 1 workshop, 2 garage, 3 dealership, 4 showroom. */
+   Levels: 0 shed, 1 workshop, 2 garage, 3 dealership, 4 showroom, 5 hall of fame. */
 (function (root) {
 'use strict';
 var RR = root.RR, A = RR.Art, K = A.kit, TAU = K.TAU, rng = K.rng, OUT = K.OUT;
@@ -281,7 +281,76 @@ function showroomLive(c, g, t) {
   c.restore();
 }
 
-var SCENES = [shed, workshop, garage, dealer, showroom], LIVES = [shedLive, workshopLive, garageLive, dealerLive, showroomLive];
+
+/* ============================ 5. the hall of fame ============================ */
+/* A museum hall built for the whole collection: stone arches with a night sky behind them, banners
+   hanging between the columns, and three stepped tiers of oak and brass for 24 bikes. */
+function hall(c, g) {
+  var W = g.W, H = g.H, hz = g.hz, r = rng(61), i, x, y;
+  // the back wall: warm sandstone blocks
+  c.fillStyle = lg(c, 0, 0, 0, hz, [[0, '#3b2f28'], [1, '#6b5644']]); c.fillRect(0, 0, W, hz);
+  var bh = Math.max(10, hz / 16), bw = bh * 2.6;
+  for (y = 0; y < hz; y += bh) { var off = (Math.round(y / bh) % 2) * bw / 2; for (x = -off; x < W; x += bw) { c.fillStyle = 'rgba(255,225,180,' + (0.03 + r() * 0.06).toFixed(3) + ')'; c.fillRect(x + 1, y + 1, bw - 2, bh - 2); } line(c, 0, y, W, y, 1, 'rgba(20,12,8,0.35)'); }
+  // arched windows onto a night sky with stars and a moon
+  var n = Math.max(3, Math.round(W / 190)), aw = W / n;
+  for (i = 0; i < n; i++) {
+    var cx = aw * (i + 0.5), ww = aw * 0.44, top = hz * 0.12, bot = hz * 0.8;
+    c.save(); c.beginPath(); c.moveTo(cx - ww / 2, bot); c.lineTo(cx - ww / 2, top + ww / 2); c.arc(cx, top + ww / 2, ww / 2, Math.PI, 0); c.lineTo(cx + ww / 2, bot); c.closePath(); c.clip();
+    c.fillStyle = lg(c, 0, top, 0, bot, [[0, '#0b1230'], [0.7, '#1f2f63'], [1, '#3d4f8a']]); c.fillRect(cx - ww, top, ww * 2, bot - top);
+    for (var k = 0; k < 22; k++) ell(c, cx - ww / 2 + r() * ww, top + r() * (bot - top) * 0.8, 0.6 + r() * 1.1, 0.6 + r() * 1.1, 'rgba(255,255,255,' + (0.4 + r() * 0.6).toFixed(2) + ')');
+    if (i === 1 % n) { ell(c, cx + ww * 0.15, top + ww * 0.4, ww * 0.13, ww * 0.13, '#fff6d8'); ell(c, cx + ww * 0.19, top + ww * 0.37, ww * 0.11, ww * 0.11, '#1f2f63'); }
+    for (var mx = cx - ww / 2; mx < cx + ww / 2; mx += ww / 4) line(c, mx, top, mx, bot, 2, 'rgba(30,22,16,0.9)');
+    line(c, cx - ww / 2, (top + bot) * 0.55, cx + ww / 2, (top + bot) * 0.55, 2, 'rgba(30,22,16,0.9)');
+    c.restore();
+    c.beginPath(); c.moveTo(cx - ww / 2, bot); c.lineTo(cx - ww / 2, top + ww / 2); c.arc(cx, top + ww / 2, ww / 2, Math.PI, 0); c.lineTo(cx + ww / 2, bot); c.lineWidth = 6; c.strokeStyle = '#a8865c'; c.stroke(); c.lineWidth = 2; c.strokeStyle = '#2a1e16'; c.stroke();
+    R(c, cx - ww / 2 - 6, bot, ww + 12, 6, '#a8865c');
+  }
+  // columns between the windows, with fluting and capitals
+  for (i = 0; i <= n; i++) {
+    var px = aw * i, pw = Math.min(26, aw * 0.12);
+    c.fillStyle = lg(c, px - pw / 2, 0, px + pw / 2, 0, [[0, '#8a7258'], [0.4, '#d9c3a0'], [1, '#6b5644']]); c.fillRect(px - pw / 2, hz * 0.06, pw, hz * 0.94);
+    for (var f = 1; f < 4; f++) line(c, px - pw / 2 + pw * f / 4, hz * 0.1, px - pw / 2 + pw * f / 4, hz * 0.96, 1, 'rgba(60,44,30,0.4)');
+    R(c, px - pw * 0.8, hz * 0.04, pw * 1.6, hz * 0.04, '#c9b08a'); R(c, px - pw * 0.8, hz * 0.04, pw * 1.6, 2, '#f2e2c4');
+  }
+  // the frieze across the top
+  R(c, 0, 0, W, hz * 0.045, '#2a1e16'); R(c, 0, hz * 0.045, W, 3, '#b8903a');
+  // the floor: dark oak boards under three brass-edged tiers (the stands draw the edges)
+  c.fillStyle = lg(c, 0, hz, 0, H, [[0, '#4a2f1c'], [1, '#2a190e']]); c.fillRect(0, hz, W, H - hz);
+  for (i = -10; i <= 20; i++) line(c, W * i / 10, hz, W / 2 + (W * i / 10 - W / 2) * 2.2, H, 1.2, 'rgba(0,0,0,0.25)');
+  g.rows.forEach(function (row, ri) { if (ri === 0) return; var ty = row.y0 - 4; c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(0, ty, W, 4); });
+  // a red carpet runner down the middle
+  c.fillStyle = lg(c, W * 0.44, 0, W * 0.56, 0, [[0, '#5a0f1c'], [0.5, '#9a2232'], [1, '#5a0f1c']]);
+  c.beginPath(); c.moveTo(W * 0.46, hz); c.lineTo(W * 0.54, hz); c.lineTo(W * 0.62, H); c.lineTo(W * 0.38, H); c.closePath(); c.fill();
+  line(c, W * 0.46, hz, W * 0.38, H, 2, '#d9b05a'); line(c, W * 0.54, hz, W * 0.62, H, 2, '#d9b05a');
+  R(c, 0, hz - 1, W, 3, 'rgba(255,225,140,0.3)');
+  vignette(c, W, H, 0.35);
+}
+function hallLive(c, g, t) {
+  var W = g.W, H = g.H, hz = g.hz, n = Math.max(3, Math.round(W / 190)), aw = W / n, i;
+  // banners in the bikes' colours hang between the columns and stir in a draught
+  var cols = [['#f2c230', '#1d2233'], ['#d91e36', '#f5f1e6'], ['#2bb3c0', '#ff8a3d'], ['#3ccf6e', '#1b1d24'], ['#ff3d7f', '#1b1d24'], ['#2f6fd6', '#f5f1e6'], ['#e8b04a', '#3a2a1e']];
+  for (i = 0; i <= n; i++) {
+    var bx = aw * i, bw2 = Math.min(22, aw * 0.1), by = hz * 0.09, bl = hz * 0.42, sw = Math.sin(t * 1.1 + i * 1.7) * 3, cl = cols[i % cols.length];
+    c.beginPath(); c.moveTo(bx - bw2, by); c.lineTo(bx + bw2, by); c.lineTo(bx + bw2 + sw, by + bl); c.lineTo(bx + sw, by + bl - bw2 * 0.8); c.lineTo(bx - bw2 + sw, by + bl); c.closePath();
+    c.fillStyle = cl[0]; c.fill(); c.lineWidth = 1.5; c.strokeStyle = '#15171d'; c.stroke();
+    c.beginPath(); c.moveTo(bx + sw * 0.5, by + bl * 0.2); c.lineTo(bx + sw * 0.6, by + bl * 0.75); c.lineWidth = Math.max(2, bw2 * 0.35); c.strokeStyle = cl[1]; c.stroke();
+    R(c, bx - bw2 - 3, by - 3, bw2 * 2 + 6, 4, '#b8903a');
+  }
+  c.save(); c.globalCompositeOperation = 'lighter';
+  // moonlight falling through the arches, drifting slowly
+  for (i = 0; i < n; i++) {
+    var cx = aw * (i + 0.5), ww = aw * 0.44, d = Math.sin(t * 0.2 + i) * 10;
+    c.fillStyle = lg(c, cx, hz * 0.5, cx + 60, H, [[0, 'rgba(170,190,255,0.12)'], [1, 'rgba(170,190,255,0)']]);
+    c.beginPath(); c.moveTo(cx - ww / 2, hz * 0.8); c.lineTo(cx + ww / 2, hz * 0.8); c.lineTo(cx + ww * 0.9 + d, H); c.lineTo(cx - ww * 0.1 + d, H); c.closePath(); c.fill();
+  }
+  // a warm lamp over every tier, breathing
+  g.rows.forEach(function (row, ri) { var br = 0.8 + 0.2 * Math.sin(t * 0.8 + ri * 2); c.fillStyle = lg(c, 0, row.y0, 0, row.y1, [[0, 'rgba(255,215,140,0)'], [1, 'rgba(255,215,140,' + (0.12 * br).toFixed(3) + ')']]); c.fillRect(0, row.y0, W, row.y1 - row.y0); });
+  // dust motes in the light
+  for (i = 0; i < 30; i++) { var mx = (K.rng ? (i * 97.3 + t * (6 + i % 5)) % W : 0), my = hz * 0.2 + ((i * 53.1 + t * (3 + i % 3)) % (H - hz * 0.2)); ell(c, mx, my, 1, 1, 'rgba(255,240,210,0.25)'); }
+  c.restore();
+}
+
+var SCENES = [shed, workshop, garage, dealer, showroom, hall], LIVES = [shedLive, workshopLive, garageLive, dealerLive, showroomLive, hallLive];
 A.garageScene = function (c, g, level) { c.save(); SCENES[level](c, g); c.restore(); };
 A.garageLive = function (c, g, level, t) { c.save(); LIVES[level](c, g, t); c.restore(); };
 
@@ -301,6 +370,9 @@ A.garageStand = function (c, level, cx, y, w, t) {
   } else if (level === 3) {                // a white display plinth with a blue light strip
     box(c, cx - hw, y - 8, hw * 2, 10, '#f4f6f8', 1.2); R(c, cx - hw, y - 8, hw * 2, 3, '#ffffff'); R(c, cx - hw + 3, y - 2, hw * 2 - 6, 3, '#3a86ff');
     c.save(); c.globalCompositeOperation = 'lighter'; c.fillStyle = rg(c, cx, y, 0, hw, [[0, 'rgba(80,140,255,0.25)'], [1, 'rgba(80,140,255,0)']]); c.fillRect(cx - hw, y - 6, hw * 2, 14); c.restore();
+  } else if (level === 5) {                // an oak tier step edged in brass, with a small brass plaque
+    box(c, cx - hw, y - 6, hw * 2, 8, '#6b4528', 1.2); R(c, cx - hw, y - 6, hw * 2, 2, '#d9b05a'); R(c, cx - hw, y + 1, hw * 2, 1.5, '#8a6a2a');
+    box(c, cx - Math.min(14, hw * 0.3), y - 4, Math.min(28, hw * 0.6), 4, '#d9b05a', 0.8);
   } else {                                 // a turntable: a round plinth with a ring of light that runs round
     var ry = Math.max(5, w * 0.06);
     c.beginPath(); c.ellipse(cx, y + 3, hw * 1.05, ry + 3, 0, 0, TAU); c.fillStyle = 'rgba(0,0,0,0.5)'; c.fill();

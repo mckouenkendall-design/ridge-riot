@@ -996,12 +996,21 @@ function drawBeams(c, G, T, xl, xr, yt) {
   }
 }
 
+/* what is left of a log the Rhino went through: a few flat splinters over the bump in the ground */
+function drawStump(c, ft, m, T) {
+  var col = m === 4 ? '#9b6a3e' : m === 12 ? '#1c1d22' : m === 2 ? '#bfeeff' : T.speck[0], r = ft.r, i;
+  for (i = 0; i < 4; i++) {
+    var x = ft.x + (i - 1.5) * r * 0.6, h = r * (0.25 + 0.2 * hash(ft.x + i));
+    A.shape(c, [x - r * 0.32, ft.y - r * 0.05, x - r * 0.2, ft.y + r * 0.62 + h * 0.3, x + r * 0.05, ft.y + r * 0.5 + h * 0.4, x + r * 0.3, ft.y - r * 0.05], col, 0.035);
+  }
+}
 function drawFeats(c, G, T, xl, xr, behind) {
   var f = G.track.feats, i, tr = G.track;
   for (i = 0; i < f.length; i++) {
     var ft = f[i];
     if (ft.t === 'log' && !behind) {
       if (ft.x < xl - 1 || ft.x > xr + 1) continue;
+      if (G.sim && G.sim.smash && G.sim.smash[ft.id]) { drawStump(c, ft, RR.WORLDS[tr.worldIndex].logMat, T); continue; }
       var m = RR.WORLDS[tr.worldIndex].logMat;
       if (m === 12) {      // a tyre lying in the road
         A.circ(c, ft.x, ft.y, ft.r, '#1c1d22', 0.05);
@@ -1124,7 +1133,8 @@ function bikeView(G, v, def) {
     RA: [W0.ax + cm[0] + W0.ux * v.comp[0], W0.ay + cm[1] + W0.uy * v.comp[0]],
     FA: [W1.ax + cm[0] + W1.ux * v.comp[1], W1.ay + cm[1] + W1.uy * v.comp[1]],
     spinR: v.wa[0], spinF: v.wa[1], rateR: v.ww[0], rateF: v.ww[1],
-    lp: v.lp, stand: v.stand, crouch: v.crouch, rider: !v.noRider, headTilt: v.headTilt, look: G.look, t: G.t, wrecked: !!G.wipe
+    lp: v.lp, stand: v.stand, crouch: v.crouch, rider: !v.noRider, headTilt: v.headTilt, look: G.look, t: G.t, wrecked: !!G.wipe,
+    puff: v.puff || 0, stick: v.stick == null ? null : v.stick, lift: v.lift || 0
   };
 }
 

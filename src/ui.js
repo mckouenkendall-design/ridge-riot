@@ -310,7 +310,7 @@ var toastT = 0;
 UI.toast = function (text) { var t = $('toast'); t.textContent = text; t.className = 'plate on'; clearTimeout(toastT); toastT = setTimeout(function () { t.className = "plate"; }, Math.max(2800, text.length * 60)); };
 UI.toastBikes = function (list) {
   Au.unlocked();
-  var bikes = list.filter(function (x) { return !x.kind; }), tro = list.filter(function (x) { return x.kind; }), t = [];
+  var bikes = list.filter(function (x) { return !!x.unlock; }), tro = list.filter(function (x) { return !x.unlock; }), t = [];
   if (bikes.length) t.push('New bike in the garage: ' + bikes.map(function (d) { return d.name; }).join(', '));
   if (tro.length) t.push('Trophy earned: ' + tro.map(function (d) { return d.name; }).join(', '));
   UI.toast(t.join('. ')); Store.save();
@@ -378,7 +378,7 @@ UI.garage = function () {
   $('gtabs').innerHTML = h;
   $('gnug').innerHTML = NUG + Store.data.nuggets;
   var f = Store.data.fit[d.id] || {}, look = previewLook();
-  $('gcap').innerHTML = '<b>' + esc(d.name) + '</b>' + (tab === 'bikes' ? '<i>' + esc(d.tag) + '</i>' + esc(d.blurb) : (look.paint ? esc(look.paint.name) + ' paint' : 'Stock paint') + ', ' + (look.rider ? esc(look.rider.name) : 'stock rider') + '.');
+  $('gcap').innerHTML = '<b>' + esc(d.name) + '</b>' + (tab === 'bikes' ? '<i>' + esc(d.tag) + '</i>' + esc(d.trick || d.blurb) : (look.paint ? esc(look.paint.name) + ' paint' : 'Stock paint') + ', ' + (look.rider ? esc(look.rider.name) : 'stock rider') + '.');
   h = '';
   if (tab === 'bikes') {
     RR.BIKES.forEach(function (b) { if (P.bikeOpen(b)) own++; });

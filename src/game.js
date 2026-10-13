@@ -14,6 +14,7 @@ var KEY = 'ridgeRiot.v1';
 var DEF = {
   v: 3, news: 0, best: {}, bike: 'scrapper', owned: { scrapper: 1 }, last: 0, seenHow: false,
   nuggets: 0, paints: {}, riders: {}, fit: {}, crates: { rare: 0, epic: 0 }, garage: { level: 0, slots: [] }, opened: 0, pity: 0, paid: {}, got: {}, fresh: {}, kept: {},
+  gears: {}, chal: {}, flipst: {},
   settings: { sfx: 0.8, engine: 0.7, music: 0.5, tilt: false, tiltSens: 0.8, tiltFlip: false, hints: true, ghost: true, unlockAll: false, quality: 'auto', buzz: true },
   stats: { flips: 0, bestAir: 0, crashes: 0, runs: 0, finishes: 0, bestJump: 0, bestFlips: 0, dist: 0, topSpeed: 0 }
 };
@@ -133,8 +134,18 @@ var P = RR.Progress = {
     if (u.type === 'dist') return s.dist >= u.n;
     if (u.type === 'crashes') return s.crashes >= u.n;
     if (u.type === 'speed') return s.topSpeed >= u.n;
+    if (u.type === 'jump') return s.bestJump >= u.n;
+    if (u.type === 'finishes') return s.finishes >= u.n;
+    if (u.type === 'gears') return P.gearCount() >= u.n;
+    if (u.type === 'worldgears') return P.gearCount(RR.WORLD[u.w].index) >= u.n;
+    if (u.type === 'challenges') return P.chalCount() >= u.n;
+    if (u.type === 'flipstars') return P.flipStars() >= u.n;
     return false;
   },
+  /* Phase 2 collectables: one hidden gear and one challenge per track, and the flip star (filed by track name) */
+  gearCount: function (w) { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) if ((w == null || Math.floor(i / 8) === w) && Store.data.gears[RR.trackId(i)]) n++; return n; },
+  chalCount: function () { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) if (Store.data.chal[RR.trackId(i)]) n++; return n; },
+  flipStars: function () { var n = 0; for (var i = 0; i < RR.TRACK_COUNT; i++) if (Store.data.flipst[RR.trackId(i)]) n++; return n; },
   bikeOpen: function (d) { return Store.data.settings.unlockAll || !!Store.data.owned[d.id]; },
   /* what a locked bike still needs: the rule, where you are now, and 0..1 for the bar */
   bikeNeed: function (d) {
@@ -146,6 +157,11 @@ var P = RR.Progress = {
     if (u.type === 'dist') { have = Math.min(s.dist, need); return { text: u.text, now: (have / 1000).toFixed(1) + ' of ' + (need / 1000) + ' km', k: have / need }; }
     if (u.type === 'crashes') { have = Math.min(s.crashes, need); return { text: u.text, now: have + ' of ' + need + ' crashes', k: have / need }; }
     if (u.type === 'speed') { have = Math.min(s.topSpeed, need); return { text: u.text, now: 'Fastest so far ' + Math.round(have * 3.6) + ' km/h', k: have / need }; }
+    if (u.type === 'jump') { have = Math.min(s.bestJump, need); return { text: u.text, now: 'Longest so far ' + have.toFixed(1) + ' m', k: have / need }; }
+    if (u.type === 'finishes') { have = Math.min(s.finishes, need); return { text: u.text, now: have + ' of ' + need + ' runs', k: have / need }; }
+    if (u.type === 'gears' || u.type === 'worldgears') { have = Math.min(P.gearCount(u.type === 'gears' ? null : RR.WORLD[u.w].index), need); return { text: u.text, now: have + ' of ' + need + ' gears', k: have / need }; }
+    if (u.type === 'challenges') { have = Math.min(P.chalCount(), need); return { text: u.text, now: have + ' of ' + need + ' challenges', k: have / need }; }
+    if (u.type === 'flipstars') { have = Math.min(P.flipStars(), need); return { text: u.text, now: have + ' of ' + need + ' flip stars', k: have / need }; }
     return { text: 'Yours from the start', now: '', k: 1 };
   },
   /* hand over anything newly earned; returns the list so the game can announce it */
@@ -359,7 +375,7 @@ G.zeroTilt = function () { In.tiltZero = In.tiltRaw; };
 /* Starting, restarting, finishing                                      */
 /* ------------------------------------------------------------------ */
 var prev = { x: 0, y: 0, a: 0, comp: [0, 0], wa: [0, 0], lp: 0 };
-var vis = G.vis = { x: 0, y: 0, a: 0, comp: [0, 0], wa: [0, 0], ww: [0, 0], lp: 0, stand: 0, crouch: 0, noRider: false, headTilt: 0 };
+var vis = G.vis = { x: 0, y: 0, a: 0, comp: [0, 0], wa: [0, 0], ww: [0, 0], lp: 0, stand: 0, crouch: 0, noRider: false, headTilt: 0, puff: 0, stick: null, lift: 0 };
 var gp = {}, acc = 0, emitT = 0, exT = 0, tickN = 0, botP = {}, botOut = { lean: 0, brake: false, gas: true };
 
 G.load = function (trackIndex, bikeId, attract) {
@@ -389,9 +405,13 @@ G.reset = function (snapCam) {
   if (!G.attract && RR.UI) RR.UI.onReset();
 };
 G.play = function (trackIndex) {
-  Store.data.last = trackIndex; Store.data.stats.runs++; Store.save();
+  Store.data.last = trackIndex; Store.data.stats.runs++;
   Au.music(false);
   G.load(trackIndex, Store.data.bike, false);
+  // the first ride on a bike with a trick says what the trick is
+  var def = RR.BIKE[Store.data.bike];
+  if (def.trick && !Store.data.got['trick:' + def.id]) { Store.data.got['trick:' + def.id] = 1; setTimeout(function () { if (RR.UI) RR.UI.toast(def.name + ': ' + def.trick); }, 700); }
+  Store.save();
 };
 /* add this run's distance and top speed to the lifetime totals (some bikes unlock on them) */
 function bank() {
@@ -439,7 +459,7 @@ function finishRun() {
   if (s.bestJump > st.bestJump) st.bestJump = Math.round(s.bestJump * 10) / 10;
   if (s.flips > st.bestFlips) st.bestFlips = s.flips;
   bank();
-  var bikes = P.claim().filter(function (x) { return !x.kind; });
+  var bikes = P.claim().filter(function (x) { return !!x.unlock; });
   var worlds = [], tot = P.total();
   for (var w = 1; w < RR.WORLDS.length; w++) { var need = RR.WORLDS[w].need; if (tot >= need && totBefore < need) worlds.push(RR.WORLDS[w]); }
   // nuggets: a little for finishing, more for each new star, a bit for beating your own time
@@ -493,6 +513,15 @@ function onEvents() {
     } else if (e.t === 'pad') {
       Au.pad();
       for (k = 0; k < 8; k++) R.emit(2, e.x + rnd(-0.3, 0.3), e.y - G.bike.wh[0].r + 0.05, s.vx * 0.4 + rnd(-3, 1), rnd(1, 5), rnd(0.15, 0.35), 0.05, k % 2 ? '#ffe23d' : '#ff8a1f', { g: 1, front: 1 });
+    } else if (e.t === 'hop') {
+      Au.hop(); vis.puff = 1; buzz(15);
+      var hca = Math.cos(e.a), hsa = Math.sin(e.a);
+      for (k = 0; k < 14; k++) R.emit(0, e.x + rnd(-0.2, 0.2), e.y - 0.4, hsa * rnd(2, 5) + s.vx * 0.5 + rnd(-1, 1), -hca * rnd(2, 5) + rnd(-1, 1), rnd(0.3, 0.6), rnd(0.12, 0.24), '#ffffff', { gr: 1.4, a: 0.6, drag: 3, front: 1 });
+    } else if (e.t === 'smash') {
+      var lm = RR.WORLDS[G.track.worldIndex].logMat;
+      Au.smash(lm); buzz(25); G.cam.shake = Math.max(G.cam.shake, 0.3);
+      var lc = lm === 4 ? ['#9b6a3e', '#e0bb86'] : lm === 12 ? ['#1c1d22', '#6a6f7a'] : lm === 2 ? ['#bfeeff', '#ffffff'] : [T.speck[0], T.ground[0]];
+      for (k = 0; k < 16; k++) R.emit(1, e.x + rnd(-0.3, 0.3), e.y, s.vx * rnd(0.3, 0.9) + rnd(-2, 2), rnd(2, 7), rnd(0.6, 1.2), rnd(0.05, 0.12), lc[k % 2], { g: 1, vr: rnd(-14, 14), front: 1 });
     } else if (e.t === 'bonk') {
       G.bonked = true;
       Au.bonk(); buzz(40);
@@ -612,6 +641,11 @@ function tickOnce() {
     if (G.stuckT > 3.5 && !G.stuckSaid) { G.stuckSaid = true; if (RR.UI) RR.UI.toast('Stuck? The round arrow at the top left restarts.'); }
   }
   tickN++;
+  // the tricks that are not events: the hand brake grabbing in the air, sticky tyres letting go
+  var bk = G.bike;
+  if (bk.pivot && input.brake && !G.brkWas && !s.gnd[0] && !s.gnd[1] && !s.crashed) Au.pivot();
+  G.brkWas = input.brake;
+  if (bk.stick) { if (G.stickWas > 0 && s.stickT <= 0 && !s.crashed) Au.unstick(); G.stickWas = s.stickT; }
   onEvents();
   trailFx();
   if (G.wipe) G.wipe.step(DT);
@@ -646,6 +680,9 @@ G.frame = function (ts) {
   vis.stand += ((s.air && s.airT > 0.12 ? 0.75 : 0.1) - vis.stand) * (1 - Math.exp(-dt * 6));
   vis.crouch += (clamp((sq - 0.45) * 2.4, 0, 1) - vis.crouch) * k;
   vis.headTilt = clamp(-s.w * 0.03, -0.2, 0.2);
+  vis.puff = Math.max(0, (vis.puff || 0) - dt * 3);
+  vis.stick = b.stick ? s.stickT / b.stickMax : null;
+  vis.lift += ((b.glide ? clamp(s.lift / b.glide.cap, 0, 1) : 0) - (vis.lift || 0)) * k;
   if (G.state !== 'pause') {
     var fs = { x: vis.x, y: vis.y, vx: s.vx, vy: s.vy };
     if (G.wipe && G.state === 'crash') { fs.x = (vis.x + G.wipe.fx) * 0.5; fs.y = (vis.y + G.wipe.fy) * 0.5; fs.vx *= 0.3; fs.vy *= 0.3; }

@@ -666,26 +666,37 @@ KIND.ram = {
 /* =============================== 9. Albatross =============================== */
 /* a road-trail bike with a pair of wings bolted to the frame, swept back over the rear wheel, and a tail fin */
 function wing(c, k, ox, oy, lift, far) {
-  var f = lift * 0.07;                       // wingtip flex
-  var le = [0.98 + ox, 0.68 + oy, 0.5 + ox, 0.8 + oy, 0.0 + ox, 0.95 + oy, -0.4 + ox, 1.08 + oy + f * 0.5, -0.66 + ox, 1.17 + oy + f];
-  var te = [-0.7 + ox, 1.1 + oy + f, -0.42 + ox, 0.98 + oy + f * 0.4, -0.06 + ox, 0.84 + oy, 0.4 + ox, 0.67 + oy, 0.7 + ox, 0.56 + oy];
-  var q = smooth(le, 6).concat(smooth(te, 6));
-  shape(c, q, far ? shade(k[0], 0.62) : k[0], 0.026);
-  if (far) return;
-  // a darker band along the leading edge, ribs, a flap line, and a yellow tip
-  ribbon(c, [0.94 + ox, 0.665 + oy, 0.5 + ox, 0.785 + oy, 0.0 + ox, 0.935 + oy, -0.4 + ox, 1.065 + oy + f * 0.5, -0.62 + ox, 1.15 + oy + f], 0.04, 0.02, k[1], 0.0);
-  var i, rb = [[0.5, 0.79, 0.42, 0.68], [0.2, 0.88, 0.12, 0.76], [-0.1, 0.96, -0.16, 0.86], [-0.38, 1.05, -0.42, 0.99]];
-  for (i = 0; i < rb.length; i++) line(c, [rb[i][0] + ox, rb[i][1] + oy + (i > 2 ? f * 0.5 : 0), rb[i][2] + ox, rb[i][3] + oy + (i > 2 ? f * 0.4 : 0)], 0.01, shade(k[0], 0.75));
-  curve(c, [0.6 + ox, 0.61 + oy, 0.2 + ox, 0.725 + oy, -0.2 + ox, 0.85 + oy, -0.52 + ox, 1.02 + oy + f * 0.6], 0.008, shade(k[0], 0.6), 0);
-  // yellow tip with a little winglet turned up
-  shape(c, [-0.54 + ox, 1.14 + oy + f * 0.8, -0.66 + ox, 1.17 + oy + f, -0.7 + ox, 1.1 + oy + f, -0.56 + ox, 1.04 + oy + f * 0.7], k[2], 0.016);
-  shape(c, [-0.62 + ox, 1.16 + oy + f, -0.7 + ox, 1.26 + oy + f * 1.1, -0.75 + ox, 1.25 + oy + f * 1.1, -0.7 + ox, 1.11 + oy + f], k[2], 0.016);
+  /* Seen from a little above and to the side, the two wings make a V: the far one rises up and back
+     behind the rider, the near one sweeps down and back past the rear wheel. f lifts both tips. */
+  var f = lift * 0.08, i;
+  if (far) {
+    var P = [0.62, 0.86, 0.2, 0.98, -0.24, 1.14 + f * 0.5, -0.56, 1.28 + f, -0.66, 1.25 + f, -0.48, 1.12 + f, -0.08, 0.96, 0.3, 0.86];
+    shape(c, smooth(P, 3), shade(k[0], 0.66), 0.026);
+    line(c, [0.5, 0.88, 0.1, 1.0, -0.3, 1.16 + f * 0.5, -0.55, 1.26 + f], 0.03, shade(k[1], 0.75));
+    shape(c, [-0.56, 1.28 + f, -0.66, 1.25 + f, -0.6, 1.2 + f, -0.5, 1.23 + f], k[2], 0.016);
+    return;
+  }
+  // near wing: fabric over ribs, a navy leading edge, a flap, and a yellow tip with a winglet.
+  // Drawn a little smaller about its root so the rear wheel still shows through the gap.
+  c.save(); c.translate(0.6, 0.78); c.scale(0.8, 0.8); c.translate(-0.6, -0.78);
+  var tip = [-0.28 + ox, 0.2 + oy + f], tipR = [-0.6 + ox, 0.3 + oy + f];
+  var Q = [0.7 + ox, 0.72 + oy, 0.36 + ox, 0.55 + oy, 0.04 + ox, 0.36 + oy + f * 0.6, tip[0], tip[1], tipR[0], tipR[1], -0.36 + ox, 0.48 + oy + f * 0.5, -0.04 + ox, 0.7 + oy, 0.24 + ox, 0.84 + oy];
+  shape(c, smooth(Q, 3), k[0], 0.028);
+  // shading toward the trailing edge, so it reads as a curved surface
+  shape(c, smooth([-0.04 + ox, 0.7 + oy, -0.36 + ox, 0.48 + oy + f * 0.5, tipR[0], tipR[1], -0.46 + ox, 0.34 + oy + f, -0.1 + ox, 0.6 + oy, 0.2 + ox, 0.78 + oy], 2), shade(k[0], 0.82), 0);
+  line(c, [0.7 + ox, 0.72 + oy, 0.36 + ox, 0.55 + oy, 0.04 + ox, 0.36 + oy + f * 0.6, tip[0], tip[1]], 0.045, k[1]);
+  var rb = [[0.5, 0.64, 0.16, 0.8], [0.26, 0.5, -0.06, 0.72], [0.02, 0.36, -0.26, 0.6], [-0.18, 0.25, -0.44, 0.46]];
+  for (i = 0; i < rb.length; i++) line(c, [rb[i][0] + ox, rb[i][1] + oy + (i > 1 ? f * 0.6 : 0), rb[i][2] + ox, rb[i][3] + oy + (i > 1 ? f * 0.5 : 0)], 0.012, shade(k[0], 0.62));
+  curve(c, [0.16 + ox, 0.8 + oy, -0.14 + ox, 0.64 + oy, -0.42 + ox, 0.42 + oy + f * 0.6], 0.01, shade(k[0], 0.5), 0);
+  shape(c, [tip[0], tip[1], tipR[0], tipR[1], -0.55 + ox, 0.35 + oy + f, -0.3 + ox, 0.27 + oy + f], k[2], 0.018);
+  shape(c, [tipR[0], tipR[1], -0.7 + ox, 0.42 + oy + f, -0.66 + ox, 0.45 + oy + f, -0.55 + ox, 0.35 + oy + f], k[2], 0.016);
+  c.restore();
 }
 KIND.glider = {
   back: function (c, d, g) {
     // the far wing peeks out above the near one
     if (g.wrecked) return;
-    wing(c, d.col, 0.06, 0.1, Math.max(0, Math.min(1, vv(g).lift || 0)), true);
+    wing(c, d.col, 0, 0, Math.max(0, Math.min(1, vv(g).lift || 0)), true);
   },
   under: function (c, d, g) {
     var k = d.col;
@@ -710,9 +721,8 @@ KIND.glider = {
     circ(c, -0.34, 0.97, 0.022, '#e8483a', 0.012);
     // the near wing, its two struts and the root fairing
     if (!g.wrecked) {
-      tube(c, [0.22, 0.7, 0.44, 0.48], 0.022, STEEL, 0.022);
-      tube(c, [-0.18, 0.82, 0.04, 0.82], 0.02, STEEL, 0.022);
       wing(c, k, 0, 0, lift, false);
+      tube(c, [0.5, 0.64, 0.42, 0.82], 0.02, STEEL, 0.02);
       blob(c, [0.6, 0.6, 0.98, 0.66, 1.04, 0.58, 0.72, 0.52], k[1], 0.02);
       bolt(c, 0.84, 0.6); bolt(c, 0.7, 0.57);
     }
