@@ -13,6 +13,7 @@ const ONLY = ((args.find(a => a.startsWith('--only=')) || '').slice(7) || '').sp
 (async () => {
   const t = await lib.open({ w: 2400, h: 2200, dpr: 1, touch: false });
   const sheet = async (name, cells, cols, cw, ch, time) => {
+    if (!cells.length) return;
     await t.ev(([cells, cols, cw, ch, time]) => {
       let cv = document.getElementById('sheet'); if (!cv) { cv = document.createElement('canvas'); cv.id = 'sheet'; cv.style.cssText = 'position:fixed;left:0;top:0;z-index:99;background:#d9d4c6'; document.body.appendChild(cv); }
       const rows = Math.ceil(cells.length / cols); cv.width = cols * cw; cv.height = rows * ch; cv.style.width = cv.width + 'px'; cv.style.height = cv.height + 'px';
