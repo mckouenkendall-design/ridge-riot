@@ -517,6 +517,10 @@ function onEvents() {
       Au.hop(); vis.puff = 1; buzz(15);
       var hca = Math.cos(e.a), hsa = Math.sin(e.a);
       for (k = 0; k < 14; k++) R.emit(0, e.x + rnd(-0.2, 0.2), e.y - 0.4, hsa * rnd(2, 5) + s.vx * 0.5 + rnd(-1, 1), -hca * rnd(2, 5) + rnd(-1, 1), rnd(0.3, 0.6), rnd(0.12, 0.24), '#ffffff', { gr: 1.4, a: 0.6, drag: 3, front: 1 });
+    } else if (e.t === 'spool') {
+      Au.spool();
+    } else if (e.t === 'dump') {
+      Au.blowoff(e.k);
     } else if (e.t === 'smash') {
       var lm = RR.WORLDS[G.track.worldIndex].logMat;
       Au.smash(lm); buzz(25); G.cam.shake = Math.max(G.cam.shake, 0.3);
@@ -707,7 +711,7 @@ G.frame = function (ts) {
   // sound that follows the bike
   if (!G.attract && G.state !== 'pause') {
     var sp = Math.sqrt(s.vx * s.vx + s.vy * s.vy), run = G.state === 'run';
-    Au.engineUpdate({ v: -s.ww[0] * b.wh[0].r, vmax: G.bikeDef.vmax, gas: run && inp.gas ? 1 : 0, air: s.airW[0] > 0.12, boost: s.boost > 0, dt: dt });
+    Au.engineUpdate({ v: -s.ww[0] * b.wh[0].r, vmax: G.bikeDef.vmax, gas: run && inp.gas ? 1 : 0, air: s.airW[0] > 0.12, boost: s.boost > 0, turbo: s.turbo || 0, dt: dt });
     var sl = Math.abs(s.slip[0]) * (s.gnd[0] ? 1 : 0), sf = Math.abs(s.slip[1]) * (s.gnd[1] ? 1 : 0);
     var hard = s.mat[0] === 1 || s.mat[0] === 5 || s.mat[0] === 2 || s.mat[0] === 4 || s.mat[0] >= 8;
     Au.layersUpdate({
