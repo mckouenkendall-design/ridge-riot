@@ -75,6 +75,31 @@ var PC = RR.PIECES = {
     b.gap(w, { rise: o.rise == null ? -0.6 : o.rise });
     return b.land(o.land || deg - 4, o.landLen || 8).go();
   },
+  /* MOMENTUM PIECES: wrong speed costs time, never the run.
+     Double: a kicker, a dip, then a second mound whose far side is the landing. The right speed puts you on that
+     downslope and you keep your speed. Too slow and you land in the dip or case the face of the mound and lose it;
+     too fast and you sail past the downslope and land flat. */
+  double: function (b, deg, gap, H2, landDeg, landLen, o) {
+    o = o || {}; var D = Math.PI / 180, y0 = b.y;
+    b.kicker(deg, o.R || 7, o.lip == null ? 0.8 : o.lip);
+    var xl = b.x, face = o.face || 30, back = o.back || 34;
+    b.to(-back, 1.2).line(Math.max(0.3, (b.y - y0 - 0.25) / Math.sin(back * D))); b.to(0, 1.2);
+    var upRun = (y0 + H2 - b.y) / Math.tan(face * D), trough = Math.max(1, xl + gap - b.x - upRun);
+    if (o.gear === 'trough') b.gear(trough * 0.5, 0.75);
+    b.line(trough);
+    b.to(face, 1.4).line(Math.max(0.3, (y0 + H2 - b.y - 0.3) / Math.sin(face * D)));
+    b.to(0, 1.4).line(o.crest == null ? 0.6 : o.crest);
+    b.to(-landDeg, 2).line(landLen);
+    b.to(0, o.outR || 9);
+    // the next hill comes straight after the landing: overshoot the downslope and you hit its face
+    if (o.next) { b.line(o.gapAfter == null ? 1.5 : o.gapAfter); b.hill(o.next[0], o.next[1]); }
+    return b;
+  },
+  /* Rollers: rounded humps. At the right speed you skim from the top of one onto the back of the next;
+     slower and you roll every one, faster and you fly the lot and land flat. */
+  rollers: function (b, n, len, h, gap) { for (var i = 0; i < n; i++) { b.hill(h, len); if (gap) b.flat(gap); } return b; },
+  /* two routes: see TB.fork in builder.js. lowFloor builds the cave floor (default: flat) */
+  fork: function (b, o) { return b.fork(o || {}); },
   /* A jump inside a tunnel: the roof is why you cannot take it flat out */
   cavejump: function (b, v, clear, deg, w, o) {
     o = o || {};
@@ -86,70 +111,98 @@ var PC = RR.PIECES = {
 /* [name, tip shown before the start, recipe] */
 var T = [
 /* ----------------------------- DUSTBOWL ----------------------------- */
+/* Phase 2: [name, tip, recipe, challenge]. Each track has a momentum piece or two (PC.double, PC.rollers),
+   a jump big enough to flip, a hidden gear (b.gear) and a challenge (see goals.js). */
 ['First Gear', 'Right thumb: gas and brake. Left thumb: lean back and lean forward.', function (b) {
-  b.flat(18).hill(1.2, 18).flat(12).hill(1.8, 22).flat(10).ease(26, -3).flat(14)
-   .hill(1.5, 16).flat(8).bumps(4, 5, 0.3).flat(12).ease(20, 2.5).flat(12)
-   .table(11, 1.3, 6, 9).flat(16);
-}],
+  b.flat(18).hill(1.2, 18).flat(10);
+  PC.double(b, 16, 8, 1.4, 18, 7, { next: [1.4, 14], gapAfter: 1 });
+  b.flat(10).ease(26, -3).flat(12).bumps(4, 5, 0.3).flat(10).ease(20, 2.5).flat(14).sign('jump');
+  jump(b, 18, 6, 16, 11, { rise: -2.6, lip: 1.4 });
+  b.flat(16);
+  b.gearAt(218.7, -4.5);        // at the foot of the last landing: only if you come in slow enough to land short
+}, { t: 'wheelie', sec: 2 }],
 ['Rolling Dunes', 'Front wheel coming up on a climb? Lean forward, or ease off the gas.', function (b) {
-  b.flat(14).waves(3, 24, 1.15).flat(8).ease(34, -6).flat(8).surface('sand').flat(14).surface()
-   .waves(2, 18, 0.95).flat(8).up(15, 12, 13).flat(8, 16).down(13, 14, 13).flat(12)
-   .hill(2.0, 22).flat(14);
-}],
+  b.flat(14).waves(3, 24, 1.15).flat(8).ease(34, -6).flat(8).surface('sand').flat(14).surface();
+  PC.double(b, 18, 7, 1.3, 20, 6, { next: [1.6, 13], gapAfter: 1 });
+  b.flat(8).up(15, 12, 13).flat(12, 16);
+  jump(b, 16, 5, 14, 12, { rise: -3, lip: 1.6 });
+  b.flat(10).hill(2.0, 22).flat(14);
+  b.gearAt(192.2, -6.6);        // in the dip after the mesa: only if you roll off it slowly
+}, { t: 'air', sec: 1.5 }],
 ['Hop Skip', 'In the air, lean forward drops the nose and lean back lifts it.', function (b) {
   b.flat(24).sign('jump');
-  jump(b, 11, 3.5, 9, 7, { rise: -0.4, lip: 1.6 });
-  b.flat(18).table(14, 1.4, 6, 9).flat(16);
-  jump(b, 13, 4.5, 11, 8, { rise: -0.6, lip: 1.6 });
-  b.flat(16).hill(1.6, 20).flat(12);
-  jump(b, 15, 5.5, 13, 9, { rise: -0.8, lip: 1.4 });
+  jump(b, 13, 4, 11, 8, { rise: -0.8, lip: 1.6 });
   b.flat(14);
-}],
-['Washboard', 'Rock overhead means slow down. Brake before the hump, or it throws you into the roof.', function (b) {
-  b.flat(14).bumps(8, 3.4, 0.26).flat(8).ease(18, -2.5).flat(6).bumps(5, 5.2, 0.34).flat(8)
-   .steps(4, 6, 0.7).flat(14).sign('slow').flat(10);
-  PC.tunnel(b, 9, 3.6, [[1.1, 10]]);
-  b.flat(8).hill(-1.6, 14).flat(8).bumps(9, 2.8, 0.22).flat(10)
-   .table(17, 1.8, 4, 8).flat(8).logs(3, 6, 0.2).flat(14);
-}],
-['Mesa Drop', 'The last ramp flicks the front wheel up. Lean forward as you leave it.', function (b) {
-  b.flat(16).up(21, 20, 11).flat(20, 16).drop(3.4).flat(22);
-  jump(b, 16, 6, 15, 8, { rise: -1 });
-  b.flat(10).up(18, 12, 10).flat(10, 15).drop(1.8).flat(8).drop(1.8).flat(14)
-   .hill(2.2, 18).flat(6).surface('sand').flat(12).surface().flat(12).sign('jump');
-  kick(b, 17, 6.5, 14, 8, { rise: -0.8, R: 7 });
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
   b.flat(12);
-}],
+  b.hill(1.6, 20).flat(10);
+  jump(b, 17, 6, 15, 10, { rise: -2.2, lip: 1.6 });
+  b.flat(4);
+  jump(b, 19, 7, 17, 11, { rise: -3, lip: 1.4 });
+  b.flat(14);
+  b.gearAt(153.2, -4.5);        // in mid-air over the second-to-last landing: about 10 m/s puts you through it
+}, { t: 'combo', seq: ['b', 'f'] }],
+['Loop de Dust', 'Loops need speed. Hold the gas all the way round and do not lean.', function (b) {
+  b.flat(34).sign('loop').loop(3.6).flat(18);
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
+  b.flat(10).ease(24, -4).flat(14).loop(3.9).flat(22);
+  kick(b, 18, 7, 16, 11, { rise: -2.4, R: 6.5 });
+  b.flat(14);
+  b.gearAt(180.2, -6.6);        // at the foot of the last landing: come in slow
+}, { t: 'long', m: 16 }],
+['Mesa Drop', 'Two roads. Hold lean back as you pass the fork sign to take the high one over the mesa.', function (b) {
+  b.flat(16).up(21, 20, 11).flat(20, 16).drop(3.4).flat(22);
+  jump(b, 16, 6, 15, 10, { rise: -1.6 });
+  b.flat(14);
+  b.fork({ H: 4.2, rampLen: 16, slab1: 10, slot: 6, slab2: 10, stepH: 1.6, kickH: 0.7, exitLen: 16,
+    low: function (b) { b.flat(6); PC.rollers(b, 3, 9, 0.6); } });
+  b.gearAt(167, 6.9);           // on top of the mesa: the high road only
+  b.flat(14).hill(2.2, 18).flat(6).surface('sand').flat(12).surface().flat(12).sign('jump');
+  kick(b, 17, 6.5, 14, 10, { rise: -2, R: 7 });
+  b.flat(12);
+}, { t: 'flip', dir: 'f', n: 1, text: 'A frontflip anywhere' }],
+['Washboard', 'Rock overhead means slow down. Brake before the hump, or it throws you into the roof.', function (b) {
+  b.flat(14).bumps(8, 3.4, 0.26).flat(8).ease(18, -2.5).flat(6);
+  PC.rollers(b, 4, 7, 0.55);
+  b.flat(8).steps(4, 6, 0.7).flat(14).sign('slow').flat(10);
+  PC.tunnel(b, 9, 3.6, [[1.1, 10]]);
+  b.flat(8).hill(-1.6, 14).flat(8).bumps(9, 2.8, 0.22).flat(10);
+  PC.double(b, 18, 7, 1.3, 20, 6, { next: [1.6, 13], gapAfter: 1 });
+  b.flat(8).table(17, 1.8, 4, 8).flat(8).logs(3, 6, 0.2).flat(10);
+  jump(b, 18, 6, 16, 10, { rise: -2.4, lip: 1.4 });
+  b.flat(14);
+  b.gearAt(371.5, -7.9);        // in mid-air over the last landing: about 9 m/s
+}, { t: 'nobrake' }],
 ['Gulch Gap', 'Not every ledge wants speed. Roll off the marked one gently and duck in under the rock.', function (b) {
   b.flat(22);
-  jump(b, 16, 6, 14, 9, { rise: -0.8, lip: 1.5 });
-  b.flat(14).hill(1.6, 16).flat(12);
-  kick(b, 17, 7, 15, 10, { rise: -1.1, R: 7.5 });
+  jump(b, 16, 6, 14, 9, { rise: -1.4, lip: 1.5 });
+  b.flat(14);
+  PC.double(b, 18, 7, 1.3, 20, 6, { next: [1.6, 13], gapAfter: 1 });
+  b.flat(10);
+  kick(b, 17, 7, 15, 10, { rise: -1.6, R: 7.5 });
   b.flat(12).ease(22, -3.5).flat(10).sign('slow').flat(10);
   PC.box(b, 9, 2.4, 3, 6.5, 3.2);
   b.flat(12);
-  jump(b, 20, 10, 18, 11, { rise: -1.6, lip: 1.5 });
+  jump(b, 20, 10, 18, 11, { rise: -2.2, lip: 1.5 });
   b.flat(14).bumps(4, 4.6, 0.28).flat(12).table(17, 1.9, 5, 8).flat(14);
-}],
-['Loop de Dust', 'Loops need speed. Hold the gas all the way round and do not lean.', function (b) {
-  b.flat(34).sign('loop').loop(3.6).flat(20).table(17, 1.9, 6, 8).flat(10).ease(24, -4).flat(14)
-   .loop(3.9).flat(22);
-  kick(b, 18, 7, 16, 9, { rise: -1, R: 6.5 });
-  b.flat(14);
-}],
+  b.gearAt(236.1, -14.9);       // in mid-air over the big gap's landing: about 11 m/s
+}, { t: 'flip', dir: 'f', n: 1, at: 'last', where: 'over the big gap' }],
 ['Canyon Run', 'Hold a lean through a whole jump to flip. Land it and you get a boost. Mind the rock.', function (b) {
   b.flat(18);
-  kick(b, 18, 7, 16, 9, { rise: -1, R: 6.5 });
+  kick(b, 18, 7, 16, 9, { rise: -1.2, R: 6.5 });
   b.flat(8).up(20, 16, 10).flat(14, 14).drop(2.6).flat(16).sign('slow').flat(8);
   PC.tunnel(b, 9, 3.4, [[1.1, 10], [0.9, 9]]);
-  b.flat(14).loop(3.8).flat(16);
-  jump(b, 20, 9, 18, 10, { rise: -1.4 });
+  b.flat(14).loop(3.8).flat(14);
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
+  b.flat(8);
+  jump(b, 20, 9, 18, 10, { rise: -1.6 });
   b.flat(8).ease(26, -5).flat(12).sign('slow').flat(8);
   PC.limbo(b, 9, 22, 4.5, 4, 3.2);
   b.flat(10).steps(3, 7, 0.9).flat(12);
-  kick(b, 20, 10, 20, 11, { rise: -2, R: 6.5 });
+  kick(b, 22, 10, 22, 15, { rise: -5.5, R: 6.5 });
   b.flat(16);
-}],
+  b.gearAt(394.7, -19.5);       // in mid-air over the last landing: about 10 m/s
+}, { t: 'speed', kmh: 60 }],
 
 /* ----------------------------- PINEWOOD ----------------------------- */
 ['Log Jam', 'Logs kick the bike up. Hit them straight and stay loose.', function (b) {
@@ -620,7 +673,7 @@ RR.trackId = function (i) { return slug(T[i][0]); };
 RR.trackIndex = function (id) { return id in IDX ? IDX[id] : -1; };
 RR.TRACK_COUNT = T.length;
 RR.trackInfo = function (i) {
-  return { index: i, world: Math.floor(i / 8), num: i % 8, name: T[i][0], tip: T[i][1], id: slug(T[i][0]) };
+  return { index: i, world: Math.floor(i / 8), num: i % 8, name: T[i][0], tip: T[i][1], id: slug(T[i][0]), chal: T[i][3] || null };
 };
 var cache = {};
 RR.getTrack = function (i) {
@@ -631,6 +684,10 @@ RR.getTrack = function (i) {
   var tr = b.finish(T[i][0], id);
   tr.index = i; tr.worldIndex = Math.floor(i / 8); tr.airless = !!w.airless; tr.seed = hashStr(id) % 9973;
   // the measured speed for each slow zone replaces the rough figure in the recipe (see startimes.js)
+  // a challenge that says "at: 'last'" means taking off from the last jump on the track
+  var ch = T[i][3] ? JSON.parse(JSON.stringify(T[i][3])) : null;
+  if (ch && ch.at === 'last') { var gaps = tr.feats.filter(function (f) { return f.t === 'gap'; }), lg = gaps[gaps.length - 1]; ch.at = lg ? [lg.x0 - 14, lg.x0 + 0.5] : null; }
+  tr.chal = ch;
   var zv = RR.ZONE_V && RR.ZONE_V[i], zk = 0;
   if (zv) tr.feats.forEach(function (f) { if (f.t === 'zone') { if (zk < zv.length) f.v = zv[zk]; zk++; } });
   cache[i] = tr;

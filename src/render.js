@@ -952,6 +952,37 @@ function drawRoofs(c, G, T, xl, xr, yt) {
   }
 }
 
+/* Two-route tracks: rock shelves you can ride on top of and under, and the bridge that brings the high route down. */
+function drawShelves(c, G, T, xl, xr) {
+  var ch = G.track.chains, i, k;
+  for (i = 1; i < ch.length; i++) {
+    var p = ch[i].pts;
+    if (ch[i].kind === 'shelf') {
+      var mn = 1e9, mx = -1e9; for (k = 0; k < p.length; k += 2) { if (p[k] < mn) mn = p[k]; if (p[k] > mx) mx = p[k]; }
+      if (mx < xl || mn > xr) continue;
+      c.beginPath(); c.moveTo(p[0], p[1]); for (k = 2; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]); c.closePath();
+      c.fillStyle = T.ground[1]; c.fill();
+      c.save(); c.clip(); c.fillStyle = T.ground[2] || T.ground[1];
+      for (k = 0; k < 7; k++) { var sx = mn + (mx - mn) * hash(k * 3.1 + mn), sy = p[3] - 0.25 - hash(k * 7.7 + mn) * 0.4; c.beginPath(); c.ellipse(sx, sy, 0.35 + hash(k + mn) * 0.4, 0.09, 0, 0, TAU); c.fill(); }
+      c.restore();
+      c.lineWidth = 0.055; c.strokeStyle = OUT; c.stroke();
+      // the crust on top
+      c.beginPath(); var n = p.length / 2; c.moveTo(p[2], p[3]); for (k = 2; k < n && p[k * 2] > p[k * 2 - 2]; k++) c.lineTo(p[k * 2], p[k * 2 + 1]);
+      c.lineWidth = 0.2; c.strokeStyle = T.crust; c.stroke();
+    } else if (ch[i].kind === 'bridge') {
+      if (p[p.length - 2] < xl || p[0] > xr) continue;
+      // trestle legs down to the ground, then the deck and a rail
+      c.lineWidth = 0.08; c.strokeStyle = '#6b4a2a';
+      for (k = 2; k < p.length - 2; k += 4) { var gy = RR.groundY(G.track, p[k]); if (gy < p[k + 1] - 0.4) { c.beginPath(); c.moveTo(p[k], p[k + 1]); c.lineTo(p[k] + 0.2, gy); c.moveTo(p[k], p[k + 1]); c.lineTo(p[k] - 0.2, gy); c.stroke(); } }
+      c.beginPath(); c.moveTo(p[0], p[1]); for (k = 2; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]);
+      c.lineWidth = 0.26; c.strokeStyle = OUT; c.stroke(); c.lineWidth = 0.18; c.strokeStyle = '#a5763f'; c.stroke();
+      c.beginPath(); c.moveTo(p[0], p[1] + 0.7); for (k = 2; k < p.length; k += 2) c.lineTo(p[k], p[k + 1] + 0.7);
+      c.lineWidth = 0.05; c.strokeStyle = '#6b4a2a'; c.stroke();
+      for (k = 0; k < p.length; k += 4) { c.beginPath(); c.moveTo(p[k], p[k + 1]); c.lineTo(p[k], p[k + 1] + 0.7); c.stroke(); }
+    }
+  }
+}
+
 /* Something hanging over a jump. The solid part is the plain column from y0 upward; the drawing
    stays inside it at the bottom so what you see is what you hit. */
 function drawBeams(c, G, T, xl, xr, yt) {
@@ -1193,6 +1224,7 @@ R.frame = function (G, dt) {
   for (i = 0; i < tr.loops.length; i++) if (tr.loops[i].cx + tr.loops[i].R + 2 > xl && tr.loops[i].cx - tr.loops[i].R - 2 < xr) drawLoop(c, tr.loops[i], T);
   drawGround(c, G, T, xl, xr, yb);
   drawRoofs(c, G, T, xl, xr, yt);
+  drawShelves(c, G, T, xl, xr);
   drawBeams(c, G, T, xl, xr, yt);
   drawFeats(c, G, T, xl, xr, false);
 

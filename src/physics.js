@@ -309,7 +309,7 @@ RR.createSim = function (bike, track) {
     wx: [0, 0], wy: [0, 0], wvx: [0, 0], wvy: [0, 0], wa: [0, 0], ww: [0, 0],
     comp: [0, 0], compV: [0, 0], gnd: [false, false], load: [0, 0], slip: [0, 0], mat: [0, 0],
     nrmX: [0, 1], nrmY: [1, 1], bot: [0, 0], airW: [0, 0],
-    gates: new Uint8Array(Math.max(1, track.loops.length)),
+    gates: new Uint8Array(track.gateN || Math.max(1, track.loops.length)),
     smash: bike.smash ? new Uint8Array(Math.max(1, track.logCount || 0)) : null,
     events: []
   };
@@ -579,6 +579,8 @@ function tick(s, inp, settling) {
     if (s.gates[i] === 0) { if (s.x < lp.cx && s.y > lp.cy && s.x > lp.cx - lp.R) s.gates[i] = 1; }
     else if (s.x < lp.cx - lp.R - 1.5) s.gates[i] = 0;
   }
+  // two routes: until you reach the fork sign, leaning back means you have chosen the high road
+  if (tr.forks) for (i = 0; i < tr.forks.length; i++) { var fk = tr.forks[i]; if (s.x < fk.x) s.gates[fk.g] = s.lp < -0.5 ? 1 : 0; }
   var tgt = (s.crashed || s.finished) ? 0 : inp.lean;
   s.lp += clamp(tgt - s.lp, -DT * LEAN_RATE, DT * LEAN_RATE);
   if (tgt === 0 && s.pl !== 0) s.relT = LEAN_STOP_T;
@@ -639,7 +641,7 @@ function tick(s, inp, settling) {
     if (s.airT > s.bestAir) s.bestAir = s.airT;
     var jd = s.x - s.jumpX; if (jd > s.bestJump) s.bestJump = jd;
     if (nf > 0 && !s.crashed && s.airT > 0.35) {
-      s.pendFlip = { n: nf, dir: s.rot > 0 ? 1 : -1, t: 0.25, air: s.airT };
+      s.pendFlip = { n: nf, dir: s.rot > 0 ? 1 : -1, t: 0.25, air: s.airT, jx: s.jumpX };
     } else if (s.airT > 0.9 && !s.crashed) s.events.push({ t: 'air', air: s.airT, dist: jd });
   }
   s.air = air;
@@ -649,7 +651,7 @@ function tick(s, inp, settling) {
     else if (s.pendFlip.t <= 0) {
       s.flips += s.pendFlip.n;
       s.boost = Math.min(3.2, s.boost + 0.9 + 0.55 * s.pendFlip.n);
-      s.events.push({ t: 'flip', n: s.pendFlip.n, dir: s.pendFlip.dir, air: s.pendFlip.air });
+      s.events.push({ t: 'flip', n: s.pendFlip.n, dir: s.pendFlip.dir, air: s.pendFlip.air, jumpX: s.pendFlip.jx });
       s.pendFlip = null;
     }
   }
@@ -705,7 +707,7 @@ RR.snapshot = function (s) {
   o.started = s.started; o.crashed = s.crashed; o.finished = s.finished; o.air = s.air; o.crashCause = s.crashCause;
   o.gates = Array.prototype.slice.call(s.gates);
   o.smash = s.smash ? Array.prototype.slice.call(s.smash) : null;
-  o.pendFlip = s.pendFlip ? { n: s.pendFlip.n, dir: s.pendFlip.dir, t: s.pendFlip.t, air: s.pendFlip.air } : null;
+  o.pendFlip = s.pendFlip ? { n: s.pendFlip.n, dir: s.pendFlip.dir, t: s.pendFlip.t, air: s.pendFlip.air, jx: s.pendFlip.jx } : null;
   return o;
 };
 RR.restore = function (s, o) {
@@ -715,7 +717,7 @@ RR.restore = function (s, o) {
   s.started = o.started; s.crashed = o.crashed; s.finished = o.finished; s.air = o.air; s.crashCause = o.crashCause;
   for (i = 0; i < o.gates.length; i++) s.gates[i] = o.gates[i];
   if (s.smash && o.smash) for (i = 0; i < o.smash.length; i++) s.smash[i] = o.smash[i];
-  s.pendFlip = o.pendFlip ? { n: o.pendFlip.n, dir: o.pendFlip.dir, t: o.pendFlip.t, air: o.pendFlip.air } : null;
+  s.pendFlip = o.pendFlip ? { n: o.pendFlip.n, dir: o.pendFlip.dir, t: o.pendFlip.t, air: o.pendFlip.air, jx: o.pendFlip.jx } : null;
   s.events.length = 0;
 };
 
