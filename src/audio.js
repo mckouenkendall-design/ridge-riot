@@ -114,9 +114,10 @@ var ENG = {
   drag:  { pattern: [[0, 1], [0.5, 0.9]], lo: 13, hi: 86, ring: 5.0, decay: 0.11, grit: 0.7, bright: 1.3, noise: 0.6, drive: 3.6 },
   /* phase 2. Optional extras: jit = how unevenly the cylinders fire, hp = low cut, level = trim,
      hiss = [Hz, gain] a steady bed of air hiss, whine = [Hz at standstill, Hz at top speed, gain] a belt
-     whine that follows road speed, prop = [blade Hz at idle, at the limiter, gain] a propeller drone */
+     whine that follows road speed, prop = [blade Hz at idle, at the limiter, gain] a propeller drone,
+     spool = [whistle Hz just off boost, Hz at full boost, gain] a turbo whistle that follows st.turbo (0 to 1) */
   puffer:    { pattern: [[0, 1]], lo: 14, hi: 84, ring: 4.4, decay: 0.09, grit: 0.2, bright: 1.0, noise: 0.3, drive: 2.2, level: 1.2, hiss: [5200, 0.035] },
-  springer:  { pattern: [[0, 1]], lo: 26, hi: 128, ring: 7.0, decay: 0.06, grit: 0.45, bright: 1.6, noise: 0.25, drive: 3.0, hp: 170, level: 1.25 },
+  turbo:     { pattern: [[0, 1]], lo: 13, hi: 84, ring: 6.6, decay: 0.062, grit: 0.16, bright: 1.3, noise: 0.35, drive: 2.6, hp: 60, level: 1.05, spool: [1700, 6800, 0.07] },
   boxer:     { pattern: [[0, 1], [0.5, 0.72]], lo: 7.5, hi: 46, ring: 4.2, decay: 0.15, grit: 0.12, bright: 0.62, noise: 0.25, drive: 1.8, jit: 0.07, level: 0.8 },
   gecko:     { pattern: [[0, 1]], lo: 19, hi: 70, ring: 3.2, decay: 0.2, grit: 0.08, bright: 0.65, noise: 0.15, drive: 1.5, hp: 90, level: 0.9, whine: [220, 1500, 0.05] },
   paddle:    { pattern: [[0, 1], [0.07, 0.42]], lo: 8.5, hi: 58, ring: 2.6, decay: 0.13, grit: 0.45, bright: 0.85, noise: 0.55, drive: 3.4, level: 0.78 },
@@ -188,8 +189,18 @@ function engineExtras(e, E) {
     e.po.start(); e.pn.start(0, Math.random()); e.lfo.start();
     e.nodes.push(e.po, e.pf, e.pg, e.pn, e.pnf, e.pam, e.lfo, e.lfoG);
   }
+  if (E.spool) {           // the turbo: a whistle (two sines a fifth apart) and a breath of air through the compressor
+    e.so = ac.createOscillator(); e.so.type = 'sine'; e.so2 = ac.createOscillator(); e.so2.type = 'sine';
+    e.sg = ac.createGain(); e.sg.gain.value = 0; e.sg2 = ac.createGain(); e.sg2.gain.value = 0.22;
+    e.so.connect(e.sg); e.so2.connect(e.sg2); e.sg2.connect(e.sg); e.sg.connect(e.out);
+    e.sn = ac.createBufferSource(); e.sn.buffer = noiseBuf; e.sn.loop = true; e.snf = ac.createBiquadFilter(); e.snf.type = 'bandpass'; e.snf.Q.value = 2.2;
+    e.sng = ac.createGain(); e.sng.gain.value = 0; e.sn.connect(e.snf); e.snf.connect(e.sng); e.sng.connect(e.out);
+    e.so.frequency.value = E.spool[0]; e.so2.frequency.value = E.spool[0] * 1.5; e.so.start(); e.so2.start(); e.sn.start(0, Math.random());
+    e.boost = 0;
+    e.nodes.push(e.so, e.so2, e.sg, e.sg2, e.sn, e.snf, e.sng);
+  }
 }
-function engineExtrasUpdate(e, E, x, load, t) {
+function engineExtrasUpdate(e, E, x, load, t, st) {
   if (E.hiss) e.hg.gain.setTargetAtTime(E.hiss[1] * (0.8 + 0.4 * load), t, 0.05);
   if (E.whine) {
     var xs = Math.min(1.15, x), wf = (E.whine[0] + (E.whine[1] - E.whine[0]) * xs) * e.pitch;
@@ -203,6 +214,15 @@ function engineExtrasUpdate(e, E, x, load, t) {
     var pl = E.prop[2] * (0.45 + 0.55 * load) * (0.6 + 0.5 * Math.min(1, e.rpm));
     e.pg.gain.setTargetAtTime(pl * 0.7, t, 0.04); e.pam.gain.setTargetAtTime(pl, t, 0.04); e.lfoG.gain.setTargetAtTime(pl * 0.9, t, 0.04);
     e.pnf.frequency.setTargetAtTime(380 + 900 * Math.min(1, e.rpm), t, 0.05);
+  }
+  if (E.spool) {
+    // the shaft speeds up with the boost, and spins down more slowly than it spun up once the boost is dumped
+    var bt = st.turbo > 0 ? Math.min(1, st.turbo) : 0, dt = st.dt || 0.016;
+    e.boost += (bt - e.boost) * Math.min(1, dt * (bt > e.boost ? 12 : 2.5));
+    var sb = e.boost, sf = (E.spool[0] + (E.spool[1] - E.spool[0]) * Math.pow(sb, 0.8)) * (0.9 + 0.1 * Math.min(1, e.rpm)) * e.pitch;
+    e.so.frequency.setTargetAtTime(sf, t, 0.04); e.so2.frequency.setTargetAtTime(sf * 1.5, t, 0.04); e.snf.frequency.setTargetAtTime(sf * 0.55, t, 0.05);
+    var sl = E.spool[2] * Math.pow(sb, 1.5) * (0.25 + 0.75 * load);
+    e.sg.gain.setTargetAtTime(sl, t, bt > 0.02 ? 0.06 : 0.1); e.sng.gain.setTargetAtTime(sl * 1.6, t, 0.06);
   }
 }
 
@@ -257,7 +277,7 @@ S.engineStart = function (def) {
   }
   eng = e;
 };
-/* st: { v: wheel speed m/s, vmax, gas: 0..1, air: bool, boost: bool, dt } */
+/* st: { v: wheel speed m/s, vmax, gas: 0..1, air: bool, boost: bool, dt, turbo: 0..1 (the Spool 600's boost, missing = 0) } */
 S.engineUpdate = function (st) {
   if (!eng || !ok) return;
   var e = eng, t = ac.currentTime, dt = st.dt || 0.016, x = Math.max(0, st.v) / st.vmax;
@@ -311,7 +331,7 @@ S.engineUpdate = function (st) {
   e.post.gain.setTargetAtTime((0.4 + 0.22 * load + 0.1 * k) * (E.level || 1), t, 0.03);
   e.nf.frequency.setTargetAtTime(600 + 3200 * k, t, 0.03);
   e.ng.gain.setTargetAtTime(E.noise * load * (0.03 + 0.1 * k), t, 0.03);
-  engineExtrasUpdate(e, E, x, load, t);
+  engineExtrasUpdate(e, E, x, load, t, st);
   return e.rpm;
 };
 S.engineInfo = function () { return eng ? { rpm: eng.rpm, gear: eng.gear } : null; };
@@ -471,6 +491,26 @@ S.pivot = function () {
   tone('sine', 2950, 3050, 0.2, 0.08, 0.02, null, 0.015); tone('sine', 3010, 3110, 0.2, 0.07, 0.02, null, 0.015);
   tone('triangle', 5900, 6100, 0.14, 0.025, 0.02, null, 0.015);
 };
+/* Spool 600: the blow-off valve dumping boost when the gas is shut. A sharp "pssh" of air and the
+   compressor's flutter ("stututu"), both bigger the more boost there was. k = boost dumped, 0.3 to 1 */
+function bov(k, when, g) {
+  k = Math.max(0.2, Math.min(1, k || 0.6)); when = when || 0; g = g || 1;
+  noise(0.16 + 0.32 * k, 'highpass', 3400, 1500, 0.7, (0.16 + 0.3 * k) * g, when, null, false, 0.003);
+  noise(0.12 + 0.16 * k, 'bandpass', 1400, 650, 1.1, (0.12 + 0.14 * k) * g, when, null, false, 0.004);
+  var n = 3 + Math.round(4 * k), i, gap = 0.05 + 0.012 * (1 - k);
+  for (i = 0; i < n; i++) {
+    var d = Math.pow(0.8, i), at = when + 0.05 + i * gap;
+    noise(0.03, 'bandpass', 900 - i * 40, 500, 2.5, 0.24 * k * d * g, at, null, false, 0.002);
+    tone('sine', 210 - i * 8, 120, 0.035, 0.13 * k * d * g, at);
+  }
+}
+S.blowoff = function (k) { if (!ok) return; bov(k); };
+/* Spool 600: the whistle peaking as the boost reaches full */
+S.spool = function () {
+  if (!ok) return;
+  tone('sine', 3300, 5600, 0.3, 0.1, 0, null, 0.07); tone('sine', 4950, 8400, 0.26, 0.03, 0, null, 0.07);
+  noise(0.28, 'bandpass', 2600, 5200, 3, 0.08, 0, null, false, 0.08);
+};
 /* the crash animations: one small sound each */
 S.wipe = function (kind, v) {
   if (!ok) return;
@@ -503,11 +543,18 @@ S.wipe = function (kind, v) {
       for (i = 0; i < 20; i++) { f = 230 + 110 * Math.sin(i * 1.3) + i * 6; tone('sawtooth', f, f * 0.92, 0.07, 0.07 * (1 - i / 26), i * 0.06); }
       break;
     case 'pfft': noise(0.16, 'bandpass', 1600, 500, 1, 0.45); tone('sawtooth', 150, 80, 0.14, 0.09); break;
-    case 'sproing':         // a coil spring bottoming out and firing back up
-      tone('sine', 85, 380, 0.13, 0.45); tone('triangle', 170, 760, 0.13, 0.08); tone('sine', 380, 300, 0.2, 0.12, 0.12); break;
-    case 'doing':           // the doorstop wobble
-      for (i = 0; i < 18; i++) tone('triangle', i % 2 ? 330 : 270, i % 2 ? 320 : 280, 0.045, 0.16 * Math.pow(0.88, i), i * 0.04);
-      tone('sine', 300, 290, 0.8, 0.08); break;
+    case 'dump':            // the turbo over-boosts: the housing pops off in a long blast of steam
+      tone('sine', 170, 55, 0.22, 0.45); noise(0.05, 'highpass', 2500, 0, 0.7, 0.35);
+      noise(1.1, 'highpass', 2800, 1200, 0.7, 0.3, 0.02, null, false, 0.01); bov(1, 0.02, 0.9);
+      break;
+    case 'shell':           // the snail housing clanging shut round the rider
+      tone('triangle', 640, 600, 0.26, 0.17); tone('sine', 1437, 1420, 0.32, 0.06); tone('sine', 2210, 2190, 0.2, 0.04); noise(0.04, 'bandpass', 3000, 0, 2, 0.2);
+      break;
+    case 'clonk':           // the shell landing: a hollow metal thump
+      tone('sine', 150, 55, 0.22, 0.5); noise(0.12, 'lowpass', 900, 200, 0.7, 0.4); tone('triangle', 420, 380, 0.16, 0.12, 0.01); tone('sine', 1250, 1230, 0.18, 0.03, 0.01);
+      break;
+    case 'peek': tone('sine', 380, 760, 0.07, 0.15); tone('sine', 460, 920, 0.07, 0.15, 0.13); break;
+    case 'chatter': bov(0.45, 0, 0.6); break;
     case 'honk':            // an old bulb horn, twice
       for (i = 0; i < 2; i++) { tone('sawtooth', 360, 320, 0.13, 0.16, i * 0.2); tone('square', 180, 165, 0.13, 0.1, i * 0.2); noise(0.04, 'lowpass', 900, 0, 0.7, 0.2, i * 0.2); }
       for (i = 0; i < 5; i++) noise(0.04, 'bandpass', 1200 + Math.random() * 2000, 0, 3, 0.1, 0.45 + i * 0.08);
@@ -518,7 +565,8 @@ S.wipe = function (kind, v) {
       for (i = 0; i < 5; i++) { f = 300 + Math.random() * 500; tone('sine', f, f * 1.5, 0.04, 0.08, 0.06 + i * 0.05); }
       break;
     case 'peel': tone('sine', 220, 900, 0.055, 0.32); noise(0.05, 'bandpass', 1300, 2400, 3, 0.15); break;
-    case 'stretch':         // a long stretchy squeak as the last toe slides tone('sine', 600, 1150, 0.4, 0.07, 0, null, 0.08); tone('sine', 1200, 2300, 0.4, 0.02, 0, null, 0.08); break;
+    case 'stretch':         // a long stretchy squeak as the last toe slides
+      tone('sine', 600, 1150, 0.4, 0.07, 0, null, 0.08); tone('sine', 1200, 2300, 0.4, 0.02, 0, null, 0.08); break;
     case 'swirl':           // a sand devil spinning up
       for (i = 0; i < 4; i++) noise(0.55, 'bandpass', 300 + i * 120, 1500 + i * 200, 1.2, 0.28, i * 0.28, null, false, 0.2);
       noise(1.4, 'highpass', 3500, 5000, 0.7, 0.1, 0.1, null, false, 0.2);

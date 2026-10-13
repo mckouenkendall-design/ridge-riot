@@ -3,7 +3,7 @@
    Each painter is RR.Art.KIND[kind] = { back?, under, over, top?, fork?, rim?, wheel, forkLower, clamp, bars }.
    d.col entries can be patterns or gradients (paint jobs), so they are only ever used as fills or passed to shade().
    Live inputs read from the view object (g.v), all optional: v.puff (Puffin air blast, 1 = just fired),
-   v.stick (Gecko suction left), v.lift (how hard the Albatross wings are working). */
+   v.stick (Gecko suction left), v.lift (how hard the Albatross wings are working), v.turbo (Spool 600 boost, 0 to 1). */
 (function (root) {
 'use strict';
 var RR = root.RR || (root.RR = {});
@@ -62,13 +62,6 @@ function slot(c, x0, y0, x1, y1, r) {      // a rounded slot from (x0,y0) to (x1
 function bolt(c, x, y, r) { circ(c, x, y, r || 0.018, CHROME, 0.01); }
 /* unit vector along the fork (axle towards head) and its length */
 function forkDir(g) { var dx = g.HT[0] - g.FA[0], dy = g.HT[1] - g.FA[1], L = Math.sqrt(dx * dx + dy * dy) || 1; return [dx / L, dy / L, L]; }
-/* a coil spring between two points */
-function coil(c, x0, y0, x1, y1, w, n, col, lw) {
-  var dx = x1 - x0, dy = y1 - y0, L = Math.sqrt(dx * dx + dy * dy) || 1, px = -dy / L * w, py = dx / L * w, i;
-  function tr() { c.beginPath(); for (i = 0; i <= n * 2; i++) { var t = i / (n * 2), s = i % 2 ? 1 : -1; c[i ? 'lineTo' : 'moveTo'](x0 + dx * t + px * s, y0 + dy * t + py * s); } }
-  tr(); c.lineWidth = (lw || 0.02) + 0.02; c.strokeStyle = OUT; c.stroke();
-  tr(); c.lineWidth = lw || 0.02; c.strokeStyle = col; c.stroke();
-}
 function snowflake(c, x, y, r, col) {
   var i; c.lineWidth = r * 0.28; c.strokeStyle = col; c.beginPath();
   for (i = 0; i < 3; i++) { var a = i * Math.PI / 3 + 0.26; c.moveTo(x - Math.cos(a) * r, y - Math.sin(a) * r); c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
@@ -200,74 +193,190 @@ KIND.puffer = {
   wheel: [{ tyre: 0.27, knob: 1, type: 'spoke' }, { tyre: 0.24, knob: 1, type: 'spoke' }], guard: true, forkLower: 0.36, clamp: 0.16, bars: 0.4,
   rim: function () { return '#2b2f38'; } };
 
-/* =============================== 2. Grasshopper =============================== */
-/* a tiny pit bike on stilts: long exposed fork legs with springs round them and a long piggyback shock */
-KIND.springer = {
+/* =============================== 2. Spool 600 =============================== */
+/* a flat-track street tracker: low and flat, number boards, a big single, and a turbocharger the size of
+   a melon hung on the front of the engine. The compressor's snail faces us with its intake in the middle;
+   the iron turbine housing peeks out behind it and glows as the boost builds (v.turbo, 0 to 1). */
+var IRON = '#4b4643', ALU = '#c9ced5', ALUD = '#8f969f', TURBO_OR = '#ff6a00';
+/* a colour between two '#rrggbb' colours */
+function mix(a, b, k) {
+  var x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16), r = ((x >> 16) * (1 - k) + (y >> 16) * k) | 0, gg = (((x >> 8) & 255) * (1 - k) + ((y >> 8) & 255) * k) | 0, bb = ((x & 255) * (1 - k) + (y & 255) * k) | 0;
+  return 'rgb(' + r + ',' + gg + ',' + bb + ')';
+}
+function boostOf(g) { var b = vv(g).turbo; return b > 0 ? Math.min(1, b) : 0; }
+/* the outline of a snail (volute) round (cx, cy) as a sub-path: one turn, counter-clockwise from angle a0,
+   the radius growing from r0 to r1 */
+function volute(c, cx, cy, r0, r1, a0) {
+  var n = 32, i;
+  for (i = 0; i <= n; i++) { var th = a0 + TAU * i / n, r = r0 + (r1 - r0) * i / n; c[i ? 'lineTo' : 'moveTo'](cx + Math.cos(th) * r, cy + Math.sin(th) * r); }
+  c.closePath();
+}
+/* a "6" drawn with strokes, h tall, sitting on (x, y) */
+function six(c, x, y, h, col) {
+  c.lineWidth = h * 0.2; c.strokeStyle = col; c.beginPath();
+  c.arc(x, y + h * 0.29, h * 0.26, 0, TAU);
+  c.moveTo(x - h * 0.26, y + h * 0.29); c.quadraticCurveTo(x - h * 0.28, y + h * 0.95, x + h * 0.2, y + h * 0.92);
+  c.stroke();
+}
+/* an oval number board, tilted by a, with a six on it */
+function board(c, x, y, rx, ry, a, fill, num) {
+  c.save(); c.translate(x, y); c.rotate(a);
+  c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, TAU); c.fillStyle = fill; c.fill(); c.lineWidth = 0.024; c.strokeStyle = OUT; c.stroke();
+  c.beginPath(); c.ellipse(0, 0, rx - 0.02, ry - 0.02, 0, 0, TAU); c.lineWidth = 0.01; c.strokeStyle = 'rgba(0,0,0,0.18)'; c.stroke();
+  six(c, 0, -ry * 0.62, ry * 1.25, num);
+  c.restore();
+}
+/* flat-track tyre: a fine block tread round the edge */
+function trackTread(c, r, ri, st, v, rate) {
+  if (rate > 28 || rate < -28) return;
+  var n = Math.max(16, Math.round(r * 74)), i;
+  c.lineWidth = 0.014; c.strokeStyle = '#3a3c45'; c.beginPath();
+  for (i = 0; i < n; i++) { var a = TAU * i / n, ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(a + 0.05), sb = Math.sin(a + 0.05); c.moveTo(ca * (r - 0.006), sa * (r - 0.006)); c.lineTo(cb * (r - 0.034), sb * (r - 0.034)); }
+  c.stroke();
+}
+/* the compressor snail on its own (also worn by the rider in the "blowoff" crash): centre at 0,0, the outlet
+   rising at the right. b = boost (spins the wheel and warms the rim), t = time, nose = the colour of the nut */
+function snail(c, b, t, nose, hot) {
+  var i, n = 30, u, th;
+  function ro(u) { return 0.1 + 0.115 * u; }            // the outside of the scroll
+  function ri(u) { return 0.094 + 0.03 * u; }           // its inner wall, where the flat face starts
+  c.beginPath(); volute(c, 0, 0, ro(0), ro(1), 0);
+  c.fillStyle = ALU; c.fill();
+  // the scroll: a band that widens as it goes round, shaded like a tube, with a polished streak along it
+  c.beginPath();
+  for (i = 0; i <= n; i++) { u = i / n; th = TAU * u; c[i ? 'lineTo' : 'moveTo'](Math.cos(th) * ro(u), Math.sin(th) * ro(u)); }
+  for (i = n; i >= 0; i--) { u = i / n; th = TAU * u; c.lineTo(Math.cos(th) * ri(u), Math.sin(th) * ri(u)); }
+  c.closePath(); c.fillStyle = '#a7aeb7'; c.fill();
+  c.beginPath();
+  for (i = 0; i <= n; i++) { u = i / n; th = TAU * u; c[i ? 'lineTo' : 'moveTo'](Math.cos(th) * ri(u), Math.sin(th) * ri(u)); }
+  c.lineWidth = 0.012; c.strokeStyle = '#6f7680'; c.stroke();
+  c.beginPath();
+  for (i = 6; i <= 17; i++) { u = i / n; th = TAU * u; var rm = ro(u) * 0.6 + ri(u) * 0.4; c[i > 6 ? 'lineTo' : 'moveTo'](Math.cos(th) * rm, Math.sin(th) * rm); }
+  c.lineWidth = 0.016; c.strokeStyle = 'rgba(255,255,255,0.9)'; c.stroke();
+  c.beginPath(); volute(c, 0, 0, ro(0), ro(1), 0); c.lineWidth = 0.028; c.strokeStyle = OUT; c.stroke();
+  // the outlet: the end of the scroll turning up into a neck with a flange
+  shape(c, [ri(1) + 0.005, -0.012, ro(1), -0.012, 0.195, 0.12, 0.14, 0.12], '#a7aeb7', 0.024);
+  line(c, [0.165, -0.0, 0.17, 0.105], 0.012, 'rgba(255,255,255,0.8)');
+  shape(c, [0.125, 0.11, 0.21, 0.11, 0.21, 0.14, 0.125, 0.14], '#2b2f38', 0.016);
+  if (hot > 0.02) { c.beginPath(); c.arc(0, 0, 0.19, 3.3, 4.9); c.lineWidth = 0.022; c.strokeStyle = 'rgba(255,120,40,' + (0.8 * hot).toFixed(3) + ')'; c.stroke(); }
+  // the intake: a bellmouth with the compressor wheel turning inside, faster with boost, behind a mesh guard
+  circ(c, 0, 0, 0.08, CHROME, 0.024);
+  c.beginPath(); c.arc(0, 0, 0.071, 2.0, 3.4); c.lineWidth = 0.01; c.strokeStyle = '#ffffff'; c.stroke();
+  circ(c, 0, 0, 0.06, '#1e2027', 0.016);
+  c.save(); c.rotate(-t * (3 + 16 * b));
+  c.lineWidth = 0.014; c.strokeStyle = '#b9c0c8'; c.beginPath();
+  for (i = 0; i < 7; i++) { var ba = TAU * i / 7; c.moveTo(Math.cos(ba) * 0.014, Math.sin(ba) * 0.014); c.quadraticCurveTo(Math.cos(ba + 0.5) * 0.04, Math.sin(ba + 0.5) * 0.04, Math.cos(ba + 0.95) * 0.054, Math.sin(ba + 0.95) * 0.054); }
+  c.stroke();
+  c.restore();
+  if (b > 0.5) { c.beginPath(); c.arc(0, 0, 0.04, 0, TAU); c.lineWidth = 0.034; c.strokeStyle = 'rgba(185,192,200,' + ((b - 0.5) * 0.7).toFixed(3) + ')'; c.stroke(); }
+  circ(c, 0, 0, 0.017, nose, 0.01);
+  c.lineWidth = 0.006; c.strokeStyle = 'rgba(210,215,222,0.5)'; c.beginPath();
+  for (i = -2; i <= 2; i++) { c.moveTo(i * 0.02, -0.054); c.lineTo(i * 0.02, 0.054); c.moveTo(-0.054, i * 0.02); c.lineTo(0.054, i * 0.02); }
+  c.stroke();
+  for (i = 0; i < 3; i++) { var ca = 1.9 + i * 1.5; bolt(c, Math.cos(ca) * 0.104, Math.sin(ca) * 0.104, 0.012); }
+}
+A.turboSnail = snail;
+var TC = [0.99, 0.5], TT = [0.9, 0.41];          // compressor and turbine centres
+KIND.turbo = {
   under: function (c, d, g) {
-    var k = d.col, sx = g.SP[0], sy = g.SP[1], rx = g.RA[0], ry = g.RA[1], dx = rx - sx, dy = ry - sy, L = Math.sqrt(dx * dx + dy * dy) || 1;
-    var ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
-    // braced swingarm
-    tube(c, [sx, sy, sx + dx * 0.5 + nx * 0.07, sy + dy * 0.5 + ny * 0.07, rx, ry], 0.022, STEEL, 0.03);
-    tube(c, [sx, sy, rx, ry], 0.05, STEEL);
-    circ(c, sx, sy, 0.035, ENGD, 0.016);
-    P.chain(c, g);
-    // frame: everything sits high on the legs
-    tube(c, [g.HT[0] - 0.02, g.HT[1] - 0.12, 0.62, 0.62, 0.5, 0.44, sx, sy - 0.04], 0.04, FRAME);
-    tube(c, [g.HT[0] - 0.03, g.HT[1] - 0.04, 0.42, 0.86, sx, sy + 0.02], 0.05, FRAME);
-    tube(c, [0.42, 0.86, -0.06, 0.9], 0.03, FRAME);
-    // little engine
-    P.cases(c, 0.5, 0.5, 0.09);
-    P.fins(c, 0.56, 0.53, 0.72, 0.58, 0.05, 5);
-    shape(c, [0.4, 0.4, 0.62, 0.4, 0.66, 0.46, 0.38, 0.46], STEEL, 0.018);       // skid plate
-    // the long piggyback shock: body fixed to the frame, shaft and spring follow the swingarm
-    var bx = sx + dx * 0.42, by = sy + dy * 0.42, tx = 0.1, ty = 0.88, ex = bx - tx, ey = by - ty, el = Math.sqrt(ex * ex + ey * ey) || 1;
-    ex /= el; ey /= el;
-    var px = -ey, py = ex;
-    tube(c, [tx + ex * 0.04 + px * 0.06, ty + ey * 0.04 + py * 0.06, tx + ex * 0.17 + px * 0.06, ty + ey * 0.17 + py * 0.06], 0.045, k[2], 0.03);   // reservoir
-    curve(c, [tx + px * 0.01, ty + py * 0.01, tx - ex * 0.02 + px * 0.05, ty - ey * 0.02 + py * 0.05, tx + ex * 0.04 + px * 0.06, ty + ey * 0.04 + py * 0.06], 0.012, '#2b2f38', 0.012);
-    tube(c, [tx + ex * 0.15, ty + ey * 0.15, bx, by], 0.022, CHROME, 0.022);
-    tube(c, [tx, ty, tx + ex * 0.2, ty + ey * 0.2], 0.06, '#2b2f38', 0.03);
-    line(c, [tx + ex * 0.06 - px * 0.012, ty + ey * 0.06 - py * 0.012, tx + ex * 0.17 - px * 0.012, ty + ey * 0.17 - py * 0.012], 0.01, '#6a707b');
-    coil(c, tx + ex * 0.14, ty + ey * 0.14, bx - ex * 0.03, by - ey * 0.03, 0.04, Math.max(3, Math.round(el * 14)), k[2], 0.018);
-    circ(c, bx, by, 0.025, ENGD, 0.014); circ(c, tx, ty, 0.025, ENGD, 0.014);
-    // pipe: under the engine and up the back
-    curve(c, [0.73, 0.55, 0.78, 0.44, 0.66, 0.36, 0.44, 0.38, 0.3, 0.5, 0.2, 0.66], 0.032, CHROME);
-    tube(c, [0.2, 0.66, -0.05, 0.8], 0.055, CHROME);
-    tube(c, [-0.04, 0.8, -0.07, 0.815], 0.04, '#30333c', 0.02);
-  },
-  fork: function (c, d, g) {
-    var k = d.col, u = forkDir(g), ux = u[0], uy = u[1], hx = g.HT[0], hy = g.HT[1], fx = g.FA[0], fy = g.FA[1], lo = 0.2;
-    // tall chrome legs with a spring round each, sliding into short lowers
-    tube(c, [hx - ux * 0.02, hy - uy * 0.02, fx + ux * 0.08, fy + uy * 0.08], 0.042, CHROME, 0.03);
-    line(c, [hx - ux * 0.05 - uy * 0.01, hy - uy * 0.05 + ux * 0.01, fx + ux * (lo + 0.02) - uy * 0.01, fy + uy * (lo + 0.02) + ux * 0.01], 0.01, '#ffffff');
-    var top = Math.max(lo + 0.06, u[2] - g.clamp - 0.04);
-    coil(c, fx + ux * (lo + 0.02), fy + uy * (lo + 0.02), fx + ux * top, fy + uy * top, 0.04, Math.max(4, Math.round((top - lo) * 18)), k[2], 0.018);
-    tube(c, [fx - ux * 0.01, fy - uy * 0.01, fx + ux * lo, fy + uy * lo], 0.064, k[1], 0.034);
-    line(c, [fx + ux * lo - uy * 0.045, fy + uy * lo + ux * 0.045, fx + ux * lo + uy * 0.045, fy + uy * lo - ux * 0.045], 0.026, k[2]);
-    circ(c, fx, fy, 0.028, CHROME, 0.014);
-    tube(c, [hx + uy * 0.03, hy - ux * 0.03, hx - ux * g.clamp + uy * 0.03, hy - uy * g.clamp - ux * 0.03], 0.055, '#2b2f38', 0.03);
+    var k = d.col, sx = g.SP[0], sy = g.SP[1], b = boostOf(g), hot = Math.pow(b, 1.4), i;
+    P.swingarm(c, g, '#2b2f38', 0.06); P.chain(c, g);
+    P.shock(c, 0.36, 0.5, 0.45, 0.83, k[0]);
+    // frame: a low, flat backbone
+    tube(c, [g.HT[0] - 0.02, g.HT[1] - 0.13, 1.03, 0.52, 0.82, 0.3, sx, sy - 0.06], 0.036, FRAME);
+    tube(c, [g.HT[0] - 0.03, g.HT[1] - 0.05, 0.66, 0.84, sx, sy + 0.02], 0.048, FRAME);
+    tube(c, [0.58, 0.84, -0.06, 0.88], 0.03, FRAME);
+    tube(c, [sx, sy + 0.08, 0.08, 0.86], 0.026, FRAME);
+    // the big single, its cylinder leaning forward, and the plenum the boost is fed into behind it
+    P.cases(c, 0.64, 0.42, 0.13);
+    P.fins(c, 0.7, 0.53, 0.8, 0.77, 0.08, 7);
+    blob(c, [0.5, 0.66, 0.5, 0.78, 0.64, 0.8, 0.68, 0.7, 0.6, 0.62], '#30333c', 0.02);
+    line(c, [0.53, 0.72, 0.63, 0.73], 0.012, ALUD);
+    // downpipe out of the bottom of the turbine, straight back under the engine into a short black silencer under the tail
+    var pipe = mix('#4d4844', '#e8501c', hot * 0.7);
+    curve(c, [0.86, 0.3, 0.8, 0.2, 0.6, 0.2, 0.42, 0.35], 0.05, pipe);
+    tube(c, [0.42, 0.37, 0.02, 0.56], 0.085, '#2b2f38');
+    line(c, [0.36, 0.415, 0.06, 0.555], 0.014, '#5d636e');
+    shape(c, [0.27, 0.495, 0.33, 0.47, 0.31, 0.43, 0.25, 0.455], '#5d636e', 0.012);         // heat shield strap
+    tube(c, [0.04, 0.55, -0.03, 0.585], 0.07, k[0], 0.03);
+    circ(c, -0.035, 0.585, 0.022, '#15171d', 0);
+    // header from the head down into the top of the turbine
+    curve(c, [0.83, 0.76, 0.9, 0.72, 0.92, 0.62], 0.045, mix('#4d4844', '#ff7a2a', hot * 0.8));
+    // the turbine housing: cast iron, red hot under boost, the inlet at the top where the header comes in
+    c.beginPath(); volute(c, TT[0], TT[1], 0.13, 0.2, Math.PI * 0.6);
+    c.fillStyle = mix(IRON, '#e8501c', hot * 0.85); c.fill(); c.lineWidth = 0.026; c.strokeStyle = OUT; c.stroke();
+    if (hot > 0.02) { c.beginPath(); c.arc(TT[0], TT[1], 0.165, 2.6, 4.1); c.lineWidth = 0.016; c.strokeStyle = 'rgba(255,220,130,' + (0.9 * hot).toFixed(3) + ')'; c.stroke(); }
+    if (hot > 0.02) {
+      var hg = c.createRadialGradient(TT[0], TT[1], 0.05, TT[0], TT[1], 0.36);
+      hg.addColorStop(0, 'rgba(255,150,60,' + (0.6 * hot).toFixed(3) + ')'); hg.addColorStop(1, 'rgba(255,90,20,0)');
+      c.fillStyle = hg; c.beginPath(); c.arc(TT[0], TT[1], 0.36, 0, TAU); c.fill();
+    }
+    if (g.wrecked) {
+      // the compressor half has gone (it went with the rider): a bare flange and three studs
+      circ(c, TC[0], TC[1], 0.1, '#5d636e', 0.024); circ(c, TC[0], TC[1], 0.05, '#22252d', 0.016);
+      for (i = 0; i < 3; i++) { var sa = 0.6 + i * 2.1; line(c, [TC[0] + Math.cos(sa) * 0.075, TC[1] + Math.sin(sa) * 0.075, TC[0] + Math.cos(sa) * 0.075 + 0.012, TC[1] + Math.sin(sa) * 0.075 + 0.012], 0.016, CHROME); }
+    }
   },
   over: function (c, d, g) {
-    var k = d.col, u = forkDir(g);
-    // high tail, number panel, seat and a little tank
-    blob(c, [0.24, 0.95, -0.1, 0.98, -0.32, 1.05, -0.3, 0.98, -0.06, 0.88, 0.22, 0.86], k[0]);
-    shape(c, [0.04, 0.93, 0.3, 0.91, 0.27, 0.76, 0.1, 0.78], k[2], 0.02);
-    line(c, [0.12, 0.85, 0.24, 0.84], 0.024, k[1]);
-    blob(c, [-0.04, 0.99, 0.28, 0.97, 0.52, 0.98, 0.54, 0.91, 0.26, 0.9, 0.0, 0.93], k[1]);
-    blob(c, [0.46, 0.93, 0.56, 1.04, 0.72, 1.03, 0.76, 0.92, 0.68, 0.8, 0.52, 0.82], k[0]);
-    shape(c, [0.56, 0.98, 0.7, 0.97, 0.68, 0.87, 0.57, 0.88], k[2], 0.016);
-    // low front mudguard rides on the lower legs, so it moves with the wheel
-    guard(c, g.FA[0], g.FA[1], d.rf + 0.04, 0.35 + Math.atan2(u[1], u[0]) - 1.1, 2.45, 0.05, k[0]);
-    // number board with two antennae on stalks
-    var hx = g.HT[0], hy = g.HT[1];
-    tube(c, [hx + 0.05, hy + 0.08, hx + 0.12, hy + 0.24, hx + 0.27, hy + 0.34], 0.012, k[1], 0.022);
-    tube(c, [hx + 0.08, hy + 0.06, hx + 0.2, hy + 0.17, hx + 0.34, hy + 0.21], 0.012, k[1], 0.022);
-    circ(c, hx + 0.28, hy + 0.345, 0.028, k[2], 0.016); circ(c, hx + 0.35, hy + 0.21, 0.028, k[2], 0.016);
-    blob(c, [hx - 0.01, hy + 0.12, hx + 0.1, hy + 0.09, hx + 0.12, hy - 0.08, hx + 0.02, hy - 0.1], k[2]);
-    circ(c, hx + 0.065, hy + 0.01, 0.028, k[1], 0);
+    var k = d.col, b = boostOf(g), hot = Math.pow(b, 1.4), t = vv(g).t || 0, i;
+    // tail: a little hump in the body colour, the long flat seat, the side number board under it
+    blob(c, [0.12, 0.96, -0.12, 1.02, -0.34, 1.06, -0.36, 0.98, -0.16, 0.88, 0.1, 0.86], k[0]);
+    line(c, [-0.33, 1.02, -0.12, 0.98], 0.022, k[2]);
+    circ(c, -0.355, 0.99, 0.022, '#e8483a', 0.012);
+    shape(c, [-0.02, 0.88, 0.48, 0.86, 0.46, 0.64, 0.06, 0.66], k[1], 0.022);
+    board(c, 0.24, 0.765, 0.19, 0.1, -0.05, k[2], k[1]);
+    blob(c, [0.0, 0.95, 0.36, 0.93, 0.68, 0.94, 0.72, 0.88, 0.36, 0.86, 0.04, 0.89], SEAT);
+    line(c, [0.06, 0.93, 0.6, 0.915], 0.01, '#3a3d46');
+    // the small tank, white stripe and a black knee panel
+    blob(c, [0.62, 0.88, 0.72, 1.02, 0.98, 1.05, 1.08, 0.97, 1.04, 0.85, 0.8, 0.82], k[0]);
+    line(c, [0.7, 0.975, 1.02, 0.995], 0.034, k[2]);
+    line(c, [0.71, 0.94, 1.03, 0.955], 0.012, k[1]);
+    blob(c, [0.68, 0.86, 0.72, 0.93, 0.84, 0.92, 0.86, 0.85, 0.76, 0.83], k[1], 0.014);
+    circ(c, 0.86, 1.04, 0.022, CHROME, 0.01);
+    // the intercooler pipe: up out of the compressor, round the blow-off valve, through the intercooler core
+    // under the tank, and back to the plenum behind the cylinder
+    var px = TC[0] + 0.163, py = TC[1] + 0.14;
+    curve(c, [px, py - 0.01, px + 0.01, py + 0.12, 1.1, 0.83, 0.96, 0.81, 0.8, 0.8, 0.66, 0.76], 0.05, ALU, 0.03);
+    line(c, [px - 0.012, py + 0.02, px - 0.006, py + 0.11, 1.09, 0.815], 0.012, '#ffffff');
+    tube(c, [px, py + 0.005, px + 0.003, py + 0.06], 0.058, k[1], 0.026);                       // silicone joiner
+    line(c, [px - 0.032, py + 0.015, px + 0.033, py + 0.015], 0.012, CHROME); line(c, [px - 0.031, py + 0.05, px + 0.034, py + 0.05], 0.012, CHROME);
+    shape(c, [0.86, 0.835, 1.0, 0.835, 1.0, 0.765, 0.86, 0.765], '#22252d', 0.02);           // intercooler core
+    c.lineWidth = 0.008; c.strokeStyle = '#6a707b'; c.beginPath();
+    for (i = 1; i < 9; i++) { c.moveTo(0.86 + i * 0.0155, 0.772); c.lineTo(0.86 + i * 0.0155, 0.828); }
+    c.stroke();
+    shape(c, [0.84, 0.845, 0.865, 0.845, 0.865, 0.755, 0.84, 0.755], k[2], 0.016); shape(c, [0.995, 0.845, 1.02, 0.845, 1.02, 0.755, 0.995, 0.755], k[2], 0.016);
+    // the blow-off valve on the front of the bend: a black body, an orange cap, a vent underneath
+    var bx = px + 0.03, by = py + 0.1;
+    tube(c, [bx, by, bx + 0.07, by + 0.035], 0.062, '#2b2f38', 0.026);
+    shape(c, [bx + 0.06, by + 0.085, bx + 0.11, by - 0.015, bx + 0.135, by - 0.002, bx + 0.085, by + 0.098], k[0], 0.018);
+    line(c, [bx + 0.03, by - 0.025, bx + 0.045, by - 0.05], 0.022, '#2b2f38');
+    line(c, [bx + 0.015, by + 0.02, bx + 0.06, by + 0.042], 0.01, '#5d636e');
+    if (!g.wrecked) {
+      c.save(); c.translate(TC[0], TC[1]); snail(c, b, t, str(k[0], TURBO_OR), hot); c.restore();
+    } else curve(c, [px, py - 0.01, px - 0.02, py - 0.1, px + 0.02, py - 0.16], 0.05, '#2b2f38', 0.03);     // the hose, hanging loose
+    // a stub of front mudguard, and the front number board on the fork
+    var u = forkDir(g);
+    guard(c, g.FA[0], g.FA[1], d.rf + 0.035, 0.75 + Math.atan2(u[1], u[0]) - 1.1, 2.25, 0.045, k[1]);
+    board(c, g.HT[0] + 0.11, g.HT[1] - 0.02, 0.11, 0.155, Math.atan2(u[1], u[0]) - Math.PI / 2, k[2], k[1]);
   },
-  wheel: [{ tyre: 0.4, knob: 1, type: 'alloy5' }, { tyre: 0.4, knob: 1, type: 'alloy5' }], forkLower: 0.2, clamp: 0.12, bars: 0.4, pivot: [0.4, 0.56],
-  rim: function (d) { return str(d.col[2], CHROME); } };
+  top: function (c, d, g) {
+    // the boost gauge on the bar clamp: white face, orange top of the scale, needle swings with the boost
+    var k = d.col, b = boostOf(g), gx = g.HT[0] + 0.03, gy = g.HT[1] + 0.13, i, a;
+    tube(c, [g.HT[0] - 0.01, g.HT[1] + 0.02, gx - 0.01, gy - 0.05], 0.022, '#2b2f38', 0.02);
+    circ(c, gx, gy, 0.072, '#1e2027', 0.022);
+    circ(c, gx, gy, 0.056, '#f6f4ec', 0);
+    c.beginPath(); c.arc(gx, gy, 0.045, Math.PI * 1.25 - Math.PI * 1.5, Math.PI * 1.25 - Math.PI * 1.5 * 0.65, true);
+    c.lineWidth = 0.014; c.strokeStyle = k[0]; c.stroke();
+    c.lineWidth = 0.007; c.strokeStyle = '#1e2027'; c.beginPath();
+    for (i = 0; i <= 4; i++) { a = Math.PI * 1.25 - Math.PI * 1.5 * i / 4; c.moveTo(gx + Math.cos(a) * 0.036, gy + Math.sin(a) * 0.036); c.lineTo(gx + Math.cos(a) * 0.05, gy + Math.sin(a) * 0.05); }
+    c.stroke();
+    a = Math.PI * 1.25 - Math.PI * 1.5 * b;
+    line(c, [gx - Math.cos(a) * 0.01, gy - Math.sin(a) * 0.01, gx + Math.cos(a) * 0.046, gy + Math.sin(a) * 0.046], 0.011, '#e8341c');
+    circ(c, gx, gy, 0.011, '#1e2027', 0);
+    if (b > 0.97) circ(c, gx + 0.05, gy + 0.05, 0.016, '#ffb02a', 0.008);        // full-boost lamp
+  },
+  wheel: [{ tyre: 0.24, knob: 0, type: 'spoke', tread: trackTread }, { tyre: 0.24, knob: 0, type: 'spoke', tread: trackTread }], forkLower: 0.3, clamp: 0.14, bars: 0.35,
+  rim: function (d) { return str(d.col[1], '#2b2f38'); } };
 
 /* =============================== 3. Odd Couple =============================== */
 /* a 1950s outfit: boxer twin, shaft drive, deep mudguards, big headlamp. The sidecar and its
@@ -741,7 +850,7 @@ KIND.glider = {
   rim: function (d) { return str(d.col[1], CHROME); } };
 
 /* ------------------------------ exhaust tips for the new kinds ------------------------------ */
-var EXH = { puffer: [0.36, 0.26], springer: [-0.07, 0.815], sidecar: [-0.35, 0.27], gecko: [0.15, 0.22], paddle: [-0.02, 0.94],
+var EXH = { puffer: [0.36, 0.26], turbo: [-0.035, 0.585], sidecar: [-0.35, 0.27], gecko: [0.15, 0.22], paddle: [-0.02, 0.94],
   freestyle: [-0.04, 0.92], ice: [-0.06, 0.84], ram: [0.04, 0.57], glider: [-0.04, 0.78] };
 var oldExhaust = A.exhaust;
 A.exhaust = function (d) { return EXH[d.kind] ? EXH[d.kind].slice() : oldExhaust(d); };

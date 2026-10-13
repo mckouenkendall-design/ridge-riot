@@ -397,7 +397,6 @@ function tinyBike(c, s, col) {
 }
 /* poses for the stiff figure: hip at 0,0, y up, facing +x */
 var STAND = [[0.03, 0.72], [0, 0.5], [0, 0], [0.3, 0.52], [0.59, 0.55], [0.04, -0.44], [0.02, -0.9], [-0.3, 0.52], [-0.59, 0.55], [0.27, -0.31], [0.1, -0.66]];
-var SITUP = [[0.05, 0.72], [0.02, 0.5], [0, 0], [0.16, 0.76], [0.22, 1.04], [0.42, 0.02], [0.58, -0.4], [-0.12, 0.76], [-0.14, 1.04], [0.38, 0.06], [0.5, -0.38]];
 var FELL = [[0.02, 0.72], [0, 0.5], [0, 0], [0.04, 0.76], [0.06, 1.02], [0.03, -0.44], [0.02, -0.9], [-0.02, 0.76], [-0.02, 1.02], [0.0, -0.44], [-0.01, -0.9]];
 var FLY = [[0, 0.72], [0, 0.5], [0, 0], [0, 0.5], [0, 0.5], [0.05, -0.43], [0.02, -0.89], [0, 0.5], [0, 0.5], [-0.04, -0.43], [-0.08, -0.88]];
 
@@ -442,53 +441,144 @@ KINDS.puffball = {
   }
 };
 
-var SPRING = 1.35;
-/* Grasshopper: the suspension takes the rider with it. Off on a pogo spring, then a doorstop wobble */
-KINDS.boingo = {
-  start: function (w, G) {
-    var f = w.f = figure(G), s = G.sim;
-    f.a = near(f.a, 0);
-    w.x = f.x; w.y = f.y + 0.3; w.vy = 2.5; w.dir = s.vx < -1 ? -1 : 1; w.vx = w.dir * 1.2; w.n = 0; w.on = false; w.L = SPRING; w.gy0 = floorAt(G, f.x, f.y - 1); w.done = false; w.sway = 0;
-    w.hops = [1.5, 1.05, 0.65];
+/* Spool 600: the turbo over-boosts and blows its own compressor housing off. The rider is caught in it like a
+   hermit crab, and the slowest thing in the game creeps away on a trail of slime, sighing "stututu" now and then */
+var TUCK = [[0.14, 0.7], [0.06, 0.5], [0, 0], [0.26, 0.32], [0.32, 0.06], [0.36, 0.3], [0.22, -0.1], [0.2, 0.34], [0.28, 0.1], [0.3, 0.28], [0.16, -0.12]];
+var SHELL = 3.0, SHELL_H = 0.215 * SHELL + 0.09, CAP = 0.3;
+function slimeLine(c, pts, t) {
+  if (pts.length < 2) return;
+  var i;
+  for (i = 1; i < pts.length; i++) {
+    var a = pts[i - 1], b = pts[i], al = Math.max(0, 1 - (t - b.t) / 7);
+    if (al <= 0 || Math.abs(b.x - a.x) > 0.5) continue;
+    c.globalAlpha = al;
+    c.lineWidth = 0.075; c.strokeStyle = 'rgba(190,240,210,0.6)'; c.beginPath(); c.moveTo(a.x, a.y + 0.02); c.lineTo(b.x, b.y + 0.02); c.stroke();
+    c.lineWidth = 0.018; c.strokeStyle = 'rgba(255,255,255,0.85)'; c.beginPath(); c.moveTo(a.x, a.y + 0.04); c.lineTo(b.x, b.y + 0.04); c.stroke();
+  }
+  c.globalAlpha = 1;
+}
+KINDS.blowoff = {
+  start: function (w, G, dd) {
+    var s = G.sim, f = w.f = figure(G), ca = Math.cos(s.a), sa = Math.sin(s.a), com = s.b.com, th = Math.sqrt(Math.min(1, s.g / 9.8)), i;
+    var lx = 0.99 - com[0], ly = 0.5 - com[1];
+    w.sx0 = s.x + ca * lx - sa * ly; w.sy0 = s.y + sa * lx + ca * ly;      // where the turbo was on the bike
+    w.dir = s.vx < -1 ? -1 : 1;
+    f.vx = w.dir * clamp(Math.abs(s.vx) * 0.35 + 2.8, 2.8, 4.5); f.vy = 4.6 * th; f.w = -w.dir * 7;
+    w.x = w.sx0; w.y = w.sy0; w.vx = 0; w.vy = 0; w.a = 0; w.va = 0; w.sc = 1 / SHELL;
+    w.caught = false; w.landT = -1; w.bounced = false; w.gy0 = floorAt(G, f.x, f.y - 1);
+    w.emerge = 0; w.stalk = 0; w.peeked = false; w.slime = []; w.sigh = 1.4; w.sighT = -9; w.sl = 0;
+    Au().wipe('dump'); G.cam.shake = Math.max(G.cam.shake, 0.5);
+    for (i = 0; i < 26; i++) { var an = rnd(0, TAU), sp = rnd(1.5, 6); R.emit(0, w.sx0, w.sy0, Math.cos(an) * sp + s.vx * 0.2, Math.sin(an) * sp * 0.7 + 1.5, rnd(0.5, 1.1), rnd(0.12, 0.26), i % 3 ? '#ffffff' : '#dfe6ee', { gr: rnd(0.8, 1.6), a: 0.85, drag: 3, front: 1 }); }
+    R.emit(5, w.sx0, w.sy0, 0, 0, 0.35, 0.2, '#ffffff', { gr: 7, a: 0.9, front: 1, w: 0.07 });
   },
   step: function (w, G, dt) {
-    var f = w.f, g = G.sim.g, L0 = SPRING;
-    setPose(f, SITUP, Math.min(1, dt * 8)); f.a += (0 - f.a) * Math.min(1, dt * 7);
-    if (!w.done) {
-      var gy = floorAt(G, w.x, w.gy0); w.gy0 = gy;
-      w.vy -= g * dt;
-      if (w.y - L0 < gy) {            // spring on the ground: squashes, then fires back up
-        w.L = Math.max(0.3, w.y - gy);
-        if (!w.on) { w.on = true; Au().wipe('pat'); puff(w.x, gy + 0.05, 3, dustCol(G), 0.8, 0.7); }
-        w.vy += (L0 - w.L) * 90 * dt; w.vx *= 1 - Math.min(1, dt * 6);
-        if (w.y < gy + 0.3) { w.y = gy + 0.3; if (w.vy < 0) w.vy = 0; }
-        if (w.vy > 0 && w.L > SPRING - 0.15) {
-          w.on = false;
-          if (w.n >= w.hops.length) { w.done = true; w.dt0 = w.t; w.bx = w.x; w.by = gy; Au().wipe('doing'); }
-          else { var h = w.hops[w.n++] * Math.sqrt(Math.min(1, g / 9.8)), v = Math.sqrt(2 * g * h); w.vy = v; w.vx = w.dir * 1.3 / (2 * v / g); w.y = gy + L0 + 0.01; w.L = L0; Au().wipe('sproing'); }
-        }
-      } else { w.L += (L0 - w.L) * Math.min(1, dt * 25); w.on = false; }
-      if (!w.done) { w.x += w.vx * dt; w.y += w.vy * dt; }
-      f.sy = 1 - Math.max(0, L0 - w.L) * 0.25;
+    var f = w.f, g = G.sim.g, t = w.t, gy, i;
+    if (!w.caught) {
+      // the rider tumbles up out of the seat, curling up; the snail flies off the bike after them, growing
+      setPose(f, TUCK, Math.min(1, dt * 9));
+      f.vy -= g * dt; f.x += f.vx * dt; f.y += f.vy * dt; f.a += f.w * dt;
+      var k = Math.min(1, t / CAP), e = k * k * (3 - 2 * k), hp = fw(f, 2);
+      w.x = w.sx0 + (hp.x + 0.1 * w.dir - w.sx0) * e; w.y = w.sy0 + (hp.y + 0.15 - w.sy0) * e;
+      w.sc = (1 + (SHELL - 1) * e) / SHELL; w.a = -w.dir * 9 * e * k;
+      if (Math.random() < dt * 40) R.emit(0, w.x + rnd(-0.1, 0.1), w.y + rnd(-0.1, 0.1), rnd(-1, 1), rnd(0, 1.5), rnd(0.3, 0.6), rnd(0.07, 0.14), '#ffffff', { gr: 0.8, a: 0.7, drag: 3, front: 1 });
+      if (t >= CAP) {
+        w.caught = true; w.sc = 1; w.vx = f.vx * 0.7; w.vy = f.vy; w.va = -w.dir * 5; Au().wipe('shell');
+        puff(w.x, w.y, 6, '#ffffff', 2, 1.2);
+      }
+      w.fx = w.x; w.fy = w.y;
+      return;
+    }
+    gy = floorAt(G, w.x, w.gy0); w.gy0 = gy;
+    if (w.landT < 0) {
+      // in the air: a spinning snail with two boots kicking out of it
+      w.vy -= g * dt; w.x += w.vx * dt; w.y += w.vy * dt; w.a += w.va * dt;
+      if (w.y < gy + SHELL_H && w.vy < 0) {
+        w.y = gy + SHELL_H;
+        if (!w.bounced && w.vy < -1.6) { w.bounced = true; w.vy = -w.vy * 0.32; w.vx *= 0.4; w.va *= -0.5; }
+        else { w.landT = t; w.vx = 0; w.vy = 0; }
+        Au().wipe('clonk'); puff(w.x, gy + 0.1, 7, dustCol(G), 1.6, 1.1); G.cam.shake = Math.max(G.cam.shake, 0.25);
+      }
     } else {
-      var tt = w.t - w.dt0; w.sway = 0.55 * Math.exp(-tt * 1.3) * Math.sin(tt * 13); f.sy = 1;
-      w.x = w.bx; w.y = w.by + L0;
+      var lt = t - w.landT, ok = groundAt(G, w.x) > G.track.minY - 5;
+      w.sl = ok ? RR.groundSlope(G.track, w.x) : w.sl;
+      w.a = near(w.a, w.sl); w.a += (w.sl - w.a) * Math.min(1, dt * 9);
+      w.emerge = clamp((lt - 0.35) / 0.4, 0, 1);
+      w.stalk = clamp((lt - 0.8) / 0.25, 0, 1);
+      if (!w.peeked && lt > 0.8) { w.peeked = true; Au().wipe('peek'); }
+      if (lt > 1.1) {
+        // creeping off, at a snail's pace, leaving a trail
+        var sp = 0.3 * (0.75 + 0.25 * Math.sin(lt * 5));
+        w.x += w.dir * sp * Math.cos(w.sl) * dt;
+        if (!w.slime.length || Math.abs(w.x - w.slime[w.slime.length - 1].x) > 0.08) w.slime.push({ x: w.x - w.dir * 0.55, y: floorAt(G, w.x - w.dir * 0.55, gy), t: t });
+        w.sigh -= dt;
+        if (w.sigh <= 0) {
+          w.sigh = 2.2; w.sighT = t; Au().wipe('chatter');
+          for (i = 0; i < 6; i++) R.emit(0, w.x - w.dir * 0.05, w.y + 0.1, rnd(-0.8, 0.8) - w.dir * 0.6, rnd(1.2, 2.4), rnd(0.4, 0.7), rnd(0.08, 0.14), '#ffffff', { gr: 0.9, a: 0.75, drag: 2.5, front: 1, g: -0.05 });
+        }
+      }
+      w.y = floorAt(G, w.x, gy) + SHELL_H;
     }
     w.fx = w.x; w.fy = w.y;
   },
   draw: function (w, c, dd) {
-    var f = w.f, top = w.done ? { x: w.bx, y: w.by + SPRING } : { x: w.x, y: w.y }, bot = w.done ? { x: w.bx, y: w.by } : { x: w.x, y: w.y - w.L };
-    c.save();
-    if (w.done) { c.translate(bot.x, bot.y); c.rotate(-w.sway); c.translate(-bot.x, -bot.y); }
-    var n = 9, i, dx = top.x - bot.x, dy = top.y - bot.y, pts = [bot.x, bot.y];
-    for (i = 0; i <= n * 2; i++) { var k = (i + 0.5) / (n * 2 + 1); pts.push(bot.x + dx * k + (i % 2 ? 0.13 : -0.13), bot.y + dy * k); }
-    pts.push(top.x, top.y - 0.02);
-    A.line(c, pts, 0.08, OUT); A.line(c, pts, 0.045, '#dfe4ea');
-    A.shape(c, [bot.x - 0.2, bot.y - 0.02, bot.x + 0.2, bot.y - 0.02, bot.x + 0.17, bot.y + 0.06, bot.x - 0.17, bot.y + 0.06], '#3a3f4b', 0.03);
-    A.shape(c, [top.x - 0.16, top.y - 0.06, top.x + 0.16, top.y - 0.06, top.x + 0.16, top.y, top.x - 0.16, top.y], dd.suit[1], 0.03);
-    f.x = top.x; f.y = top.y + 0.04;
-    drawFigure(c, f, dd);
+    var t = w.t, s = dd.suit, i, b = w.caught ? 0 : 1 - w.t / CAP, lt = w.landT < 0 ? -1 : t - w.landT;
+    slimeLine(c, w.slime, t);
+    if (!w.caught) drawFigure(c, w.f, dd);
+    var S = SHELL * w.sc, nose = typeof dd.col[0] === 'string' ? dd.col[0] : '#ff6a00';
+    c.save(); c.translate(w.x, w.y); c.rotate(w.a); c.scale(w.dir, 1);
+    var ax = 0.15 * S, ay = -0.17 * S;               // the mouth of the snail (the compressor outlet)
+    if (w.caught) {
+      var gyL = -SHELL_H;
+      if (lt >= 0) {
+        // the foot: the rider's legs, ripping along under the shell, with a boot for a tail
+        var top = [], n = 12;
+        for (i = 0; i <= n; i++) { var x = -0.95 + 1.95 * i / n; top.push(x, gyL + 0.16 + (lt > 1.1 ? 0.025 * Math.sin(x * 14 - t * 7) : 0) - (i === 0 ? 0.07 : 0)); }
+        var pts = [1.02, gyL + 0.02, -0.98, gyL + 0.02].concat(top);
+        A.blob(c, pts, s[1], 0.035);
+        A.line(c, [-0.85, gyL + 0.07, 0.9, gyL + 0.07], 0.025, A.shade(s[1], 0.8));
+        A.blob(c, [-1.14, gyL + 0.02, -1.16, gyL + 0.15, -0.98, gyL + 0.19, -0.9, gyL + 0.02], s[2], 0.03);
+      }
+      if (lt < 0) {
+        // boots kicking out of the mouth while it flies
+        for (i = 0; i < 2; i++) {
+          var kk = Math.sin(t * 22 + i * 2.2) * 0.25, a0 = -0.25 - i * 0.35 + kk, L = 0.5;
+          var ex = ax + Math.cos(a0) * L, ey = ay + Math.sin(a0) * L;
+          A.tube(c, [ax - 0.05, ay + 0.05, ex, ey], 0.12, i ? A.shade(s[1], 0.62) : s[1], 0.04);
+          A.circ(c, ex, ey, 0.09, s[2], 0.03);
+        }
+      }
+    }
+    // the shell itself: the turbo's compressor snail, turned so its outlet faces forward and down
+    c.save(); c.scale(S, S); c.rotate(-Math.PI / 2);
+    A.turboSnail(c, w.caught ? (lt >= 0 ? 0 : 1) : 1, t, nose, w.caught ? 0 : b);
     c.restore();
+    if (w.caught && lt >= 0 && w.emerge > 0) {
+      // the head: out of the mouth on a long neck, looking about, with two eye stalks on the helmet
+      var e = w.emerge, ee = e * e * (3 - 2 * e), look = lt > 1.1 ? Math.sin(t * 1.3) * 0.06 : 0;
+      var hx = ax + 0.12 + 0.5 * ee, hy = ay + 0.1 + 0.62 * ee + look, nx = (ax + hx) / 2 + 0.12, ny = ay + 0.06;
+      A.curve(c, [ax, ay + 0.06, nx, ny, hx - 0.05, hy - 0.12], 0.17, s[0], 0.04);
+      A.circ(c, ax + 0.02, ay + 0.06, 0.1, A.shade(s[0], 0.75), 0.03);
+      var hr = 0.17, ha = -0.15 + look;
+      if (w.stalk > 0) {
+        for (i = 0; i < 2; i++) {
+          var sk = w.stalk, wob = Math.sin(t * 6 + i * 1.7) * 0.05, ox = hx - 0.06 + i * 0.1, oy = hy + hr * 0.8;
+          var tx = ox + (0.02 + i * 0.1 + wob) * sk, ty = oy + (0.3 - i * 0.04) * sk;
+          A.tube(c, [ox, oy, (ox + tx) / 2 - 0.02, (oy + ty) / 2, tx, ty], 0.035, s[1], 0.03);
+          var blink = Math.sin(t * 1.9 + i * 0.4) > 0.96 ? 0.25 : 1;
+          c.beginPath(); c.ellipse(tx, ty, 0.065 * sk, 0.065 * sk * blink, 0, 0, TAU); c.fillStyle = '#ffffff'; c.fill(); c.lineWidth = 0.025; c.strokeStyle = OUT; c.stroke();
+          A.circ(c, tx + 0.02 * sk, ty - 0.008, 0.026 * sk * blink, OUT, 0);
+        }
+      }
+      A.helmet(c, hx, hy, hr, ha, dd, dd.kind);
+    }
+    c.restore();
+    // "stututu" over the shell when it sighs
+    if (w.sighT > 0 && t - w.sighT < 0.7) {
+      var q = (t - w.sighT) / 0.7;
+      c.save(); c.globalAlpha = 1 - q * q; c.translate(w.x - w.dir * 0.2, w.y + 0.85 + q * 0.3); c.scale(1, -1);
+      c.font = '900 italic 0.24px ' + R.FONT; c.textAlign = 'center'; c.lineWidth = 0.06; c.strokeStyle = OUT; c.strokeText('stu-tu-tu', 0, 0); c.fillStyle = '#ffffff'; c.fillText('stu-tu-tu', 0, 0);
+      c.restore();
+    }
   }
 };
 

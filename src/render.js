@@ -1134,7 +1134,8 @@ function bikeView(G, v, def) {
     FA: [W1.ax + cm[0] + W1.ux * v.comp[1], W1.ay + cm[1] + W1.uy * v.comp[1]],
     spinR: v.wa[0], spinF: v.wa[1], rateR: v.ww[0], rateF: v.ww[1],
     lp: v.lp, stand: v.stand, crouch: v.crouch, rider: !v.noRider, headTilt: v.headTilt, look: G.look, t: G.t, wrecked: !!G.wipe,
-    puff: v.puff || 0, stick: v.stick == null ? null : v.stick, lift: v.lift || 0
+    puff: v.puff || 0, stick: v.stick == null ? null : v.stick, lift: v.lift || 0,
+    turbo: v.turbo != null ? v.turbo : (G.sim && G.sim.turbo) || 0
   };
 }
 

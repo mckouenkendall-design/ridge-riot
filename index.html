@@ -3577,7 +3577,7 @@ A.sprite = function (d, px, withRider) {
    Each painter is RR.Art.KIND[kind] = { back?, under, over, top?, fork?, rim?, wheel, forkLower, clamp, bars }.
    d.col entries can be patterns or gradients (paint jobs), so they are only ever used as fills or passed to shade().
    Live inputs read from the view object (g.v), all optional: v.puff (Puffin air blast, 1 = just fired),
-   v.stick (Gecko suction left), v.lift (how hard the Albatross wings are working). */
+   v.stick (Gecko suction left), v.lift (how hard the Albatross wings are working), v.turbo (Spool 600 boost, 0 to 1). */
 (function (root) {
 'use strict';
 var RR = root.RR || (root.RR = {});
@@ -3636,13 +3636,6 @@ function slot(c, x0, y0, x1, y1, r) {      // a rounded slot from (x0,y0) to (x1
 function bolt(c, x, y, r) { circ(c, x, y, r || 0.018, CHROME, 0.01); }
 /* unit vector along the fork (axle towards head) and its length */
 function forkDir(g) { var dx = g.HT[0] - g.FA[0], dy = g.HT[1] - g.FA[1], L = Math.sqrt(dx * dx + dy * dy) || 1; return [dx / L, dy / L, L]; }
-/* a coil spring between two points */
-function coil(c, x0, y0, x1, y1, w, n, col, lw) {
-  var dx = x1 - x0, dy = y1 - y0, L = Math.sqrt(dx * dx + dy * dy) || 1, px = -dy / L * w, py = dx / L * w, i;
-  function tr() { c.beginPath(); for (i = 0; i <= n * 2; i++) { var t = i / (n * 2), s = i % 2 ? 1 : -1; c[i ? 'lineTo' : 'moveTo'](x0 + dx * t + px * s, y0 + dy * t + py * s); } }
-  tr(); c.lineWidth = (lw || 0.02) + 0.02; c.strokeStyle = OUT; c.stroke();
-  tr(); c.lineWidth = lw || 0.02; c.strokeStyle = col; c.stroke();
-}
 function snowflake(c, x, y, r, col) {
   var i; c.lineWidth = r * 0.28; c.strokeStyle = col; c.beginPath();
   for (i = 0; i < 3; i++) { var a = i * Math.PI / 3 + 0.26; c.moveTo(x - Math.cos(a) * r, y - Math.sin(a) * r); c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
@@ -3774,74 +3767,190 @@ KIND.puffer = {
   wheel: [{ tyre: 0.27, knob: 1, type: 'spoke' }, { tyre: 0.24, knob: 1, type: 'spoke' }], guard: true, forkLower: 0.36, clamp: 0.16, bars: 0.4,
   rim: function () { return '#2b2f38'; } };
 
-/* =============================== 2. Grasshopper =============================== */
-/* a tiny pit bike on stilts: long exposed fork legs with springs round them and a long piggyback shock */
-KIND.springer = {
+/* =============================== 2. Spool 600 =============================== */
+/* a flat-track street tracker: low and flat, number boards, a big single, and a turbocharger the size of
+   a melon hung on the front of the engine. The compressor's snail faces us with its intake in the middle;
+   the iron turbine housing peeks out behind it and glows as the boost builds (v.turbo, 0 to 1). */
+var IRON = '#4b4643', ALU = '#c9ced5', ALUD = '#8f969f', TURBO_OR = '#ff6a00';
+/* a colour between two '#rrggbb' colours */
+function mix(a, b, k) {
+  var x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16), r = ((x >> 16) * (1 - k) + (y >> 16) * k) | 0, gg = (((x >> 8) & 255) * (1 - k) + ((y >> 8) & 255) * k) | 0, bb = ((x & 255) * (1 - k) + (y & 255) * k) | 0;
+  return 'rgb(' + r + ',' + gg + ',' + bb + ')';
+}
+function boostOf(g) { var b = vv(g).turbo; return b > 0 ? Math.min(1, b) : 0; }
+/* the outline of a snail (volute) round (cx, cy) as a sub-path: one turn, counter-clockwise from angle a0,
+   the radius growing from r0 to r1 */
+function volute(c, cx, cy, r0, r1, a0) {
+  var n = 32, i;
+  for (i = 0; i <= n; i++) { var th = a0 + TAU * i / n, r = r0 + (r1 - r0) * i / n; c[i ? 'lineTo' : 'moveTo'](cx + Math.cos(th) * r, cy + Math.sin(th) * r); }
+  c.closePath();
+}
+/* a "6" drawn with strokes, h tall, sitting on (x, y) */
+function six(c, x, y, h, col) {
+  c.lineWidth = h * 0.2; c.strokeStyle = col; c.beginPath();
+  c.arc(x, y + h * 0.29, h * 0.26, 0, TAU);
+  c.moveTo(x - h * 0.26, y + h * 0.29); c.quadraticCurveTo(x - h * 0.28, y + h * 0.95, x + h * 0.2, y + h * 0.92);
+  c.stroke();
+}
+/* an oval number board, tilted by a, with a six on it */
+function board(c, x, y, rx, ry, a, fill, num) {
+  c.save(); c.translate(x, y); c.rotate(a);
+  c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, TAU); c.fillStyle = fill; c.fill(); c.lineWidth = 0.024; c.strokeStyle = OUT; c.stroke();
+  c.beginPath(); c.ellipse(0, 0, rx - 0.02, ry - 0.02, 0, 0, TAU); c.lineWidth = 0.01; c.strokeStyle = 'rgba(0,0,0,0.18)'; c.stroke();
+  six(c, 0, -ry * 0.62, ry * 1.25, num);
+  c.restore();
+}
+/* flat-track tyre: a fine block tread round the edge */
+function trackTread(c, r, ri, st, v, rate) {
+  if (rate > 28 || rate < -28) return;
+  var n = Math.max(16, Math.round(r * 74)), i;
+  c.lineWidth = 0.014; c.strokeStyle = '#3a3c45'; c.beginPath();
+  for (i = 0; i < n; i++) { var a = TAU * i / n, ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(a + 0.05), sb = Math.sin(a + 0.05); c.moveTo(ca * (r - 0.006), sa * (r - 0.006)); c.lineTo(cb * (r - 0.034), sb * (r - 0.034)); }
+  c.stroke();
+}
+/* the compressor snail on its own (also worn by the rider in the "blowoff" crash): centre at 0,0, the outlet
+   rising at the right. b = boost (spins the wheel and warms the rim), t = time, nose = the colour of the nut */
+function snail(c, b, t, nose, hot) {
+  var i, n = 30, u, th;
+  function ro(u) { return 0.1 + 0.115 * u; }            // the outside of the scroll
+  function ri(u) { return 0.094 + 0.03 * u; }           // its inner wall, where the flat face starts
+  c.beginPath(); volute(c, 0, 0, ro(0), ro(1), 0);
+  c.fillStyle = ALU; c.fill();
+  // the scroll: a band that widens as it goes round, shaded like a tube, with a polished streak along it
+  c.beginPath();
+  for (i = 0; i <= n; i++) { u = i / n; th = TAU * u; c[i ? 'lineTo' : 'moveTo'](Math.cos(th) * ro(u), Math.sin(th) * ro(u)); }
+  for (i = n; i >= 0; i--) { u = i / n; th = TAU * u; c.lineTo(Math.cos(th) * ri(u), Math.sin(th) * ri(u)); }
+  c.closePath(); c.fillStyle = '#a7aeb7'; c.fill();
+  c.beginPath();
+  for (i = 0; i <= n; i++) { u = i / n; th = TAU * u; c[i ? 'lineTo' : 'moveTo'](Math.cos(th) * ri(u), Math.sin(th) * ri(u)); }
+  c.lineWidth = 0.012; c.strokeStyle = '#6f7680'; c.stroke();
+  c.beginPath();
+  for (i = 6; i <= 17; i++) { u = i / n; th = TAU * u; var rm = ro(u) * 0.6 + ri(u) * 0.4; c[i > 6 ? 'lineTo' : 'moveTo'](Math.cos(th) * rm, Math.sin(th) * rm); }
+  c.lineWidth = 0.016; c.strokeStyle = 'rgba(255,255,255,0.9)'; c.stroke();
+  c.beginPath(); volute(c, 0, 0, ro(0), ro(1), 0); c.lineWidth = 0.028; c.strokeStyle = OUT; c.stroke();
+  // the outlet: the end of the scroll turning up into a neck with a flange
+  shape(c, [ri(1) + 0.005, -0.012, ro(1), -0.012, 0.195, 0.12, 0.14, 0.12], '#a7aeb7', 0.024);
+  line(c, [0.165, -0.0, 0.17, 0.105], 0.012, 'rgba(255,255,255,0.8)');
+  shape(c, [0.125, 0.11, 0.21, 0.11, 0.21, 0.14, 0.125, 0.14], '#2b2f38', 0.016);
+  if (hot > 0.02) { c.beginPath(); c.arc(0, 0, 0.19, 3.3, 4.9); c.lineWidth = 0.022; c.strokeStyle = 'rgba(255,120,40,' + (0.8 * hot).toFixed(3) + ')'; c.stroke(); }
+  // the intake: a bellmouth with the compressor wheel turning inside, faster with boost, behind a mesh guard
+  circ(c, 0, 0, 0.08, CHROME, 0.024);
+  c.beginPath(); c.arc(0, 0, 0.071, 2.0, 3.4); c.lineWidth = 0.01; c.strokeStyle = '#ffffff'; c.stroke();
+  circ(c, 0, 0, 0.06, '#1e2027', 0.016);
+  c.save(); c.rotate(-t * (3 + 16 * b));
+  c.lineWidth = 0.014; c.strokeStyle = '#b9c0c8'; c.beginPath();
+  for (i = 0; i < 7; i++) { var ba = TAU * i / 7; c.moveTo(Math.cos(ba) * 0.014, Math.sin(ba) * 0.014); c.quadraticCurveTo(Math.cos(ba + 0.5) * 0.04, Math.sin(ba + 0.5) * 0.04, Math.cos(ba + 0.95) * 0.054, Math.sin(ba + 0.95) * 0.054); }
+  c.stroke();
+  c.restore();
+  if (b > 0.5) { c.beginPath(); c.arc(0, 0, 0.04, 0, TAU); c.lineWidth = 0.034; c.strokeStyle = 'rgba(185,192,200,' + ((b - 0.5) * 0.7).toFixed(3) + ')'; c.stroke(); }
+  circ(c, 0, 0, 0.017, nose, 0.01);
+  c.lineWidth = 0.006; c.strokeStyle = 'rgba(210,215,222,0.5)'; c.beginPath();
+  for (i = -2; i <= 2; i++) { c.moveTo(i * 0.02, -0.054); c.lineTo(i * 0.02, 0.054); c.moveTo(-0.054, i * 0.02); c.lineTo(0.054, i * 0.02); }
+  c.stroke();
+  for (i = 0; i < 3; i++) { var ca = 1.9 + i * 1.5; bolt(c, Math.cos(ca) * 0.104, Math.sin(ca) * 0.104, 0.012); }
+}
+A.turboSnail = snail;
+var TC = [0.99, 0.5], TT = [0.9, 0.41];          // compressor and turbine centres
+KIND.turbo = {
   under: function (c, d, g) {
-    var k = d.col, sx = g.SP[0], sy = g.SP[1], rx = g.RA[0], ry = g.RA[1], dx = rx - sx, dy = ry - sy, L = Math.sqrt(dx * dx + dy * dy) || 1;
-    var ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
-    // braced swingarm
-    tube(c, [sx, sy, sx + dx * 0.5 + nx * 0.07, sy + dy * 0.5 + ny * 0.07, rx, ry], 0.022, STEEL, 0.03);
-    tube(c, [sx, sy, rx, ry], 0.05, STEEL);
-    circ(c, sx, sy, 0.035, ENGD, 0.016);
-    P.chain(c, g);
-    // frame: everything sits high on the legs
-    tube(c, [g.HT[0] - 0.02, g.HT[1] - 0.12, 0.62, 0.62, 0.5, 0.44, sx, sy - 0.04], 0.04, FRAME);
-    tube(c, [g.HT[0] - 0.03, g.HT[1] - 0.04, 0.42, 0.86, sx, sy + 0.02], 0.05, FRAME);
-    tube(c, [0.42, 0.86, -0.06, 0.9], 0.03, FRAME);
-    // little engine
-    P.cases(c, 0.5, 0.5, 0.09);
-    P.fins(c, 0.56, 0.53, 0.72, 0.58, 0.05, 5);
-    shape(c, [0.4, 0.4, 0.62, 0.4, 0.66, 0.46, 0.38, 0.46], STEEL, 0.018);       // skid plate
-    // the long piggyback shock: body fixed to the frame, shaft and spring follow the swingarm
-    var bx = sx + dx * 0.42, by = sy + dy * 0.42, tx = 0.1, ty = 0.88, ex = bx - tx, ey = by - ty, el = Math.sqrt(ex * ex + ey * ey) || 1;
-    ex /= el; ey /= el;
-    var px = -ey, py = ex;
-    tube(c, [tx + ex * 0.04 + px * 0.06, ty + ey * 0.04 + py * 0.06, tx + ex * 0.17 + px * 0.06, ty + ey * 0.17 + py * 0.06], 0.045, k[2], 0.03);   // reservoir
-    curve(c, [tx + px * 0.01, ty + py * 0.01, tx - ex * 0.02 + px * 0.05, ty - ey * 0.02 + py * 0.05, tx + ex * 0.04 + px * 0.06, ty + ey * 0.04 + py * 0.06], 0.012, '#2b2f38', 0.012);
-    tube(c, [tx + ex * 0.15, ty + ey * 0.15, bx, by], 0.022, CHROME, 0.022);
-    tube(c, [tx, ty, tx + ex * 0.2, ty + ey * 0.2], 0.06, '#2b2f38', 0.03);
-    line(c, [tx + ex * 0.06 - px * 0.012, ty + ey * 0.06 - py * 0.012, tx + ex * 0.17 - px * 0.012, ty + ey * 0.17 - py * 0.012], 0.01, '#6a707b');
-    coil(c, tx + ex * 0.14, ty + ey * 0.14, bx - ex * 0.03, by - ey * 0.03, 0.04, Math.max(3, Math.round(el * 14)), k[2], 0.018);
-    circ(c, bx, by, 0.025, ENGD, 0.014); circ(c, tx, ty, 0.025, ENGD, 0.014);
-    // pipe: under the engine and up the back
-    curve(c, [0.73, 0.55, 0.78, 0.44, 0.66, 0.36, 0.44, 0.38, 0.3, 0.5, 0.2, 0.66], 0.032, CHROME);
-    tube(c, [0.2, 0.66, -0.05, 0.8], 0.055, CHROME);
-    tube(c, [-0.04, 0.8, -0.07, 0.815], 0.04, '#30333c', 0.02);
-  },
-  fork: function (c, d, g) {
-    var k = d.col, u = forkDir(g), ux = u[0], uy = u[1], hx = g.HT[0], hy = g.HT[1], fx = g.FA[0], fy = g.FA[1], lo = 0.2;
-    // tall chrome legs with a spring round each, sliding into short lowers
-    tube(c, [hx - ux * 0.02, hy - uy * 0.02, fx + ux * 0.08, fy + uy * 0.08], 0.042, CHROME, 0.03);
-    line(c, [hx - ux * 0.05 - uy * 0.01, hy - uy * 0.05 + ux * 0.01, fx + ux * (lo + 0.02) - uy * 0.01, fy + uy * (lo + 0.02) + ux * 0.01], 0.01, '#ffffff');
-    var top = Math.max(lo + 0.06, u[2] - g.clamp - 0.04);
-    coil(c, fx + ux * (lo + 0.02), fy + uy * (lo + 0.02), fx + ux * top, fy + uy * top, 0.04, Math.max(4, Math.round((top - lo) * 18)), k[2], 0.018);
-    tube(c, [fx - ux * 0.01, fy - uy * 0.01, fx + ux * lo, fy + uy * lo], 0.064, k[1], 0.034);
-    line(c, [fx + ux * lo - uy * 0.045, fy + uy * lo + ux * 0.045, fx + ux * lo + uy * 0.045, fy + uy * lo - ux * 0.045], 0.026, k[2]);
-    circ(c, fx, fy, 0.028, CHROME, 0.014);
-    tube(c, [hx + uy * 0.03, hy - ux * 0.03, hx - ux * g.clamp + uy * 0.03, hy - uy * g.clamp - ux * 0.03], 0.055, '#2b2f38', 0.03);
+    var k = d.col, sx = g.SP[0], sy = g.SP[1], b = boostOf(g), hot = Math.pow(b, 1.4), i;
+    P.swingarm(c, g, '#2b2f38', 0.06); P.chain(c, g);
+    P.shock(c, 0.36, 0.5, 0.45, 0.83, k[0]);
+    // frame: a low, flat backbone
+    tube(c, [g.HT[0] - 0.02, g.HT[1] - 0.13, 1.03, 0.52, 0.82, 0.3, sx, sy - 0.06], 0.036, FRAME);
+    tube(c, [g.HT[0] - 0.03, g.HT[1] - 0.05, 0.66, 0.84, sx, sy + 0.02], 0.048, FRAME);
+    tube(c, [0.58, 0.84, -0.06, 0.88], 0.03, FRAME);
+    tube(c, [sx, sy + 0.08, 0.08, 0.86], 0.026, FRAME);
+    // the big single, its cylinder leaning forward, and the plenum the boost is fed into behind it
+    P.cases(c, 0.64, 0.42, 0.13);
+    P.fins(c, 0.7, 0.53, 0.8, 0.77, 0.08, 7);
+    blob(c, [0.5, 0.66, 0.5, 0.78, 0.64, 0.8, 0.68, 0.7, 0.6, 0.62], '#30333c', 0.02);
+    line(c, [0.53, 0.72, 0.63, 0.73], 0.012, ALUD);
+    // downpipe out of the bottom of the turbine, straight back under the engine into a short black silencer under the tail
+    var pipe = mix('#4d4844', '#e8501c', hot * 0.7);
+    curve(c, [0.86, 0.3, 0.8, 0.2, 0.6, 0.2, 0.42, 0.35], 0.05, pipe);
+    tube(c, [0.42, 0.37, 0.02, 0.56], 0.085, '#2b2f38');
+    line(c, [0.36, 0.415, 0.06, 0.555], 0.014, '#5d636e');
+    shape(c, [0.27, 0.495, 0.33, 0.47, 0.31, 0.43, 0.25, 0.455], '#5d636e', 0.012);         // heat shield strap
+    tube(c, [0.04, 0.55, -0.03, 0.585], 0.07, k[0], 0.03);
+    circ(c, -0.035, 0.585, 0.022, '#15171d', 0);
+    // header from the head down into the top of the turbine
+    curve(c, [0.83, 0.76, 0.9, 0.72, 0.92, 0.62], 0.045, mix('#4d4844', '#ff7a2a', hot * 0.8));
+    // the turbine housing: cast iron, red hot under boost, the inlet at the top where the header comes in
+    c.beginPath(); volute(c, TT[0], TT[1], 0.13, 0.2, Math.PI * 0.6);
+    c.fillStyle = mix(IRON, '#e8501c', hot * 0.85); c.fill(); c.lineWidth = 0.026; c.strokeStyle = OUT; c.stroke();
+    if (hot > 0.02) { c.beginPath(); c.arc(TT[0], TT[1], 0.165, 2.6, 4.1); c.lineWidth = 0.016; c.strokeStyle = 'rgba(255,220,130,' + (0.9 * hot).toFixed(3) + ')'; c.stroke(); }
+    if (hot > 0.02) {
+      var hg = c.createRadialGradient(TT[0], TT[1], 0.05, TT[0], TT[1], 0.36);
+      hg.addColorStop(0, 'rgba(255,150,60,' + (0.6 * hot).toFixed(3) + ')'); hg.addColorStop(1, 'rgba(255,90,20,0)');
+      c.fillStyle = hg; c.beginPath(); c.arc(TT[0], TT[1], 0.36, 0, TAU); c.fill();
+    }
+    if (g.wrecked) {
+      // the compressor half has gone (it went with the rider): a bare flange and three studs
+      circ(c, TC[0], TC[1], 0.1, '#5d636e', 0.024); circ(c, TC[0], TC[1], 0.05, '#22252d', 0.016);
+      for (i = 0; i < 3; i++) { var sa = 0.6 + i * 2.1; line(c, [TC[0] + Math.cos(sa) * 0.075, TC[1] + Math.sin(sa) * 0.075, TC[0] + Math.cos(sa) * 0.075 + 0.012, TC[1] + Math.sin(sa) * 0.075 + 0.012], 0.016, CHROME); }
+    }
   },
   over: function (c, d, g) {
-    var k = d.col, u = forkDir(g);
-    // high tail, number panel, seat and a little tank
-    blob(c, [0.24, 0.95, -0.1, 0.98, -0.32, 1.05, -0.3, 0.98, -0.06, 0.88, 0.22, 0.86], k[0]);
-    shape(c, [0.04, 0.93, 0.3, 0.91, 0.27, 0.76, 0.1, 0.78], k[2], 0.02);
-    line(c, [0.12, 0.85, 0.24, 0.84], 0.024, k[1]);
-    blob(c, [-0.04, 0.99, 0.28, 0.97, 0.52, 0.98, 0.54, 0.91, 0.26, 0.9, 0.0, 0.93], k[1]);
-    blob(c, [0.46, 0.93, 0.56, 1.04, 0.72, 1.03, 0.76, 0.92, 0.68, 0.8, 0.52, 0.82], k[0]);
-    shape(c, [0.56, 0.98, 0.7, 0.97, 0.68, 0.87, 0.57, 0.88], k[2], 0.016);
-    // low front mudguard rides on the lower legs, so it moves with the wheel
-    guard(c, g.FA[0], g.FA[1], d.rf + 0.04, 0.35 + Math.atan2(u[1], u[0]) - 1.1, 2.45, 0.05, k[0]);
-    // number board with two antennae on stalks
-    var hx = g.HT[0], hy = g.HT[1];
-    tube(c, [hx + 0.05, hy + 0.08, hx + 0.12, hy + 0.24, hx + 0.27, hy + 0.34], 0.012, k[1], 0.022);
-    tube(c, [hx + 0.08, hy + 0.06, hx + 0.2, hy + 0.17, hx + 0.34, hy + 0.21], 0.012, k[1], 0.022);
-    circ(c, hx + 0.28, hy + 0.345, 0.028, k[2], 0.016); circ(c, hx + 0.35, hy + 0.21, 0.028, k[2], 0.016);
-    blob(c, [hx - 0.01, hy + 0.12, hx + 0.1, hy + 0.09, hx + 0.12, hy - 0.08, hx + 0.02, hy - 0.1], k[2]);
-    circ(c, hx + 0.065, hy + 0.01, 0.028, k[1], 0);
+    var k = d.col, b = boostOf(g), hot = Math.pow(b, 1.4), t = vv(g).t || 0, i;
+    // tail: a little hump in the body colour, the long flat seat, the side number board under it
+    blob(c, [0.12, 0.96, -0.12, 1.02, -0.34, 1.06, -0.36, 0.98, -0.16, 0.88, 0.1, 0.86], k[0]);
+    line(c, [-0.33, 1.02, -0.12, 0.98], 0.022, k[2]);
+    circ(c, -0.355, 0.99, 0.022, '#e8483a', 0.012);
+    shape(c, [-0.02, 0.88, 0.48, 0.86, 0.46, 0.64, 0.06, 0.66], k[1], 0.022);
+    board(c, 0.24, 0.765, 0.19, 0.1, -0.05, k[2], k[1]);
+    blob(c, [0.0, 0.95, 0.36, 0.93, 0.68, 0.94, 0.72, 0.88, 0.36, 0.86, 0.04, 0.89], SEAT);
+    line(c, [0.06, 0.93, 0.6, 0.915], 0.01, '#3a3d46');
+    // the small tank, white stripe and a black knee panel
+    blob(c, [0.62, 0.88, 0.72, 1.02, 0.98, 1.05, 1.08, 0.97, 1.04, 0.85, 0.8, 0.82], k[0]);
+    line(c, [0.7, 0.975, 1.02, 0.995], 0.034, k[2]);
+    line(c, [0.71, 0.94, 1.03, 0.955], 0.012, k[1]);
+    blob(c, [0.68, 0.86, 0.72, 0.93, 0.84, 0.92, 0.86, 0.85, 0.76, 0.83], k[1], 0.014);
+    circ(c, 0.86, 1.04, 0.022, CHROME, 0.01);
+    // the intercooler pipe: up out of the compressor, round the blow-off valve, through the intercooler core
+    // under the tank, and back to the plenum behind the cylinder
+    var px = TC[0] + 0.163, py = TC[1] + 0.14;
+    curve(c, [px, py - 0.01, px + 0.01, py + 0.12, 1.1, 0.83, 0.96, 0.81, 0.8, 0.8, 0.66, 0.76], 0.05, ALU, 0.03);
+    line(c, [px - 0.012, py + 0.02, px - 0.006, py + 0.11, 1.09, 0.815], 0.012, '#ffffff');
+    tube(c, [px, py + 0.005, px + 0.003, py + 0.06], 0.058, k[1], 0.026);                       // silicone joiner
+    line(c, [px - 0.032, py + 0.015, px + 0.033, py + 0.015], 0.012, CHROME); line(c, [px - 0.031, py + 0.05, px + 0.034, py + 0.05], 0.012, CHROME);
+    shape(c, [0.86, 0.835, 1.0, 0.835, 1.0, 0.765, 0.86, 0.765], '#22252d', 0.02);           // intercooler core
+    c.lineWidth = 0.008; c.strokeStyle = '#6a707b'; c.beginPath();
+    for (i = 1; i < 9; i++) { c.moveTo(0.86 + i * 0.0155, 0.772); c.lineTo(0.86 + i * 0.0155, 0.828); }
+    c.stroke();
+    shape(c, [0.84, 0.845, 0.865, 0.845, 0.865, 0.755, 0.84, 0.755], k[2], 0.016); shape(c, [0.995, 0.845, 1.02, 0.845, 1.02, 0.755, 0.995, 0.755], k[2], 0.016);
+    // the blow-off valve on the front of the bend: a black body, an orange cap, a vent underneath
+    var bx = px + 0.03, by = py + 0.1;
+    tube(c, [bx, by, bx + 0.07, by + 0.035], 0.062, '#2b2f38', 0.026);
+    shape(c, [bx + 0.06, by + 0.085, bx + 0.11, by - 0.015, bx + 0.135, by - 0.002, bx + 0.085, by + 0.098], k[0], 0.018);
+    line(c, [bx + 0.03, by - 0.025, bx + 0.045, by - 0.05], 0.022, '#2b2f38');
+    line(c, [bx + 0.015, by + 0.02, bx + 0.06, by + 0.042], 0.01, '#5d636e');
+    if (!g.wrecked) {
+      c.save(); c.translate(TC[0], TC[1]); snail(c, b, t, str(k[0], TURBO_OR), hot); c.restore();
+    } else curve(c, [px, py - 0.01, px - 0.02, py - 0.1, px + 0.02, py - 0.16], 0.05, '#2b2f38', 0.03);     // the hose, hanging loose
+    // a stub of front mudguard, and the front number board on the fork
+    var u = forkDir(g);
+    guard(c, g.FA[0], g.FA[1], d.rf + 0.035, 0.75 + Math.atan2(u[1], u[0]) - 1.1, 2.25, 0.045, k[1]);
+    board(c, g.HT[0] + 0.11, g.HT[1] - 0.02, 0.11, 0.155, Math.atan2(u[1], u[0]) - Math.PI / 2, k[2], k[1]);
   },
-  wheel: [{ tyre: 0.4, knob: 1, type: 'alloy5' }, { tyre: 0.4, knob: 1, type: 'alloy5' }], forkLower: 0.2, clamp: 0.12, bars: 0.4, pivot: [0.4, 0.56],
-  rim: function (d) { return str(d.col[2], CHROME); } };
+  top: function (c, d, g) {
+    // the boost gauge on the bar clamp: white face, orange top of the scale, needle swings with the boost
+    var k = d.col, b = boostOf(g), gx = g.HT[0] + 0.03, gy = g.HT[1] + 0.13, i, a;
+    tube(c, [g.HT[0] - 0.01, g.HT[1] + 0.02, gx - 0.01, gy - 0.05], 0.022, '#2b2f38', 0.02);
+    circ(c, gx, gy, 0.072, '#1e2027', 0.022);
+    circ(c, gx, gy, 0.056, '#f6f4ec', 0);
+    c.beginPath(); c.arc(gx, gy, 0.045, Math.PI * 1.25 - Math.PI * 1.5, Math.PI * 1.25 - Math.PI * 1.5 * 0.65, true);
+    c.lineWidth = 0.014; c.strokeStyle = k[0]; c.stroke();
+    c.lineWidth = 0.007; c.strokeStyle = '#1e2027'; c.beginPath();
+    for (i = 0; i <= 4; i++) { a = Math.PI * 1.25 - Math.PI * 1.5 * i / 4; c.moveTo(gx + Math.cos(a) * 0.036, gy + Math.sin(a) * 0.036); c.lineTo(gx + Math.cos(a) * 0.05, gy + Math.sin(a) * 0.05); }
+    c.stroke();
+    a = Math.PI * 1.25 - Math.PI * 1.5 * b;
+    line(c, [gx - Math.cos(a) * 0.01, gy - Math.sin(a) * 0.01, gx + Math.cos(a) * 0.046, gy + Math.sin(a) * 0.046], 0.011, '#e8341c');
+    circ(c, gx, gy, 0.011, '#1e2027', 0);
+    if (b > 0.97) circ(c, gx + 0.05, gy + 0.05, 0.016, '#ffb02a', 0.008);        // full-boost lamp
+  },
+  wheel: [{ tyre: 0.24, knob: 0, type: 'spoke', tread: trackTread }, { tyre: 0.24, knob: 0, type: 'spoke', tread: trackTread }], forkLower: 0.3, clamp: 0.14, bars: 0.35,
+  rim: function (d) { return str(d.col[1], '#2b2f38'); } };
 
 /* =============================== 3. Odd Couple =============================== */
 /* a 1950s outfit: boxer twin, shaft drive, deep mudguards, big headlamp. The sidecar and its
@@ -4315,7 +4424,7 @@ KIND.glider = {
   rim: function (d) { return str(d.col[1], CHROME); } };
 
 /* ------------------------------ exhaust tips for the new kinds ------------------------------ */
-var EXH = { puffer: [0.36, 0.26], springer: [-0.07, 0.815], sidecar: [-0.35, 0.27], gecko: [0.15, 0.22], paddle: [-0.02, 0.94],
+var EXH = { puffer: [0.36, 0.26], turbo: [-0.035, 0.585], sidecar: [-0.35, 0.27], gecko: [0.15, 0.22], paddle: [-0.02, 0.94],
   freestyle: [-0.04, 0.92], ice: [-0.06, 0.84], ram: [0.04, 0.57], glider: [-0.04, 0.78] };
 var oldExhaust = A.exhaust;
 A.exhaust = function (d) { return EXH[d.kind] ? EXH[d.kind].slice() : oldExhaust(d); };
@@ -9944,7 +10053,8 @@ function bikeView(G, v, def) {
     FA: [W1.ax + cm[0] + W1.ux * v.comp[1], W1.ay + cm[1] + W1.uy * v.comp[1]],
     spinR: v.wa[0], spinF: v.wa[1], rateR: v.ww[0], rateF: v.ww[1],
     lp: v.lp, stand: v.stand, crouch: v.crouch, rider: !v.noRider, headTilt: v.headTilt, look: G.look, t: G.t, wrecked: !!G.wipe,
-    puff: v.puff || 0, stick: v.stick == null ? null : v.stick, lift: v.lift || 0
+    puff: v.puff || 0, stick: v.stick == null ? null : v.stick, lift: v.lift || 0,
+    turbo: v.turbo != null ? v.turbo : (G.sim && G.sim.turbo) || 0
   };
 }
 
@@ -10569,7 +10679,6 @@ function tinyBike(c, s, col) {
 }
 /* poses for the stiff figure: hip at 0,0, y up, facing +x */
 var STAND = [[0.03, 0.72], [0, 0.5], [0, 0], [0.3, 0.52], [0.59, 0.55], [0.04, -0.44], [0.02, -0.9], [-0.3, 0.52], [-0.59, 0.55], [0.27, -0.31], [0.1, -0.66]];
-var SITUP = [[0.05, 0.72], [0.02, 0.5], [0, 0], [0.16, 0.76], [0.22, 1.04], [0.42, 0.02], [0.58, -0.4], [-0.12, 0.76], [-0.14, 1.04], [0.38, 0.06], [0.5, -0.38]];
 var FELL = [[0.02, 0.72], [0, 0.5], [0, 0], [0.04, 0.76], [0.06, 1.02], [0.03, -0.44], [0.02, -0.9], [-0.02, 0.76], [-0.02, 1.02], [0.0, -0.44], [-0.01, -0.9]];
 var FLY = [[0, 0.72], [0, 0.5], [0, 0], [0, 0.5], [0, 0.5], [0.05, -0.43], [0.02, -0.89], [0, 0.5], [0, 0.5], [-0.04, -0.43], [-0.08, -0.88]];
 
@@ -10614,53 +10723,144 @@ KINDS.puffball = {
   }
 };
 
-var SPRING = 1.35;
-/* Grasshopper: the suspension takes the rider with it. Off on a pogo spring, then a doorstop wobble */
-KINDS.boingo = {
-  start: function (w, G) {
-    var f = w.f = figure(G), s = G.sim;
-    f.a = near(f.a, 0);
-    w.x = f.x; w.y = f.y + 0.3; w.vy = 2.5; w.dir = s.vx < -1 ? -1 : 1; w.vx = w.dir * 1.2; w.n = 0; w.on = false; w.L = SPRING; w.gy0 = floorAt(G, f.x, f.y - 1); w.done = false; w.sway = 0;
-    w.hops = [1.5, 1.05, 0.65];
+/* Spool 600: the turbo over-boosts and blows its own compressor housing off. The rider is caught in it like a
+   hermit crab, and the slowest thing in the game creeps away on a trail of slime, sighing "stututu" now and then */
+var TUCK = [[0.14, 0.7], [0.06, 0.5], [0, 0], [0.26, 0.32], [0.32, 0.06], [0.36, 0.3], [0.22, -0.1], [0.2, 0.34], [0.28, 0.1], [0.3, 0.28], [0.16, -0.12]];
+var SHELL = 3.0, SHELL_H = 0.215 * SHELL + 0.09, CAP = 0.3;
+function slimeLine(c, pts, t) {
+  if (pts.length < 2) return;
+  var i;
+  for (i = 1; i < pts.length; i++) {
+    var a = pts[i - 1], b = pts[i], al = Math.max(0, 1 - (t - b.t) / 7);
+    if (al <= 0 || Math.abs(b.x - a.x) > 0.5) continue;
+    c.globalAlpha = al;
+    c.lineWidth = 0.075; c.strokeStyle = 'rgba(190,240,210,0.6)'; c.beginPath(); c.moveTo(a.x, a.y + 0.02); c.lineTo(b.x, b.y + 0.02); c.stroke();
+    c.lineWidth = 0.018; c.strokeStyle = 'rgba(255,255,255,0.85)'; c.beginPath(); c.moveTo(a.x, a.y + 0.04); c.lineTo(b.x, b.y + 0.04); c.stroke();
+  }
+  c.globalAlpha = 1;
+}
+KINDS.blowoff = {
+  start: function (w, G, dd) {
+    var s = G.sim, f = w.f = figure(G), ca = Math.cos(s.a), sa = Math.sin(s.a), com = s.b.com, th = Math.sqrt(Math.min(1, s.g / 9.8)), i;
+    var lx = 0.99 - com[0], ly = 0.5 - com[1];
+    w.sx0 = s.x + ca * lx - sa * ly; w.sy0 = s.y + sa * lx + ca * ly;      // where the turbo was on the bike
+    w.dir = s.vx < -1 ? -1 : 1;
+    f.vx = w.dir * clamp(Math.abs(s.vx) * 0.35 + 2.8, 2.8, 4.5); f.vy = 4.6 * th; f.w = -w.dir * 7;
+    w.x = w.sx0; w.y = w.sy0; w.vx = 0; w.vy = 0; w.a = 0; w.va = 0; w.sc = 1 / SHELL;
+    w.caught = false; w.landT = -1; w.bounced = false; w.gy0 = floorAt(G, f.x, f.y - 1);
+    w.emerge = 0; w.stalk = 0; w.peeked = false; w.slime = []; w.sigh = 1.4; w.sighT = -9; w.sl = 0;
+    Au().wipe('dump'); G.cam.shake = Math.max(G.cam.shake, 0.5);
+    for (i = 0; i < 26; i++) { var an = rnd(0, TAU), sp = rnd(1.5, 6); R.emit(0, w.sx0, w.sy0, Math.cos(an) * sp + s.vx * 0.2, Math.sin(an) * sp * 0.7 + 1.5, rnd(0.5, 1.1), rnd(0.12, 0.26), i % 3 ? '#ffffff' : '#dfe6ee', { gr: rnd(0.8, 1.6), a: 0.85, drag: 3, front: 1 }); }
+    R.emit(5, w.sx0, w.sy0, 0, 0, 0.35, 0.2, '#ffffff', { gr: 7, a: 0.9, front: 1, w: 0.07 });
   },
   step: function (w, G, dt) {
-    var f = w.f, g = G.sim.g, L0 = SPRING;
-    setPose(f, SITUP, Math.min(1, dt * 8)); f.a += (0 - f.a) * Math.min(1, dt * 7);
-    if (!w.done) {
-      var gy = floorAt(G, w.x, w.gy0); w.gy0 = gy;
-      w.vy -= g * dt;
-      if (w.y - L0 < gy) {            // spring on the ground: squashes, then fires back up
-        w.L = Math.max(0.3, w.y - gy);
-        if (!w.on) { w.on = true; Au().wipe('pat'); puff(w.x, gy + 0.05, 3, dustCol(G), 0.8, 0.7); }
-        w.vy += (L0 - w.L) * 90 * dt; w.vx *= 1 - Math.min(1, dt * 6);
-        if (w.y < gy + 0.3) { w.y = gy + 0.3; if (w.vy < 0) w.vy = 0; }
-        if (w.vy > 0 && w.L > SPRING - 0.15) {
-          w.on = false;
-          if (w.n >= w.hops.length) { w.done = true; w.dt0 = w.t; w.bx = w.x; w.by = gy; Au().wipe('doing'); }
-          else { var h = w.hops[w.n++] * Math.sqrt(Math.min(1, g / 9.8)), v = Math.sqrt(2 * g * h); w.vy = v; w.vx = w.dir * 1.3 / (2 * v / g); w.y = gy + L0 + 0.01; w.L = L0; Au().wipe('sproing'); }
-        }
-      } else { w.L += (L0 - w.L) * Math.min(1, dt * 25); w.on = false; }
-      if (!w.done) { w.x += w.vx * dt; w.y += w.vy * dt; }
-      f.sy = 1 - Math.max(0, L0 - w.L) * 0.25;
+    var f = w.f, g = G.sim.g, t = w.t, gy, i;
+    if (!w.caught) {
+      // the rider tumbles up out of the seat, curling up; the snail flies off the bike after them, growing
+      setPose(f, TUCK, Math.min(1, dt * 9));
+      f.vy -= g * dt; f.x += f.vx * dt; f.y += f.vy * dt; f.a += f.w * dt;
+      var k = Math.min(1, t / CAP), e = k * k * (3 - 2 * k), hp = fw(f, 2);
+      w.x = w.sx0 + (hp.x + 0.1 * w.dir - w.sx0) * e; w.y = w.sy0 + (hp.y + 0.15 - w.sy0) * e;
+      w.sc = (1 + (SHELL - 1) * e) / SHELL; w.a = -w.dir * 9 * e * k;
+      if (Math.random() < dt * 40) R.emit(0, w.x + rnd(-0.1, 0.1), w.y + rnd(-0.1, 0.1), rnd(-1, 1), rnd(0, 1.5), rnd(0.3, 0.6), rnd(0.07, 0.14), '#ffffff', { gr: 0.8, a: 0.7, drag: 3, front: 1 });
+      if (t >= CAP) {
+        w.caught = true; w.sc = 1; w.vx = f.vx * 0.7; w.vy = f.vy; w.va = -w.dir * 5; Au().wipe('shell');
+        puff(w.x, w.y, 6, '#ffffff', 2, 1.2);
+      }
+      w.fx = w.x; w.fy = w.y;
+      return;
+    }
+    gy = floorAt(G, w.x, w.gy0); w.gy0 = gy;
+    if (w.landT < 0) {
+      // in the air: a spinning snail with two boots kicking out of it
+      w.vy -= g * dt; w.x += w.vx * dt; w.y += w.vy * dt; w.a += w.va * dt;
+      if (w.y < gy + SHELL_H && w.vy < 0) {
+        w.y = gy + SHELL_H;
+        if (!w.bounced && w.vy < -1.6) { w.bounced = true; w.vy = -w.vy * 0.32; w.vx *= 0.4; w.va *= -0.5; }
+        else { w.landT = t; w.vx = 0; w.vy = 0; }
+        Au().wipe('clonk'); puff(w.x, gy + 0.1, 7, dustCol(G), 1.6, 1.1); G.cam.shake = Math.max(G.cam.shake, 0.25);
+      }
     } else {
-      var tt = w.t - w.dt0; w.sway = 0.55 * Math.exp(-tt * 1.3) * Math.sin(tt * 13); f.sy = 1;
-      w.x = w.bx; w.y = w.by + L0;
+      var lt = t - w.landT, ok = groundAt(G, w.x) > G.track.minY - 5;
+      w.sl = ok ? RR.groundSlope(G.track, w.x) : w.sl;
+      w.a = near(w.a, w.sl); w.a += (w.sl - w.a) * Math.min(1, dt * 9);
+      w.emerge = clamp((lt - 0.35) / 0.4, 0, 1);
+      w.stalk = clamp((lt - 0.8) / 0.25, 0, 1);
+      if (!w.peeked && lt > 0.8) { w.peeked = true; Au().wipe('peek'); }
+      if (lt > 1.1) {
+        // creeping off, at a snail's pace, leaving a trail
+        var sp = 0.3 * (0.75 + 0.25 * Math.sin(lt * 5));
+        w.x += w.dir * sp * Math.cos(w.sl) * dt;
+        if (!w.slime.length || Math.abs(w.x - w.slime[w.slime.length - 1].x) > 0.08) w.slime.push({ x: w.x - w.dir * 0.55, y: floorAt(G, w.x - w.dir * 0.55, gy), t: t });
+        w.sigh -= dt;
+        if (w.sigh <= 0) {
+          w.sigh = 2.2; w.sighT = t; Au().wipe('chatter');
+          for (i = 0; i < 6; i++) R.emit(0, w.x - w.dir * 0.05, w.y + 0.1, rnd(-0.8, 0.8) - w.dir * 0.6, rnd(1.2, 2.4), rnd(0.4, 0.7), rnd(0.08, 0.14), '#ffffff', { gr: 0.9, a: 0.75, drag: 2.5, front: 1, g: -0.05 });
+        }
+      }
+      w.y = floorAt(G, w.x, gy) + SHELL_H;
     }
     w.fx = w.x; w.fy = w.y;
   },
   draw: function (w, c, dd) {
-    var f = w.f, top = w.done ? { x: w.bx, y: w.by + SPRING } : { x: w.x, y: w.y }, bot = w.done ? { x: w.bx, y: w.by } : { x: w.x, y: w.y - w.L };
-    c.save();
-    if (w.done) { c.translate(bot.x, bot.y); c.rotate(-w.sway); c.translate(-bot.x, -bot.y); }
-    var n = 9, i, dx = top.x - bot.x, dy = top.y - bot.y, pts = [bot.x, bot.y];
-    for (i = 0; i <= n * 2; i++) { var k = (i + 0.5) / (n * 2 + 1); pts.push(bot.x + dx * k + (i % 2 ? 0.13 : -0.13), bot.y + dy * k); }
-    pts.push(top.x, top.y - 0.02);
-    A.line(c, pts, 0.08, OUT); A.line(c, pts, 0.045, '#dfe4ea');
-    A.shape(c, [bot.x - 0.2, bot.y - 0.02, bot.x + 0.2, bot.y - 0.02, bot.x + 0.17, bot.y + 0.06, bot.x - 0.17, bot.y + 0.06], '#3a3f4b', 0.03);
-    A.shape(c, [top.x - 0.16, top.y - 0.06, top.x + 0.16, top.y - 0.06, top.x + 0.16, top.y, top.x - 0.16, top.y], dd.suit[1], 0.03);
-    f.x = top.x; f.y = top.y + 0.04;
-    drawFigure(c, f, dd);
+    var t = w.t, s = dd.suit, i, b = w.caught ? 0 : 1 - w.t / CAP, lt = w.landT < 0 ? -1 : t - w.landT;
+    slimeLine(c, w.slime, t);
+    if (!w.caught) drawFigure(c, w.f, dd);
+    var S = SHELL * w.sc, nose = typeof dd.col[0] === 'string' ? dd.col[0] : '#ff6a00';
+    c.save(); c.translate(w.x, w.y); c.rotate(w.a); c.scale(w.dir, 1);
+    var ax = 0.15 * S, ay = -0.17 * S;               // the mouth of the snail (the compressor outlet)
+    if (w.caught) {
+      var gyL = -SHELL_H;
+      if (lt >= 0) {
+        // the foot: the rider's legs, ripping along under the shell, with a boot for a tail
+        var top = [], n = 12;
+        for (i = 0; i <= n; i++) { var x = -0.95 + 1.95 * i / n; top.push(x, gyL + 0.16 + (lt > 1.1 ? 0.025 * Math.sin(x * 14 - t * 7) : 0) - (i === 0 ? 0.07 : 0)); }
+        var pts = [1.02, gyL + 0.02, -0.98, gyL + 0.02].concat(top);
+        A.blob(c, pts, s[1], 0.035);
+        A.line(c, [-0.85, gyL + 0.07, 0.9, gyL + 0.07], 0.025, A.shade(s[1], 0.8));
+        A.blob(c, [-1.14, gyL + 0.02, -1.16, gyL + 0.15, -0.98, gyL + 0.19, -0.9, gyL + 0.02], s[2], 0.03);
+      }
+      if (lt < 0) {
+        // boots kicking out of the mouth while it flies
+        for (i = 0; i < 2; i++) {
+          var kk = Math.sin(t * 22 + i * 2.2) * 0.25, a0 = -0.25 - i * 0.35 + kk, L = 0.5;
+          var ex = ax + Math.cos(a0) * L, ey = ay + Math.sin(a0) * L;
+          A.tube(c, [ax - 0.05, ay + 0.05, ex, ey], 0.12, i ? A.shade(s[1], 0.62) : s[1], 0.04);
+          A.circ(c, ex, ey, 0.09, s[2], 0.03);
+        }
+      }
+    }
+    // the shell itself: the turbo's compressor snail, turned so its outlet faces forward and down
+    c.save(); c.scale(S, S); c.rotate(-Math.PI / 2);
+    A.turboSnail(c, w.caught ? (lt >= 0 ? 0 : 1) : 1, t, nose, w.caught ? 0 : b);
     c.restore();
+    if (w.caught && lt >= 0 && w.emerge > 0) {
+      // the head: out of the mouth on a long neck, looking about, with two eye stalks on the helmet
+      var e = w.emerge, ee = e * e * (3 - 2 * e), look = lt > 1.1 ? Math.sin(t * 1.3) * 0.06 : 0;
+      var hx = ax + 0.12 + 0.5 * ee, hy = ay + 0.1 + 0.62 * ee + look, nx = (ax + hx) / 2 + 0.12, ny = ay + 0.06;
+      A.curve(c, [ax, ay + 0.06, nx, ny, hx - 0.05, hy - 0.12], 0.17, s[0], 0.04);
+      A.circ(c, ax + 0.02, ay + 0.06, 0.1, A.shade(s[0], 0.75), 0.03);
+      var hr = 0.17, ha = -0.15 + look;
+      if (w.stalk > 0) {
+        for (i = 0; i < 2; i++) {
+          var sk = w.stalk, wob = Math.sin(t * 6 + i * 1.7) * 0.05, ox = hx - 0.06 + i * 0.1, oy = hy + hr * 0.8;
+          var tx = ox + (0.02 + i * 0.1 + wob) * sk, ty = oy + (0.3 - i * 0.04) * sk;
+          A.tube(c, [ox, oy, (ox + tx) / 2 - 0.02, (oy + ty) / 2, tx, ty], 0.035, s[1], 0.03);
+          var blink = Math.sin(t * 1.9 + i * 0.4) > 0.96 ? 0.25 : 1;
+          c.beginPath(); c.ellipse(tx, ty, 0.065 * sk, 0.065 * sk * blink, 0, 0, TAU); c.fillStyle = '#ffffff'; c.fill(); c.lineWidth = 0.025; c.strokeStyle = OUT; c.stroke();
+          A.circ(c, tx + 0.02 * sk, ty - 0.008, 0.026 * sk * blink, OUT, 0);
+        }
+      }
+      A.helmet(c, hx, hy, hr, ha, dd, dd.kind);
+    }
+    c.restore();
+    // "stututu" over the shell when it sighs
+    if (w.sighT > 0 && t - w.sighT < 0.7) {
+      var q = (t - w.sighT) / 0.7;
+      c.save(); c.globalAlpha = 1 - q * q; c.translate(w.x - w.dir * 0.2, w.y + 0.85 + q * 0.3); c.scale(1, -1);
+      c.font = '900 italic 0.24px ' + R.FONT; c.textAlign = 'center'; c.lineWidth = 0.06; c.strokeStyle = OUT; c.strokeText('stu-tu-tu', 0, 0); c.fillStyle = '#ffffff'; c.fillText('stu-tu-tu', 0, 0);
+      c.restore();
+    }
   }
 };
 
@@ -11230,9 +11430,10 @@ var ENG = {
   drag:  { pattern: [[0, 1], [0.5, 0.9]], lo: 13, hi: 86, ring: 5.0, decay: 0.11, grit: 0.7, bright: 1.3, noise: 0.6, drive: 3.6 },
   /* phase 2. Optional extras: jit = how unevenly the cylinders fire, hp = low cut, level = trim,
      hiss = [Hz, gain] a steady bed of air hiss, whine = [Hz at standstill, Hz at top speed, gain] a belt
-     whine that follows road speed, prop = [blade Hz at idle, at the limiter, gain] a propeller drone */
+     whine that follows road speed, prop = [blade Hz at idle, at the limiter, gain] a propeller drone,
+     spool = [whistle Hz just off boost, Hz at full boost, gain] a turbo whistle that follows st.turbo (0 to 1) */
   puffer:    { pattern: [[0, 1]], lo: 14, hi: 84, ring: 4.4, decay: 0.09, grit: 0.2, bright: 1.0, noise: 0.3, drive: 2.2, level: 1.2, hiss: [5200, 0.035] },
-  springer:  { pattern: [[0, 1]], lo: 26, hi: 128, ring: 7.0, decay: 0.06, grit: 0.45, bright: 1.6, noise: 0.25, drive: 3.0, hp: 170, level: 1.25 },
+  turbo:     { pattern: [[0, 1]], lo: 13, hi: 84, ring: 6.6, decay: 0.062, grit: 0.16, bright: 1.3, noise: 0.35, drive: 2.6, hp: 60, level: 1.05, spool: [1700, 6800, 0.07] },
   boxer:     { pattern: [[0, 1], [0.5, 0.72]], lo: 7.5, hi: 46, ring: 4.2, decay: 0.15, grit: 0.12, bright: 0.62, noise: 0.25, drive: 1.8, jit: 0.07, level: 0.8 },
   gecko:     { pattern: [[0, 1]], lo: 19, hi: 70, ring: 3.2, decay: 0.2, grit: 0.08, bright: 0.65, noise: 0.15, drive: 1.5, hp: 90, level: 0.9, whine: [220, 1500, 0.05] },
   paddle:    { pattern: [[0, 1], [0.07, 0.42]], lo: 8.5, hi: 58, ring: 2.6, decay: 0.13, grit: 0.45, bright: 0.85, noise: 0.55, drive: 3.4, level: 0.78 },
@@ -11304,8 +11505,18 @@ function engineExtras(e, E) {
     e.po.start(); e.pn.start(0, Math.random()); e.lfo.start();
     e.nodes.push(e.po, e.pf, e.pg, e.pn, e.pnf, e.pam, e.lfo, e.lfoG);
   }
+  if (E.spool) {           // the turbo: a whistle (two sines a fifth apart) and a breath of air through the compressor
+    e.so = ac.createOscillator(); e.so.type = 'sine'; e.so2 = ac.createOscillator(); e.so2.type = 'sine';
+    e.sg = ac.createGain(); e.sg.gain.value = 0; e.sg2 = ac.createGain(); e.sg2.gain.value = 0.22;
+    e.so.connect(e.sg); e.so2.connect(e.sg2); e.sg2.connect(e.sg); e.sg.connect(e.out);
+    e.sn = ac.createBufferSource(); e.sn.buffer = noiseBuf; e.sn.loop = true; e.snf = ac.createBiquadFilter(); e.snf.type = 'bandpass'; e.snf.Q.value = 2.2;
+    e.sng = ac.createGain(); e.sng.gain.value = 0; e.sn.connect(e.snf); e.snf.connect(e.sng); e.sng.connect(e.out);
+    e.so.frequency.value = E.spool[0]; e.so2.frequency.value = E.spool[0] * 1.5; e.so.start(); e.so2.start(); e.sn.start(0, Math.random());
+    e.boost = 0;
+    e.nodes.push(e.so, e.so2, e.sg, e.sg2, e.sn, e.snf, e.sng);
+  }
 }
-function engineExtrasUpdate(e, E, x, load, t) {
+function engineExtrasUpdate(e, E, x, load, t, st) {
   if (E.hiss) e.hg.gain.setTargetAtTime(E.hiss[1] * (0.8 + 0.4 * load), t, 0.05);
   if (E.whine) {
     var xs = Math.min(1.15, x), wf = (E.whine[0] + (E.whine[1] - E.whine[0]) * xs) * e.pitch;
@@ -11319,6 +11530,15 @@ function engineExtrasUpdate(e, E, x, load, t) {
     var pl = E.prop[2] * (0.45 + 0.55 * load) * (0.6 + 0.5 * Math.min(1, e.rpm));
     e.pg.gain.setTargetAtTime(pl * 0.7, t, 0.04); e.pam.gain.setTargetAtTime(pl, t, 0.04); e.lfoG.gain.setTargetAtTime(pl * 0.9, t, 0.04);
     e.pnf.frequency.setTargetAtTime(380 + 900 * Math.min(1, e.rpm), t, 0.05);
+  }
+  if (E.spool) {
+    // the shaft speeds up with the boost, and spins down more slowly than it spun up once the boost is dumped
+    var bt = st.turbo > 0 ? Math.min(1, st.turbo) : 0, dt = st.dt || 0.016;
+    e.boost += (bt - e.boost) * Math.min(1, dt * (bt > e.boost ? 12 : 2.5));
+    var sb = e.boost, sf = (E.spool[0] + (E.spool[1] - E.spool[0]) * Math.pow(sb, 0.8)) * (0.9 + 0.1 * Math.min(1, e.rpm)) * e.pitch;
+    e.so.frequency.setTargetAtTime(sf, t, 0.04); e.so2.frequency.setTargetAtTime(sf * 1.5, t, 0.04); e.snf.frequency.setTargetAtTime(sf * 0.55, t, 0.05);
+    var sl = E.spool[2] * Math.pow(sb, 1.5) * (0.25 + 0.75 * load);
+    e.sg.gain.setTargetAtTime(sl, t, bt > 0.02 ? 0.06 : 0.1); e.sng.gain.setTargetAtTime(sl * 1.6, t, 0.06);
   }
 }
 
@@ -11373,7 +11593,7 @@ S.engineStart = function (def) {
   }
   eng = e;
 };
-/* st: { v: wheel speed m/s, vmax, gas: 0..1, air: bool, boost: bool, dt } */
+/* st: { v: wheel speed m/s, vmax, gas: 0..1, air: bool, boost: bool, dt, turbo: 0..1 (the Spool 600's boost, missing = 0) } */
 S.engineUpdate = function (st) {
   if (!eng || !ok) return;
   var e = eng, t = ac.currentTime, dt = st.dt || 0.016, x = Math.max(0, st.v) / st.vmax;
@@ -11427,7 +11647,7 @@ S.engineUpdate = function (st) {
   e.post.gain.setTargetAtTime((0.4 + 0.22 * load + 0.1 * k) * (E.level || 1), t, 0.03);
   e.nf.frequency.setTargetAtTime(600 + 3200 * k, t, 0.03);
   e.ng.gain.setTargetAtTime(E.noise * load * (0.03 + 0.1 * k), t, 0.03);
-  engineExtrasUpdate(e, E, x, load, t);
+  engineExtrasUpdate(e, E, x, load, t, st);
   return e.rpm;
 };
 S.engineInfo = function () { return eng ? { rpm: eng.rpm, gear: eng.gear } : null; };
@@ -11587,6 +11807,26 @@ S.pivot = function () {
   tone('sine', 2950, 3050, 0.2, 0.08, 0.02, null, 0.015); tone('sine', 3010, 3110, 0.2, 0.07, 0.02, null, 0.015);
   tone('triangle', 5900, 6100, 0.14, 0.025, 0.02, null, 0.015);
 };
+/* Spool 600: the blow-off valve dumping boost when the gas is shut. A sharp "pssh" of air and the
+   compressor's flutter ("stututu"), both bigger the more boost there was. k = boost dumped, 0.3 to 1 */
+function bov(k, when, g) {
+  k = Math.max(0.2, Math.min(1, k || 0.6)); when = when || 0; g = g || 1;
+  noise(0.16 + 0.32 * k, 'highpass', 3400, 1500, 0.7, (0.16 + 0.3 * k) * g, when, null, false, 0.003);
+  noise(0.12 + 0.16 * k, 'bandpass', 1400, 650, 1.1, (0.12 + 0.14 * k) * g, when, null, false, 0.004);
+  var n = 3 + Math.round(4 * k), i, gap = 0.05 + 0.012 * (1 - k);
+  for (i = 0; i < n; i++) {
+    var d = Math.pow(0.8, i), at = when + 0.05 + i * gap;
+    noise(0.03, 'bandpass', 900 - i * 40, 500, 2.5, 0.24 * k * d * g, at, null, false, 0.002);
+    tone('sine', 210 - i * 8, 120, 0.035, 0.13 * k * d * g, at);
+  }
+}
+S.blowoff = function (k) { if (!ok) return; bov(k); };
+/* Spool 600: the whistle peaking as the boost reaches full */
+S.spool = function () {
+  if (!ok) return;
+  tone('sine', 3300, 5600, 0.3, 0.1, 0, null, 0.07); tone('sine', 4950, 8400, 0.26, 0.03, 0, null, 0.07);
+  noise(0.28, 'bandpass', 2600, 5200, 3, 0.08, 0, null, false, 0.08);
+};
 /* the crash animations: one small sound each */
 S.wipe = function (kind, v) {
   if (!ok) return;
@@ -11619,11 +11859,18 @@ S.wipe = function (kind, v) {
       for (i = 0; i < 20; i++) { f = 230 + 110 * Math.sin(i * 1.3) + i * 6; tone('sawtooth', f, f * 0.92, 0.07, 0.07 * (1 - i / 26), i * 0.06); }
       break;
     case 'pfft': noise(0.16, 'bandpass', 1600, 500, 1, 0.45); tone('sawtooth', 150, 80, 0.14, 0.09); break;
-    case 'sproing':         // a coil spring bottoming out and firing back up
-      tone('sine', 85, 380, 0.13, 0.45); tone('triangle', 170, 760, 0.13, 0.08); tone('sine', 380, 300, 0.2, 0.12, 0.12); break;
-    case 'doing':           // the doorstop wobble
-      for (i = 0; i < 18; i++) tone('triangle', i % 2 ? 330 : 270, i % 2 ? 320 : 280, 0.045, 0.16 * Math.pow(0.88, i), i * 0.04);
-      tone('sine', 300, 290, 0.8, 0.08); break;
+    case 'dump':            // the turbo over-boosts: the housing pops off in a long blast of steam
+      tone('sine', 170, 55, 0.22, 0.45); noise(0.05, 'highpass', 2500, 0, 0.7, 0.35);
+      noise(1.1, 'highpass', 2800, 1200, 0.7, 0.3, 0.02, null, false, 0.01); bov(1, 0.02, 0.9);
+      break;
+    case 'shell':           // the snail housing clanging shut round the rider
+      tone('triangle', 640, 600, 0.26, 0.17); tone('sine', 1437, 1420, 0.32, 0.06); tone('sine', 2210, 2190, 0.2, 0.04); noise(0.04, 'bandpass', 3000, 0, 2, 0.2);
+      break;
+    case 'clonk':           // the shell landing: a hollow metal thump
+      tone('sine', 150, 55, 0.22, 0.5); noise(0.12, 'lowpass', 900, 200, 0.7, 0.4); tone('triangle', 420, 380, 0.16, 0.12, 0.01); tone('sine', 1250, 1230, 0.18, 0.03, 0.01);
+      break;
+    case 'peek': tone('sine', 380, 760, 0.07, 0.15); tone('sine', 460, 920, 0.07, 0.15, 0.13); break;
+    case 'chatter': bov(0.45, 0, 0.6); break;
     case 'honk':            // an old bulb horn, twice
       for (i = 0; i < 2; i++) { tone('sawtooth', 360, 320, 0.13, 0.16, i * 0.2); tone('square', 180, 165, 0.13, 0.1, i * 0.2); noise(0.04, 'lowpass', 900, 0, 0.7, 0.2, i * 0.2); }
       for (i = 0; i < 5; i++) noise(0.04, 'bandpass', 1200 + Math.random() * 2000, 0, 3, 0.1, 0.45 + i * 0.08);
@@ -11634,7 +11881,8 @@ S.wipe = function (kind, v) {
       for (i = 0; i < 5; i++) { f = 300 + Math.random() * 500; tone('sine', f, f * 1.5, 0.04, 0.08, 0.06 + i * 0.05); }
       break;
     case 'peel': tone('sine', 220, 900, 0.055, 0.32); noise(0.05, 'bandpass', 1300, 2400, 3, 0.15); break;
-    case 'stretch':         // a long stretchy squeak as the last toe slides tone('sine', 600, 1150, 0.4, 0.07, 0, null, 0.08); tone('sine', 1200, 2300, 0.4, 0.02, 0, null, 0.08); break;
+    case 'stretch':         // a long stretchy squeak as the last toe slides
+      tone('sine', 600, 1150, 0.4, 0.07, 0, null, 0.08); tone('sine', 1200, 2300, 0.4, 0.02, 0, null, 0.08); break;
     case 'swirl':           // a sand devil spinning up
       for (i = 0; i < 4; i++) noise(0.55, 'bandpass', 300 + i * 120, 1500 + i * 200, 1.2, 0.28, i * 0.28, null, false, 0.2);
       noise(1.4, 'highpass', 3500, 5000, 0.7, 0.1, 0.1, null, false, 0.2);
