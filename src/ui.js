@@ -11,6 +11,7 @@ function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&
 function fmt(t) { return t.toFixed(2); }
 function stars(n, cls) { var s = '<span class="stars ' + (cls || '') + '">'; for (var i = 0; i < 3; i++) s += '<i class="star' + (i < n ? ' on' : '') + '"></i>'; return s + '</span>'; }
 var NUG = '<i class="nug"></i>';
+UI.NUG = NUG; UI.esc = esc;
 
 var IC = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="#f6f2e7" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4 7 12l8 8"/></svg>',
@@ -35,6 +36,7 @@ var GLYPH = {
   O: [84, 'M42 0Q84 0 84 50Q84 100 42 100Q0 100 0 50Q0 0 42 0ZM42 24Q28 24 28 50Q28 76 42 76Q56 76 56 50Q56 24 42 24Z'],
   T: [76, 'M0 0H76V24H52V100H24V24H0Z']
 };
+UI.GLYPH = GLYPH;
 function word(text) {
   var x = 0, d = '', i;
   for (i = 0; i < text.length; i++) { var g = GLYPH[text[i]]; d += '<path transform="translate(' + x + ' 0)" d="' + g[1] + '"/>'; x += g[0] + 9; }
@@ -79,7 +81,8 @@ UI.init = function () {
       '<button class="btn go" data-act="resume">Keep riding</button><button class="btn" data-act="retry">Restart</button><button class="btn" data-act="quit">Tracks</button></div>' +
     '</section>' +
     '<section id="s-results" class="screen"><div class="res plate" id="res"></div></section>' +
-    '<section id="s-geode" class="screen shade full"><canvas id="geocv"></canvas><div class="gehint" id="gehint"></div><div class="gecard plate" id="gecard"></div></section>' +
+    '<section id="s-crate" class="screen shade full"><canvas id="cratecv"></canvas><div class="cratehint" id="cratehint"></div><div class="cratecard plate" id="cratecard"></div></section>' +
+    (RR.Showroom ? RR.Showroom.html() : '') +
     '<div id="toast" class="plate"></div>' +
     '<div id="rotate"><div class="ph"></div><div>Turn your phone sideways</div></div>';
 
@@ -189,7 +192,8 @@ function onKey(e) {
   }
   if (UI.cur === 'pause') { if (c === 'Escape' || c === 'KeyP' || c === 'Enter') act('resume'); else if (c === 'KeyR') act('retry'); return; }
   if (UI.cur === 'results') { if (c === 'Enter' || c === 'Space') { var b = doc.querySelector('#res .btn.go'); if (b) fire(b); e.preventDefault(); } else if (c === 'KeyR') act('retry'); else if (c === 'Escape') act('quit'); return; }
-  if (UI.cur === 'geode') { if (c === 'Enter' || c === 'Space') { geoHit(); e.preventDefault(); } else if (c === 'Escape' && geo.stage === 'show') act('geoDone'); return; }
+  if (UI.cur === 'crate') { if (c === 'Enter' || c === 'Space') { crateHit(); e.preventDefault(); } else if (c === 'Escape' && crt.stage === 'show') act('crateDone'); return; }
+  if (UI.cur === 'show') { if (c === 'Escape') act('showBack'); return; }
   if (UI.cur === 'garage') {
     if (c === 'Escape') act('garageBack');
     else if (UI.gtab === 'bikes' && (c === 'ArrowLeft' || c === 'KeyA' || c === 'ArrowRight' || c === 'KeyD')) { UI.gi = (UI.gi + (c === 'ArrowLeft' || c === 'KeyA' ? RR.BIKES.length - 1 : 1)) % RR.BIKES.length; Au.ui('swipe'); UI.garage(); }
@@ -216,7 +220,8 @@ UI.resize = function () {
   var portrait = h > w * 1.05 && w < 900;
   $('rotate').className = portrait ? 'on' : '';
   if (portrait && (G.state === 'run' || G.state === 'ready')) G.pause(true);
-  if (UI.cur === 'garage') { UI.garageDraw(); paintTiles(true); }
+  if (UI.cur === 'garage') { sizeTiles(); UI.garageDraw(); paintTiles(true); }
+  if (UI.cur === 'show' && RR.Showroom) RR.Showroom.layout();
   UI.measurePads();
 };
 /* work out where the touch zones divide from where the buttons actually sit */
@@ -232,6 +237,7 @@ UI.measurePads = function () {
 /* ------------------------------------------------------------------ */
 function act(a, el) {
   var it, d;
+  if (RR.Showroom && RR.Showroom.act(a, el)) return;
   switch (a) {
     case 'tracks': Au.ui('go'); UI.world = Math.floor((Store.data.last || 0) / 8); if (!P.worldOpen(UI.world)) UI.world = 0; UI.tracks(); UI.show('tracks'); break;
     case 'garage': Au.ui('go'); UI.from = UI.cur; UI.gi = RR.BIKE[Store.data.bike].index; UI.gtab = 'bikes'; UI.pick = null; UI.show('garage'); UI.garage(); break;
@@ -245,7 +251,9 @@ function act(a, el) {
       var ti = +el.getAttribute('data-i');
       if (!P.trackOpen(ti)) { Au.ui('no'); break; }
       Au.ui('go'); UI.show('hud'); G.play(ti); break;
-    case 'gtab': Au.ui('swipe'); UI.gtab = el.getAttribute('data-t'); UI.pick = null; UI.garage(); break;
+    case 'gtab':
+      if (el.getAttribute('data-t') === 'show') { Au.ui('go'); RR.Showroom.open('garage'); break; }
+      Au.ui('swipe'); UI.gtab = el.getAttribute('data-t'); UI.pick = null; tileScroll = 0; UI.garage(); break;
     case 'gdot': Au.ui('swipe'); UI.gi = +el.getAttribute('data-i'); UI.garage(); break;
     case 'gsel':
       d = RR.BIKES[UI.gi];
@@ -254,17 +262,17 @@ function act(a, el) {
       break;
     case 'gitem': Au.ui('swipe'); UI.pick = el.getAttribute('data-id') || ''; delete Store.data.fresh[UI.pick]; UI.garage(); break;
     case 'gwear':
-      it = itemOf(UI.gtab, UI.pick); d = RR.BIKES[UI.gi];
+      it = itemOf(UI.pick); d = RR.BIKES[UI.gi];
       if (it && !P.owns(it)) { Au.ui('no'); break; }
-      P.wear(d.id, UI.gtab === 'paint' ? 'paint' : 'rider', it ? it.id : ''); Store.save(); Au.ui('go'); UI.garage();
+      P.wear(d.id, it ? it.kind : UI.gtab === 'paint' ? 'paint' : 'rider', it ? it.id : ''); Store.save(); Au.ui('go'); UI.garage();
       break;
-    case 'crack': openGeode(); break;
-    case 'geoPut':
-      it = geo.item; d = RR.BIKE[Store.data.bike];
+    case 'crate': openCrate(); break;
+    case 'cratePut':
+      it = crt.item; d = RR.BIKE[Store.data.bike];
       if (it) { P.wear(d.id, it.kind, it.id); delete Store.data.fresh[it.id]; Store.save(); UI.toast(it.name + ' is on your ' + d.name); }
-      Au.ui('go'); closeGeode(); break;
-    case 'geoAgain': openGeode(); break;
-    case 'geoDone': Au.ui('back'); closeGeode(); break;
+      Au.ui('go'); closeCrate(); break;
+    case 'crateAgain': openCrate(); break;
+    case 'crateDone': Au.ui('back'); closeCrate(); break;
     case 'pause': Au.ui('tap'); G.pause(true); break;
     case 'resume': Au.ui('tap'); G.pause(false); break;
     case 'retry': Au.ui('tap'); if (G.state === 'pause') G.state = 'ready'; UI.show('hud'); G.retry(); break;
@@ -285,21 +293,28 @@ function fullscreen() {
     else doc.documentElement.requestFullscreen().then(function () { try { root.screen.orientation.lock('landscape').catch(function () {}); } catch (e) {} }).catch(function () {});
   } catch (e) {}
 }
-var SCREENS = ['title', 'tracks', 'garage', 'settings', 'hud', 'pause', 'results', 'geode'];
+var SCREENS = ['title', 'tracks', 'garage', 'settings', 'hud', 'pause', 'results', 'crate', 'show'];
 UI.show = function (name) {
   UI.cur = name;
   SCREENS.forEach(function (n) { var e = $('s-' + n); e.classList.toggle('on', n === name); });
   if (name !== 'garage' && gTimer) { root.cancelAnimationFrame(gTimer); gTimer = 0; }
+  if (RR.Showroom) RR.Showroom.shown(name === 'show');
 };
 UI.title = function () {
   var left = P.itemsLeft();
-  $('foot').innerHTML = 'Everything is earned by riding. No ads, nothing to buy.<br>' + P.total() + ' of ' + RR.TRACK_COUNT * 3 + ' stars. ' + Store.data.nuggets + ' nuggets. ' + P.ownedCount() + ' of ' + RR.ITEMS.length + ' collected.';
-  $('mgar').innerHTML = 'Garage' + (left > 0 && P.canCrack() ? '<i class="dotb" title="A geode is ready"></i>' : '');
+  $('foot').innerHTML = 'Everything is earned by riding. No ads, nothing to buy.<br>' + P.total() + ' of ' + RR.TRACK_COUNT * 3 + ' stars. ' + Store.data.nuggets + ' nuggets. ' + P.ownedCount() + ' of ' + RR.ITEMS.length + ' collected.' + (P.trophyCount() ? ' ' + P.trophyCount() + ' of ' + RR.TROPHIES.length + ' trophies.' : '');
+  $('mgar').innerHTML = 'Garage' + (left > 0 && P.canOpen() ? '<i class="dotb" title="A crate is ready"></i>' : '');
   UI.show('title');
 };
 var toastT = 0;
 UI.toast = function (text) { var t = $('toast'); t.textContent = text; t.className = 'plate on'; clearTimeout(toastT); toastT = setTimeout(function () { t.className = "plate"; }, Math.max(2800, text.length * 60)); };
-UI.toastBikes = function (list) { Au.unlocked(); UI.toast('New bike in the garage: ' + list.map(function (d) { return d.name; }).join(', ')); Store.save(); };
+UI.toastBikes = function (list) {
+  Au.unlocked();
+  var bikes = list.filter(function (x) { return !x.kind; }), tro = list.filter(function (x) { return x.kind; }), t = [];
+  if (bikes.length) t.push('New bike in the garage: ' + bikes.map(function (d) { return d.name; }).join(', '));
+  if (tro.length) t.push('Trophy earned: ' + tro.map(function (d) { return d.name; }).join(', '));
+  UI.toast(t.join('. ')); Store.save();
+};
 
 /* ------------------------------------------------------------------ */
 /* Track select                                                         */
@@ -324,27 +339,41 @@ UI.tracks = function () {
   $('grid').innerHTML = h;
   var cvs = $('grid').querySelectorAll('canvas');
   for (i = 0; i < cvs.length; i++) R.trackThumb(cvs[i], RR.getTrack(+cvs[i].getAttribute('data-thumb')), T.ground[0], T.crust === '#f6fbff' ? '#9db8e8' : T.id === 'race' ? '#3a3d46' : T.crust);
-  $('lockmsg').textContent = wopen ? (P.worldCount(w) < 8 ? 'Finish a track to open the next one.' : P.worldStars(w) < 24 ? 'Three stars on all eight earns a diamond geode.' : '') : W.name + ' opens at ' + W.need + ' stars. You have ' + tot + '.';
+  $('lockmsg').textContent = wopen ? (P.worldCount(w) < 8 ? 'Finish a track to open the next one.' : P.worldStars(w) < 24 ? 'Three stars on all eight earns an epic crate.' : '') : W.name + ' opens at ' + W.need + ' stars. You have ' + tot + '.';
 };
 
 /* ------------------------------------------------------------------ */
-/* Garage: bikes, paint, riders, geodes                                 */
+/* Garage: bikes, paint, riders, crates, trophies                       */
 /* ------------------------------------------------------------------ */
-var gTimer = 0, gSpin = 0, gBounce = 0, gT = 0, gFrame = 0;
-function itemOf(tab, id) { return tab === 'paint' ? RR.PAINT[id] || null : tab === 'riders' ? RR.RIDER[id] || null : null; }
+var gTimer = 0, gSpin = 0, gBounce = 0, gT = 0, gLast = 0, tileScroll = -1;
+/* seconds since the last frame, from the real clock so animation runs at the same speed at 60, 120 or 144 Hz */
+function frameDt(now, last) { return last ? Math.min(0.05, Math.max(0.001, (now - last) / 1000)) : 1 / 60; }
+function itemOf(id) { return id ? RR.PAINT[id] || RR.RIDER[id] || null : null; }
 function tierChip(t) { return '<span class="chip t-' + t + '">' + RR.TIER[t].name + '</span>'; }
 /* what the bike on show is wearing, counting whatever is being tried on */
 function previewLook() {
   var d = RR.BIKES[UI.gi], f = Store.data.fit[d.id] || {}, p = RR.PAINT[f.p] || null, r = RR.RIDER[f.r] || null;
   if (p && !P.owns(p)) p = null; if (r && !P.owns(r)) r = null;
-  if (UI.pick != null) { if (UI.gtab === 'paint') p = RR.PAINT[UI.pick] || null; else if (UI.gtab === 'riders') r = RR.RIDER[UI.pick] || null; }
+  if (UI.pick != null) {
+    var it = itemOf(UI.pick);
+    if (UI.gtab === 'paint') p = it && it.kind === 'paint' ? it : null;
+    else if (UI.gtab === 'riders') r = it && it.kind === 'rider' ? it : null;
+    else if (UI.gtab === 'trophies' && it) { if (it.kind === 'paint') p = it; else r = it; }
+  }
   return { paint: p, rider: r };
+}
+/* the items of one tab, lowest tier first (the order they were made in within a tier) */
+function sorted(list) { return list.slice().sort(function (a, b) { return RR.TIER[a.tier].rank - RR.TIER[b.tier].rank || a.index - b.index; }); }
+function setNote(it) {
+  if (!it.set || !RR.SETS[it.set]) return '';
+  var n = 0, all = RR.SETS[it.set]; all.forEach(function (x) { if (P.owns(x)) n++; });
+  return '<small class="setn">' + esc(it.set) + ' ' + n + '/' + all.length + '</small>';
 }
 UI.garage = function () {
   var d = RR.BIKES[UI.gi], open = P.bikeOpen(d), tab = UI.gtab, h = '', own = 0, i, k;
-  var free = P.freeGeodes(), ready = P.canCrack();
-  [['bikes', 'Bikes'], ['paint', 'Paint'], ['riders', 'Riders'], ['geodes', 'Geodes']].forEach(function (t) {
-    h += '<button class="gtab' + (t[0] === tab ? ' on' : '') + '" data-act="gtab" data-t="' + t[0] + '">' + t[1] + (t[0] === 'geodes' && ready ? '<i class="dotb"></i>' : '') + '</button>';
+  var ready = P.canOpen();
+  [['bikes', 'Bikes'], ['paint', 'Paint'], ['riders', 'Riders'], ['crates', 'Crates'], ['trophies', 'Trophies'], ['show', 'Showroom']].forEach(function (t) {
+    h += '<button class="gtab' + (t[0] === tab ? ' on' : '') + '" data-act="gtab" data-t="' + t[0] + '">' + t[1] + (t[0] === 'crates' && ready ? '<i class="dotb"></i>' : '') + (t[0] === 'trophies' && trophyNew() ? '<i class="dotb"></i>' : '') + '</button>';
   });
   $('gtabs').innerHTML = h;
   $('gnug').innerHTML = NUG + Store.data.nuggets;
@@ -362,58 +391,100 @@ UI.garage = function () {
     if (open) h += '<div class="need own">You have ' + own + ' of the ' + RR.BIKES.length + ' bikes.</div>' + (d.id === Store.data.bike ? '<button class="btn" disabled>This is your ride</button>' : '<button class="btn go" data-act="gsel">Ride this one</button>');
     else { var n = P.bikeNeed(d); h += '<div class="need">' + esc(n.text) + '. ' + esc(n.now) + '.<div class="bar"><i style="width:' + Math.round(Math.min(1, n.k) * 100) + '%"></i></div></div><button class="btn" disabled>Locked</button>'; }
     h += '</div>';
-  } else if (tab === 'paint' || tab === 'riders') {
-    var list = tab === 'paint' ? RR.PAINTS : RR.RIDERS, key = tab === 'paint' ? 'p' : 'r', worn = f[key] || '', cur = UI.pick == null ? worn : UI.pick, it = itemOf(tab, cur);
+  } else if (tab === 'paint' || tab === 'riders' || tab === 'trophies') {
+    var list = tab === 'paint' ? RR.PAINTS : tab === 'riders' ? RR.RIDERS : RR.TROPHIES, key = tab === 'paint' ? 'p' : 'r', worn = tab === 'trophies' ? '' : (f[key] || '');
+    var cur = UI.pick == null ? worn : UI.pick, it = itemOf(cur);
     if (it && UI.pick == null && !P.owns(it)) { cur = ''; it = null; }
-    h += '<div class="tiles ' + (tab === 'paint' ? 't9' : 't7') + '">';
-    h += '<button class="tile item' + (cur === '' ? ' cur' : '') + (worn === '' ? ' sel' : '') + '" data-act="gitem" data-id="" aria-label="Stock"><canvas data-item=""></canvas></button>';
-    list.forEach(function (x) { var o = P.owns(x); h += '<button class="tile item t-' + x.tier + (o ? '' : ' locked') + (x.id === cur ? ' cur' : '') + (x.id === worn && o ? ' sel' : '') + '" data-act="gitem" data-id="' + x.id + '" aria-label="' + esc(x.name) + '"><canvas data-item="' + x.id + '"></canvas>' + (Store.data.fresh[x.id] && o ? '<i class="new">New</i>' : '') + (o ? '' : '<span class="lock">' + IC.lock + '</span>') + '</button>'; });
+    if (tab === 'trophies' && UI.pick == null) { it = RR.TROPHIES[0]; cur = it.id; }
+    var wornAny = function (x) { var ff = Store.data.fit[d.id] || {}; return (x.kind === 'paint' ? ff.p : ff.r) === x.id; };
+    h += '<div class="tiles scroll ' + (tab === 'paint' ? 't9' : tab === 'riders' ? 't7' : 't6') + '" id="tiles">';
+    if (tab !== 'trophies') h += '<button class="tile item' + (cur === '' ? ' cur' : '') + (worn === '' ? ' sel' : '') + '" data-act="gitem" data-id="" aria-label="Stock"><canvas data-item=""></canvas></button>';
+    var lastTier = '';
+    sorted(list).forEach(function (x) {
+      var o = P.owns(x);
+      if (tab !== 'trophies' && x.tier !== lastTier) {
+        lastTier = x.tier; var have = 0, tot = 0; list.forEach(function (y) { if (y.tier === x.tier) { tot++; if (P.owns(y)) have++; } });
+        h += '<div class="sep t-' + x.tier + '"><b>' + RR.TIER[x.tier].name + '</b><i>' + have + ' of ' + tot + '</i></div>';
+      }
+      h += '<button class="tile item t-' + x.tier + (o ? '' : ' locked') + (x.id === cur ? ' cur' : '') + (wornAny(x) && o ? ' sel' : '') + '" data-act="gitem" data-id="' + x.id + '" aria-label="' + esc(x.name) + '"><canvas data-item="' + x.id + '"></canvas>' + (Store.data.fresh[x.id] && o ? '<i class="new">New</i>' : '') + (o ? '' : '<span class="lock">' + IC.lock + '</span>') + '</button>';
+    });
     h += '</div><div class="info">';
     if (!it) h += '<div class="nm"><h3>Stock ' + (tab === 'paint' ? 'paint' : 'rider') + '</h3></div><p>' + (tab === 'paint' ? 'The colours the ' + esc(d.name) + ' left the factory in.' : 'The rider who comes with the ' + esc(d.name) + '.') + '</p>';
-    else h += '<div class="nm"><h3>' + esc(it.name) + '</h3>' + tierChip(it.tier) + '</div><p>' + (it.blurb ? esc(it.blurb) : paintWords(it)) + '</p>';
+    else {
+      h += '<div class="nm"><h3>' + esc(it.name) + '</h3>' + tierChip(it.tier) + setNote(it) + '</div>';
+      if (it.tier === 'trophy' && !P.reallyOwns(it)) { var tn = P.trophyNeed(it); h += '<div class="need">' + esc(tn.text) + '. ' + esc(tn.now) + '.<div class="bar"><i style="width:' + Math.round(Math.min(1, tn.k) * 100) + '%"></i></div></div>'; }
+      else h += '<p>' + (it.tier === 'trophy' ? 'Earned: ' + esc(it.trophy.text.charAt(0).toLowerCase() + it.trophy.text.slice(1)) + '. ' : '') + (it.blurb ? esc(it.blurb) : paintWords(it)) + '</p>';
+    }
+    var isWorn = it && wornAny(it);
     if (!open) h += '<button class="btn" disabled>You do not have this bike yet</button>';
-    else if (it && !P.owns(it)) h += '<button class="btn" disabled>Found in geodes</button>';
+    else if (it && !P.owns(it)) h += '<button class="btn" disabled>' + (it.tier === 'trophy' ? 'A trophy: earn it to wear it' : 'Found in crates') + '</button>';
+    else if (tab === 'trophies') h += isWorn ? '<button class="btn" disabled>On the ' + esc(d.name) + '</button>' : '<button class="btn go" data-act="gwear">Put it on the ' + esc(d.name) + '</button>';
     else if (cur === worn) h += '<button class="btn" disabled>On the ' + esc(d.name) + '</button>';
     else h += '<button class="btn go" data-act="gwear">Put it on the ' + esc(d.name) + '</button>';
     h += '</div>';
   } else {
-    var left = P.itemsLeft(), E = RR.ECON, dd = Store.data;
-    h += '<div class="geo"><div class="gl"><canvas id="georock"></canvas></div><div class="gr">';
-    h += '<p><b>Crack one open for a paint job or a rider.</b> You never get the same thing twice.</p>';
+    var left = P.itemsLeft(), E = RR.ECON, dd = Store.data, next = P.nextCrate();
+    h += '<div class="geo"><div class="gl"><canvas id="cratemini"></canvas></div><div class="gr">';
+    h += '<p><b>Pry one open for a paint job or a rider.</b> You never get the same thing twice.</p>';
     h += '<div class="odds">'; RR.TIERS.slice().reverse().forEach(function (t) { h += '<span class="chip t-' + t.id + '">' + t.name + ' ' + t.odds + '%</span>'; }); h += '</div>';
-    h += '<p class="sm">' + P.ownedCount() + ' of ' + RR.ITEMS.length + ' collected. Nuggets come from finishing tracks, new stars and landed flips. Finish a whole world for a gold geode. Three stars on all of it earns a diamond one.</p>';
+    h += '<p class="sm">' + P.ownedCount() + ' of ' + RR.ITEMS.length + ' collected. Nuggets come from finishing tracks, new stars and landed flips. Finish a whole world for a rare crate and three-star it for an epic one. Trophies never come out of a crate.</p>';
     h += '</div></div>';
     if (left <= 0) h += '<button class="btn" disabled>You have the lot</button>';
-    else if (dd.geodes.diamond > 0) h += '<button class="btn go" data-act="crack">Crack a diamond geode (' + dd.geodes.diamond + ' waiting)</button>';
-    else if (dd.geodes.gold > 0) h += '<button class="btn go" data-act="crack">Crack a gold geode (' + dd.geodes.gold + ' waiting)</button>';
-    else if (dd.nuggets >= E.geode) h += '<button class="btn go" data-act="crack">Crack a geode for ' + E.geode + ' nuggets</button>';
-    else h += '<button class="btn" disabled>' + (E.geode - dd.nuggets) + ' more nuggets for the next geode</button>';
+    else if (next === 'epic') h += '<button class="btn go" data-act="crate">Pry open an epic crate (' + dd.crates.epic + ' waiting)</button>';
+    else if (next === 'rare') h += '<button class="btn go" data-act="crate">Pry open a rare crate (' + dd.crates.rare + ' waiting)</button>';
+    else if (next === 'any') h += '<button class="btn go" data-act="crate">Open a parts crate for ' + E.crate + ' nuggets</button>';
+    else h += '<button class="btn" disabled>' + (E.crate - dd.nuggets) + ' more nuggets for the next crate</button>';
   }
   $('gpanel').innerHTML = h;
   $('gpanel').className = 'gright plate tab-' + tab;
+  var tl = $('tiles');
+  if (tl) {
+    if (tileScroll < 0) { var c0 = tl.querySelector('.tile.cur'); tl.scrollTop = c0 ? Math.max(0, c0.offsetTop - tl.clientHeight / 2 + c0.offsetHeight / 2) : 0; tileScroll = tl.scrollTop; }
+    else tl.scrollTop = tileScroll;
+    tl.addEventListener('scroll', function () { tileScroll = tl.scrollTop; paintTiles(false); }, { passive: true });
+  }
   gBounce = 1;
+  sizeTiles();
   paintTiles(true);
-  if (!gTimer) gLoop();
+  if (!gTimer) { gLast = 0; gTimer = root.requestAnimationFrame(gLoop); }
 };
+/* the height of a tile in the long lists: a column's width times the tile's shape */
+function sizeTiles() {
+  var tl = $('tiles'); if (!tl || !tl.clientWidth) return;
+  var cols = tl.classList.contains('t9') ? 9 : tl.classList.contains('t7') ? 7 : 6, cs = root.getComputedStyle(tl);
+  var w = (tl.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0) - (parseFloat(cs.columnGap) || 0) * (cols - 1)) / cols;
+  tl.style.setProperty('--th', (w * (cols === 9 ? 0.92 : 1)).toFixed(2) + 'px');
+}
+/* a trophy has been earned and not looked at yet */
+function trophyNew() { var n = false; RR.TROPHIES.forEach(function (it) { if (Store.data.fresh[it.id] && P.reallyOwns(it)) n = true; }); return n; }
 function paintWords(p) {
   var t = p.pat ? p.pat.t : '';
-  var w = t === 'metal' ? 'Polished metal. The highlight slides along it as you ride.' : t === 'gem' ? 'Cut like a gemstone. It glints, the wheels glow and it leaves a ribbon of light at speed.' :
-    t === 'opal' ? 'The colour never sits still. Glowing wheels and a rainbow ribbon behind you.' : t === 'fade' ? 'One colour melting into the next.' : 'A paint job for any bike you own. Your stock rider dresses to match.';
-  return w;
+  if (p.tier === 'trophy') return 'A finish that is earned, never found. Glowing wheels, a ribbon of light and a shine that keeps moving.';
+  if (p.live) return 'The finish never sits still. Glowing wheels and a ribbon of light behind you.';
+  if (p.glow) return 'Glints in the light, with glowing wheels and a ribbon of light at speed.';
+  if (t === 'metal' || (p.pat && p.pat.slide)) return 'Polished finish. The highlight slides along it as you ride.';
+  if (t === 'fade') return 'One colour melting into the next.';
+  return 'A paint job for any bike you own. Your stock rider dresses to match.';
 }
-/* the little pictures in the garage grids. Ones that move are repainted as time passes. */
-function paintTiles(all) {
-  var cvs = $('gpanel').querySelectorAll('canvas[data-bike], canvas[data-item]'), d = RR.BIKES[UI.gi], i;
+/* the little pictures in the garage grids. Ones that move are repainted every frame, the rest once, and only
+   the ones you can see (the list scrolls). */
+function paintTiles(force) {
+  var panel = $('gpanel'), cvs = panel.querySelectorAll('canvas[data-bike], canvas[data-item]'), d = RR.BIKES[UI.gi], i;
+  var box = $('tiles'), br = box ? box.getBoundingClientRect() : null;
   for (i = 0; i < cvs.length; i++) {
     var cv = cvs[i];
     if (!cv.clientWidth) continue;
-    if (cv.hasAttribute('data-bike')) { if (all) bikeTile(cv, RR.BIKES[+cv.getAttribute('data-bike')]); continue; }
-    var id = cv.getAttribute('data-item'), it = itemOf(UI.gtab, id);
-    if (!all && !(it && it.live)) continue;
-    if (UI.gtab === 'paint') A.swatch(cv, it, d, gT); else A.portrait(cv, it, d, gT);
+    if (br) { var r = cv.getBoundingClientRect(); if (r.bottom < br.top || r.top > br.bottom) { continue; } }
+    if (force) cv._d = 0;
+    if (cv.hasAttribute('data-bike')) { if (!cv._d) { bikeTile(cv, RR.BIKES[+cv.getAttribute('data-bike')]); cv._d = 1; } continue; }
+    var id = cv.getAttribute('data-item'), it = itemOf(id), moving = it && A.moves(it);
+    if (cv._d && !moving) continue;
+    cv._d = 1;
+    if (!it) { if (UI.gtab === 'paint') A.swatch(cv, null, d, gT); else A.portrait(cv, null, d, gT); }
+    else if (it.kind === 'paint') A.swatch(cv, it, d, gT); else A.portrait(cv, it, d, gT);
   }
-  var rock = $('georock');
-  if (rock && rock.clientWidth) drawRock(rock, 0, 0, gT, null);
+  var mini = $('cratemini');
+  if (mini && mini.clientWidth) drawCrate(mini, 0, 0, gT, null, P.nextCrate() || 'any');
 }
 function bikeTile(cv, b) {
   var dpr = Math.min(2, root.devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
@@ -423,12 +494,13 @@ function bikeTile(cv, b) {
   A.bike(c, b, { rider: false, lp: 0, stand: 0, look: P.bikeOpen(b) ? P.look(b.id) : null, t: 1 });
   if (!P.bikeOpen(b)) { c.globalCompositeOperation = 'source-atop'; c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = 'rgba(23,26,34,0.82)'; c.fillRect(0, 0, cv.width, cv.height); c.globalCompositeOperation = 'source-over'; }
 }
-function gLoop() {
+function gLoop(now) {
   gTimer = root.requestAnimationFrame(gLoop);
   if (UI.cur !== 'garage') return;
-  gSpin -= 0.035; gBounce *= 0.9; gT += 1 / 60; gFrame++;
+  var dt = frameDt(now, gLast); gLast = now;
+  gSpin -= 2.1 * dt; gBounce *= Math.pow(0.9, dt * 60); gT += dt;
   UI.garageDraw();
-  if (gFrame % 3 === 0) paintTiles(false);
+  paintTiles(false);
 }
 UI.garageDraw = function () {
   var cv = $('gcv'); if (!cv || !cv.clientWidth) return;
@@ -447,113 +519,84 @@ UI.garageDraw = function () {
 };
 
 /* ------------------------------------------------------------------ */
-/* Cracking a geode                                                     */
+/* Opening a crate: three pries, then the lid goes                      */
 /* ------------------------------------------------------------------ */
-var geo = { stage: '', hits: 0, t: 0, shake: 0, item: null, tier: null, raf: 0, bits: [], from: '' };
-var ROCK = [-1.0, -0.2, -0.86, 0.5, -0.4, 0.92, 0.2, 0.98, 0.78, 0.62, 1.0, 0.0, 0.8, -0.62, 0.24, -0.9, -0.5, -0.82];
-var CRACKS = [[0.05, 0.9, -0.1, 0.5, 0.12, 0.2, -0.08, -0.1], [-0.08, -0.1, 0.16, -0.45, 0.02, -0.88], [0.12, 0.2, 0.5, 0.3, 0.8, 0.1], [-0.1, 0.5, -0.5, 0.36, -0.86, 0.5]];
-function tierGlow(t, time) { return !t ? '#f2c230' : t.id === 'opal' ? 'hsl(' + ((time * 160) % 360).toFixed(0) + ',100%,72%)' : t.col; }
-/* the rock, drawn in a box 2.4 units wide centred on the canvas */
-function drawRock(cv, hits, open, time, tier) {
+var crt = { tro: [], stage: '', hits: 0, t: 0, shake: 0, item: null, tier: null, raf: 0, bits: [], from: '', kind: 'any', open: 0, last: 0 };
+/* the colour of the light inside: the tier colour, and for the top tier the colour keeps shifting */
+function tierGlow(t, time) { return !t ? '#f2c230' : t.id === 'legendary' ? 'hsl(' + ((time * 160) % 360).toFixed(0) + ',100%,66%)' : t.col; }
+/* the crate, drawn into a canvas */
+function drawCrate(cv, hits, open, time, tier, kind) {
   var dpr = Math.min(2, root.devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
   if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
-  var c = cv.getContext('2d'), S = Math.min(w, h) / (cv.id === 'geocv' ? 4.4 : 2.5), i, k, glow = tierGlow(tier, time);
+  var c = cv.getContext('2d'), big = cv.id === 'cratecv', S = big ? Math.min(w / 6.2, h / 4.6) : Math.min(w / 3.1, h / 2.5);
   c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
-  var sx = geo.shake && cv.id === 'geocv' ? (Math.random() - 0.5) * geo.shake * 0.12 : 0, sy = geo.shake && cv.id === 'geocv' ? (Math.random() - 0.5) * geo.shake * 0.12 : 0;
-  c.setTransform(dpr * S, 0, 0, -dpr * S, dpr * (w / 2 + sx * S), dpr * (h * (cv.id === 'geocv' ? 0.46 : 0.5) + sy * S));
-  c.lineJoin = 'round'; c.lineCap = 'round';
-  if (open > 0) {
-    // light pouring out
-    c.save(); c.rotate(time * 0.5); c.globalCompositeOperation = 'lighter';
-    for (i = 0; i < 12; i++) { c.rotate(Math.PI / 6); c.globalAlpha = 0.16 * Math.min(1, open * 2) * (i % 2 ? 1 : 0.6); c.fillStyle = glow; c.beginPath(); c.moveTo(0, 0); c.lineTo(-0.3, 4); c.lineTo(0.3, 4); c.closePath(); c.fill(); }
-    c.restore(); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
-  }
-  c.fillStyle = 'rgba(0,0,0,0.35)'; c.beginPath(); c.ellipse(0, -1.0, 1.0 + open * 0.5, 0.14, 0, 0, 6.3); c.fill();
-  var gap = open * 0.9, bob = cv.id === 'geocv' && !open ? Math.sin(time * 2.4) * 0.03 : 0;
-  for (var half = 0; half < (open > 0 ? 2 : 1); half++) {
-    c.save(); c.translate((half ? 1 : -1) * gap, bob - open * 0.2); c.rotate((half ? -1 : 1) * open * 0.5);
-    if (open > 0) { c.beginPath(); c.rect(half ? 0.02 : -3, -3, 3, 6); c.clip(); }
-    A.shape(c, ROCK, '#7d7468', 0.06);
-    c.beginPath(); c.moveTo(ROCK[0], ROCK[1]); for (i = 2; i < ROCK.length; i += 2) c.lineTo(ROCK[i], ROCK[i + 1]); c.closePath(); c.save(); c.clip();
-    c.fillStyle = '#5f574d'; c.beginPath(); c.moveTo(-1.2, -1); c.lineTo(1.2, -1); c.lineTo(1.2, -0.3); c.quadraticCurveTo(0, -0.7, -1.2, -0.1); c.fill();
-    c.fillStyle = '#978d7f'; c.beginPath(); c.ellipse(-0.3, 0.55, 0.42, 0.2, 0.3, 0, 6.3); c.fill();
-    c.fillStyle = '#4f483f'; [[0.4, 0.2, 0.09], [-0.5, -0.3, 0.07], [0.1, -0.5, 0.06], [0.6, -0.3, 0.05], [-0.6, 0.2, 0.05]].forEach(function (q) { c.beginPath(); c.arc(q[0], q[1], q[2], 0, 6.3); c.fill(); });
-    if (open > 0) {
-      // the crystal lining on the broken face
-      var gx = half ? 0.02 : -0.02;
-      c.fillStyle = glow; c.beginPath(); c.moveTo(gx, 0.95);
-      for (k = 0; k <= 8; k++) c.lineTo(gx + (half ? 1 : -1) * (0.16 + (k % 2) * 0.16), 0.95 - k * 0.24);
-      c.lineTo(gx, -0.95); c.closePath(); c.fill();
-      c.fillStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.moveTo(gx, 0.9); for (k = 0; k <= 8; k++) c.lineTo(gx + (half ? 1 : -1) * (0.05 + (k % 2) * 0.08), 0.9 - k * 0.225); c.lineTo(gx, -0.9); c.closePath(); c.fill();
-    }
-    c.restore();
-    // cracks, with the colour of what is inside showing through
-    if (!open) for (i = 0; i < Math.min(hits * 2, CRACKS.length); i++) { A.line(c, CRACKS[i], 0.1, OUTC); A.line(c, CRACKS[i], 0.045, glow); }
-    c.restore();
-  }
+  var sx = crt.shake && big ? (Math.random() - 0.5) * crt.shake * 0.12 : 0, sy = crt.shake && big ? (Math.random() - 0.5) * crt.shake * 0.12 : 0;
+  var bob = big && !hits && !open ? Math.sin(time * 2.4) * 0.03 : 0;
+  c.setTransform(dpr * S, 0, 0, -dpr * S, dpr * (w / 2 + (sx - 0.15) * S), dpr * (h * (big ? 0.5 : 0.56) + (sy - bob) * S));
+  A.crate(c, { hits: hits, open: open, t: time, kind: kind, glow: kind !== 'any' && !tier ? RR.TIER[kind].col : tierGlow(tier, time), shake: big ? crt.shake : 0 });
 }
-var OUTC = '#15171d';
-function openGeode() {
-  var got = P.crack();
+function openCrate() {
+  var got = P.openCrate();
   if (!got) { Au.ui('no'); return; }
-  geo.item = got.item; geo.tier = RR.TIER[got.item.tier]; geo.kind = got.kind;
-  geo.stage = 'rock'; geo.hits = 0; geo.t = 0; geo.shake = 0; geo.open = 0; geo.bits = [];
-  if (UI.cur !== 'geode') geo.from = UI.cur;
-  $('gecard').className = 'gecard plate'; $('gecard').innerHTML = '';
-  $('gehint').textContent = ('ontouchstart' in root ? 'Tap' : 'Click') + ' the rock';
-  $('gehint').className = 'gehint on';
-  UI.show('geode');
+  crt.item = got.item; crt.tier = RR.TIER[got.item.tier]; crt.kind = got.kind; crt.tro = got.trophies || [];
+  crt.stage = 'closed'; crt.hits = 0; crt.t = 0; crt.shake = 0; crt.open = 0; crt.bits = [];
+  if (UI.cur !== 'crate') crt.from = UI.cur;
+  $('cratecard').className = 'cratecard plate'; $('cratecard').innerHTML = '';
+  $('cratehint').textContent = ('ontouchstart' in root ? 'Tap' : 'Click') + ' the crate';
+  $('cratehint').className = 'cratehint on';
+  UI.show('crate');
   Au.ui('go');
-  if (!geo.raf) geoLoop();
+  if (!crt.raf) { crt.last = 0; crt.raf = root.requestAnimationFrame(crateLoop); }
 }
-function closeGeode() {
-  if (geo.raf) { root.cancelAnimationFrame(geo.raf); geo.raf = 0; }
-  geo.stage = '';
-  if (geo.from === 'results') UI.results(G.result, true);
+function closeCrate() {
+  if (crt.raf) { root.cancelAnimationFrame(crt.raf); crt.raf = 0; }
+  crt.stage = '';
+  if (crt.from === 'results') UI.results(G.result, true);
   else { UI.show('garage'); UI.garage(); }
 }
-function geoHit() {
-  if (geo.stage !== 'rock') return;
-  geo.hits++; geo.shake = 1;
-  if (geo.hits < 3) { Au.geode(geo.hits === 1 ? 'tap' : 'crack', geo.hits); return; }
-  geo.stage = 'burst'; geo.t = 0;
-  Au.geode('open', geo.tier.rank);
-  $('gehint').className = 'gehint';
-  for (var i = 0; i < 34; i++) { var a = Math.random() * 6.283, sp = 2 + Math.random() * 5; geo.bits.push({ x: 0, y: 0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp + 1.5, r: 0.04 + Math.random() * 0.09, rock: i % 3 === 0, rot: Math.random() * 6, life: 0.8 + Math.random() * 0.7 }); }
-  setTimeout(showGeoCard, 620);
+function crateHit() {
+  if (crt.stage !== 'closed') return;
+  crt.hits++; crt.shake = 1;
+  if (crt.hits < 3) { Au.crate(crt.hits === 1 ? 'tap' : 'crack', crt.hits); return; }
+  crt.stage = 'burst'; crt.t = 0;
+  Au.crate('open', crt.tier.rank);
+  $('cratehint').className = 'cratehint';
+  for (var i = 0; i < 34; i++) { var a = Math.random() * 6.283, sp = 2 + Math.random() * 5; crt.bits.push({ x: 0.15, y: 0.5, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp + 1.5, r: 0.04 + Math.random() * 0.09, wood: i % 3 === 0, rot: Math.random() * 6, life: 0.8 + Math.random() * 0.7 }); }
+  setTimeout(showCrateCard, 620);
 }
-function showGeoCard() {
-  if (UI.cur !== 'geode' || !geo.item) return;
-  var it = geo.item, h = '', bike = RR.BIKE[Store.data.bike];
-  geo.stage = 'show';
-  h += '<canvas id="geoitem"></canvas><div class="gi"><div class="k">' + (it.kind === 'paint' ? 'Paint job' : 'Rider') + ' ' + tierChip(it.tier) + '</div><h3>' + esc(it.name) + '</h3><p>' + (it.blurb ? esc(it.blurb) : paintWords(it)) + '</p>' +
-    '<div class="btns"><button class="btn go" data-act="geoPut">Put it on</button>' + (P.canCrack() ? '<button class="btn" data-act="geoAgain">Crack another</button>' : '') + '<button class="btn small" data-act="geoDone">Done</button></div></div>';
-  var card = $('gecard'); card.innerHTML = h; card.className = 'gecard plate on t-' + it.tier;
-  UI.title && ($('gnug').innerHTML = NUG + Store.data.nuggets);
+function showCrateCard() {
+  if (UI.cur !== 'crate' || !crt.item) return;
+  var it = crt.item, h = '';
+  crt.stage = 'show';
+  h += '<canvas id="crateitem"></canvas><div class="gi"><div class="k">' + (it.kind === 'paint' ? 'Paint job' : 'Rider') + ' ' + tierChip(it.tier) + '</div><h3>' + esc(it.name) + '</h3><p>' + (it.blurb ? esc(it.blurb) : paintWords(it)) + '</p>' +
+    crt.tro.map(function (x) { return '<div class="unl gold">Trophy earned: ' + esc(x.name) + '</div>'; }).join('') + '<div class="btns"><button class="btn go" data-act="cratePut">Put it on</button>' + (P.canOpen() ? '<button class="btn" data-act="crateAgain">Open another</button>' : '') + '<button class="btn small" data-act="crateDone">Done</button></div></div>';
+  var card = $('cratecard'); card.innerHTML = h; card.className = 'cratecard plate on t-' + it.tier;
+  $('gnug').innerHTML = NUG + Store.data.nuggets;
 }
-function geoLoop() {
-  geo.raf = root.requestAnimationFrame(geoLoop);
-  if (UI.cur !== 'geode') return;
-  var dt = 1 / 60; geo.t += dt; gT += dt;
-  geo.shake = Math.max(0, geo.shake - dt * 4);
-  if (geo.stage !== 'rock') geo.open = Math.min(1, geo.open + dt * 3.2);
-  var cv = $('geocv');
-  drawRock(cv, geo.hits, geo.open, gT, geo.tier);
+function crateLoop(now) {
+  crt.raf = root.requestAnimationFrame(crateLoop);
+  if (UI.cur !== 'crate') return;
+  var dt = frameDt(now, crt.last); crt.last = now; crt.t += dt; gT += dt;
+  crt.shake = Math.max(0, crt.shake - dt * 4);
+  if (crt.stage !== 'closed') crt.open = Math.min(1, crt.open + dt * 3.2);
+  var cv = $('cratecv');
+  drawCrate(cv, Math.min(2, crt.hits), crt.open, gT, crt.tier, crt.kind);
   // flying chips and sparks, in the same picture
-  if (geo.bits.length) {
-    var c = cv.getContext('2d'), col = tierGlow(geo.tier, gT), i;
-    for (i = geo.bits.length - 1; i >= 0; i--) {
-      var b = geo.bits[i]; b.life -= dt; if (b.life <= 0) { geo.bits.splice(i, 1); continue; }
+  if (crt.bits.length) {
+    var c = cv.getContext('2d'), col = tierGlow(crt.tier, gT), i;
+    for (i = crt.bits.length - 1; i >= 0; i--) {
+      var b = crt.bits[i]; b.life -= dt; if (b.life <= 0) { crt.bits.splice(i, 1); continue; }
       b.vy -= 9 * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.rot += 6 * dt;
       c.globalAlpha = Math.min(1, b.life * 2.5);
-      if (b.rock) { c.save(); c.translate(b.x, b.y); c.rotate(b.rot); c.fillStyle = '#7d7468'; c.fillRect(-b.r, -b.r, b.r * 2, b.r * 2); c.restore(); }
+      if (b.wood) { c.save(); c.translate(b.x, b.y); c.rotate(b.rot); c.fillStyle = '#b98a54'; c.fillRect(-b.r * 1.6, -b.r * 0.6, b.r * 3.2, b.r * 1.2); c.lineWidth = 0.02; c.strokeStyle = OUTC; c.strokeRect(-b.r * 1.6, -b.r * 0.6, b.r * 3.2, b.r * 1.2); c.restore(); }
       else { c.globalCompositeOperation = 'lighter'; A.star4(c, b.x, b.y, b.r * 1.6, col); c.globalCompositeOperation = 'source-over'; }
     }
     c.globalAlpha = 1;
   }
-  var ic = $('geoitem');
-  if (ic && ic.clientWidth && geo.item) { if (geo.item.kind === 'paint') A.swatch(ic, geo.item, RR.BIKE[Store.data.bike], gT); else A.portrait(ic, geo.item, RR.BIKE[Store.data.bike], gT); }
+  var ic = $('crateitem');
+  if (ic && ic.clientWidth && crt.item) { if (crt.item.kind === 'paint') A.swatch(ic, crt.item, RR.BIKE[Store.data.bike], gT); else A.portrait(ic, crt.item, RR.BIKE[Store.data.bike], gT); }
 }
+var OUTC = '#15171d';
 
 /* ------------------------------------------------------------------ */
 /* Settings                                                             */
@@ -658,16 +701,17 @@ UI.results = function (r, again) {
   }
   for (k = 0; k < r.bikes.length; k++) h += '<div class="unl">New bike in the garage: ' + esc(r.bikes[k].name) + '</div>';
   for (k = 0; k < r.worlds.length; k++) h += '<div class="unl">New world open: ' + esc(r.worlds[k].name) + '</div>';
-  for (k = 0; k < (r.geodes || []).length; k++) h += '<div class="unl">' + esc(r.geodes[k].why) + ': a ' + r.geodes[k].kind + ' geode for you</div>';
+  for (k = 0; k < (r.crates || []).length; k++) h += '<div class="unl">' + esc(r.crates[k].why) + ': a ' + r.crates[k].kind + ' crate for you</div>';
+  for (k = 0; k < (r.trophies || []).length; k++) h += '<div class="unl gold">Trophy earned: ' + esc(r.trophies[k].name) + '</div>';
   h += '<div class="btns">' + (next >= 0 ? '<button class="btn go" data-act="nextTrack" data-i="' + next + '">Next track</button>' : '') +
        '<button class="btn' + (next >= 0 ? '' : ' go') + '" data-act="retry">Ride it again</button>' +
-       (P.canCrack() ? '<button class="btn small gem" data-act="crack">Crack a geode</button>' : '') +
+       (P.canOpen() ? '<button class="btn small gem" data-act="crate">Open a crate</button>' : '') +
        '<button class="btn small" data-act="garage">Garage</button><button class="btn small" data-act="quit">Tracks</button></div>';
   $('res').innerHTML = h;
   UI.show('results');
   if (again) return;
   for (k = 0; k < r.stars; k++) (function (n) { setTimeout(function () { var e = $('rs' + n); if (e && UI.cur === 'results') { e.className = 'star on'; Au.star(n); } }, 350 + n * 330); })(k);
-  setTimeout(function () { if (UI.cur !== 'results') return; if (r.bikes.length || r.worlds.length || (r.geodes || []).length) Au.unlocked(); else if (r.best && r.old) Au.newBest(); else if (pay) Au.coin(2); }, 350 + r.stars * 330 + 150);
+  setTimeout(function () { if (UI.cur !== 'results') return; if (r.bikes.length || r.worlds.length || (r.crates || []).length || (r.trophies || []).length) Au.unlocked(); else if (r.best && r.old) Au.newBest(); else if (pay) Au.coin(2); }, 350 + r.stars * 330 + 150);
 };
 
 /* ------------------------------------------------------------------ */
@@ -675,15 +719,16 @@ RR.boot = function () {
   Store.load();
   P.claim();
   var owed = P.settle();      // old saves are paid for the stars and worlds they already have
-  if (owed.nuggets || owed.geodes.length) Store.save();
+  var news = Store.data.news < 3;
+  if (owed.nuggets || owed.crates.length || news) { Store.data.news = 3; Store.save(); }
   R.init($('stage'));
   UI.init();
-  // the rock on the geode screen answers to a tap anywhere
-  $('geocv').addEventListener('pointerdown', function (e) { e.preventDefault(); Au.unlock(); afterUnlock(); geoHit(); });
+  // the crate answers to a tap anywhere
+  $('cratecv').addEventListener('pointerdown', function (e) { e.preventDefault(); Au.unlock(); afterUnlock(); crateHit(); });
   G.menu();
   UI.title();
-  if (owed.nuggets || owed.geodes.length) setTimeout(function () { UI.toast('New: paint jobs and riders. You have ' + Store.data.nuggets + ' nuggets' + (owed.geodes.length ? ' and ' + owed.geodes.length + ' prize geode' + (owed.geodes.length > 1 ? 's' : '') : '') + ' waiting in the Garage.'); }, 900);
-  if (Store.rebuilt) setTimeout(function () { UI.toast(Store.rebuilt + ' track' + (Store.rebuilt > 1 ? 's have' : ' has') + ' been rebuilt and now bite back. You keep your stars on them. Best times start again.'); }, owed.nuggets || owed.geodes.length ? 6500 : 900);
+  if (owed.nuggets || owed.crates.length || news) setTimeout(function () { UI.toast('New: crates, trophies and a showroom for your bikes, and far more paint jobs and riders. You have ' + Store.data.nuggets + ' nuggets' + (P.freeCrates() ? ' and ' + P.freeCrates() + ' prize crate' + (P.freeCrates() > 1 ? 's' : '') : '') + '.'); }, 900);
+  if (Store.rebuilt) setTimeout(function () { UI.toast(Store.rebuilt + ' track' + (Store.rebuilt > 1 ? 's have' : ' has') + ' been rebuilt and now bite back. You keep your stars on them. Best times start again.'); }, owed.nuggets || owed.crates.length || news ? 7500 : 900);
   root.requestAnimationFrame(G.frame);
 };
 })(typeof window !== 'undefined' ? window : globalThis);

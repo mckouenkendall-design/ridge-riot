@@ -16,6 +16,7 @@ function mk(w, h) { var c = doc.createElement('canvas'); c.width = w; c.height =
 /* Pattern tiles (painted once, then repeated across the bodywork)      */
 /* ------------------------------------------------------------------ */
 var tiles = {};
+var NEWTILE = {};      // pattern painters added in the second collection (filled in below)
 /* draw fn(x, y) at every wrap-around position so the tile repeats without a seam */
 function wrap(N, x, y, r, fn) { for (var i = -1; i <= 1; i++) for (var j = -1; j <= 1; j++) { var px = x + i * N, py = y + j * N; if (px > -r && px < N + r && py > -r && py < N + r) fn(px, py); } }
 function blobAt(c, x, y, r, rnd, col, lump) {
@@ -26,8 +27,8 @@ function blobAt(c, x, y, r, rnd, col, lump) {
 }
 function tile(p) {
   if (tiles[p.id]) return tiles[p.id];
-  var P = p.pat, N = 128, cv = mk(N, N), c = cv.getContext('2d', { willReadFrequently: true }), r = rng(77 + p.index * 131), i, x, y;
-  c.fillStyle = P.a || '#888'; c.fillRect(0, 0, N, N);
+  var P = p.pat, N = 128, NH = P.t === 'hex' ? 111 : N, cv = mk(N, NH), c = cv.getContext('2d', { willReadFrequently: true }), r = rng(77 + p.index * 131), i, x, y;
+  c.fillStyle = P.a || '#888'; c.fillRect(0, 0, N, NH);
   if (P.t === 'stripes') { c.fillStyle = P.b; c.fillRect(N / 2, 0, N / 2, N); }
   else if (P.t === 'checker') { c.fillStyle = P.b; c.fillRect(0, 0, N / 2, N / 2); c.fillRect(N / 2, N / 2, N / 2, N / 2); }
   else if (P.t === 'dots') { c.fillStyle = P.b; c.beginPath(); c.arc(N * 0.25, N * 0.25, N * 0.15, 0, TAU); c.arc(N * 0.75, N * 0.75, N * 0.15, 0, TAU); c.fill(); }
@@ -79,19 +80,30 @@ function tile(p) {
       tris.forEach(function (t) { c.fillStyle = P.cols[Math.floor(r() * P.cols.length)]; c.beginPath(); c.moveTo(t[0][0], t[0][1]); c.lineTo(t[1][0], t[1][1]); c.lineTo(t[2][0], t[2][1]); c.closePath(); c.fill();
         c.lineWidth = 1; c.strokeStyle = 'rgba(255,255,255,0.28)'; c.stroke(); });
     }
-  }
+  } else if (NEWTILE[P.t]) NEWTILE[P.t](c, P, N, NH, r, p);
   return (tiles[p.id] = { cv: cv, pat: null, ctx: null });
 }
 
-/* opal: soft patches of colour drifting over a pale (or dark) base, repainted as time moves */
-var opalCv = {};
-function opalTile(p, t) {
-  var N = 64, o = opalCv[p.id] || (opalCv[p.id] = { cv: mk(N, N), t: -9 });
-  if (Math.abs(t - o.t) < 0.09) return o;       // repainted about ten times a second; the drift in between is done by sliding it
+/* Live patterns (opal, aurora and the other moving finishes): a small picture that is repainted
+   as time moves, then used as a repeating fill. LIVE[name](c, N, P, t, p) paints one frame.
+   The picture is repainted whenever the clock has moved, which is every frame. */
+var LIVE = {};
+var liveCv = {};
+function liveTile(p, t) {
+  var N = 64, o = liveCv[p.id] || (liveCv[p.id] = { cv: mk(N, N), t: -9 });
+  if (o.t === t) return o;                      // already painted for this moment
   o.t = t; o.pat = null;
   // kept as a plain in-memory picture: it is small, repainted often and copied into a pattern each time
-  var c = o.cv.getContext('2d', { willReadFrequently: true }), P = p.pat, i;
-  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; c.fillStyle = P.base; c.fillRect(0, 0, N, N);
+  var c = o.cv.getContext('2d', { willReadFrequently: true });
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+  LIVE[p.pat.t](c, N, p.pat, t, p);
+  c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+  return o;
+}
+/* opal: soft patches of colour drifting over a pale (or dark) base */
+LIVE.opal = function (c, N, P, t) {
+  var i;
+  c.fillStyle = P.base; c.fillRect(0, 0, N, N);
   c.globalCompositeOperation = P.dark ? 'lighter' : 'source-over';
   for (i = 0; i < P.fire.length; i++) {
     var x = N * (0.5 + 0.5 * Math.sin(t * (0.5 + i * 0.13) + i * 2.1)), y = N * (0.5 + 0.5 * Math.cos(t * (0.4 + i * 0.09) + i * 1.3)), rad = N * (0.34 + 0.12 * Math.sin(t * 1.1 + i));
@@ -100,9 +112,7 @@ function opalTile(p, t) {
       g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
       c.globalAlpha = P.dark ? 1 : 0.95; c.fillStyle = g; c.fillRect(px - rad2, py - rad2, rad2 * 2, rad2 * 2); }); })(x, y, rad, P.fire[i]);
   }
-  c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
-  return o;
-}
+};
 
 /* o: { cv, pat, ctx }. The pattern is only rebuilt when its picture changes or a different canvas asks for it. */
 function patternFill(ctx, o, size, ang, dx, dy) {
@@ -128,8 +138,8 @@ A.paintFill = function (ctx, p, t, span) {
       var n = P.stops.length;
       for (var rep = 0; rep < 4; rep++) for (i = 0; i < n; i++) g.addColorStop((rep + i / n) / 4, P.stops[i]);
       g.addColorStop(1, P.stops[0]); f = g;
-    } else if (P.t === 'opal') f = patternFill(ctx, opalTile(p, t), 0.85, 0.5, t * 0.11, t * 0.07);
-    else f = patternFill(ctx, tile(p), (P.t === 'stripes' ? P.w * 2 : P.t === 'checker' || P.t === 'dots' ? P.w * 2 : P.t === 'carbon' ? P.w * 8 : P.w), P.ang || 0);
+    } else if (LIVE[P.t]) f = patternFill(ctx, liveTile(p, t), P.size || 0.85, P.ang == null ? 0.5 : P.ang, t * (P.dx == null ? 0.11 : P.dx), t * (P.dy == null ? 0.07 : P.dy));
+    else f = patternFill(ctx, tile(p), (P.t === 'stripes' ? P.w * 2 : P.t === 'checker' || P.t === 'dots' ? P.w * 2 : P.t === 'carbon' ? P.w * 8 : P.w), P.ang || 0, P.slide ? t * P.slide : 0, P.slide ? t * P.slide * 0.4 : 0);
   } catch (e) { return p.c[0]; }
   try { f.flat = p.c[0]; } catch (e2) {}
   return f;
@@ -148,16 +158,17 @@ A.dress = function (ctx, d, look, t) {
     o.suit = [p.c[0], p.c[1], p.c[2] === p.c[0] ? p.c[1] : p.c[2]];
     if (p.c[0] === '#16181e' || p.c[0] === '#12141d' || p.c[0] === '#23262f') o.suit = [p.c[0], p.c[1], p.c[2]];
     if (p.suit === 'prism') o.suit = p.pat.dark ? ['#12141d', hsl(o._t * 120, 100, 62), hsl(o._t * 120 + 150, 100, 62)] : ['#fbfaff', hsl(o._t * 120, 95, 78), hsl(o._t * 120 + 150, 95, 78)];
+    else if (p.suit === 'aurora') o.suit = ['#0b1433', hsl(150 + 100 * (0.5 + 0.5 * Math.sin(o._t * 0.9)), 100, 58), hsl(270 + 50 * Math.sin(o._t * 0.7), 100, 72)];
   }
   if (r) {
     o._skin = r;
-    o.suit = r.shift ? [hsl(o._t * 60, 90, 78), hsl(o._t * 60 + 120, 90, 80), '#ffffff'] : r.suit;
+    o.suit = r.shift ? [hsl(o._t * 60, 90, 78), hsl(o._t * 60 + 120, 90, 80), '#ffffff'] : r.neon ? [r.suit[0], r.suit[1], hsl(170 + 90 * (0.5 + 0.5 * Math.sin(o._t * 0.8)), 100, 66)] : r.suit;
   }
   return o;
 };
 
 /* wheel rim colour, the glow ring and the glints that a paint job adds */
-A.paintGlow = function (p, t) { return !p || !p.glow ? null : p.glow === 'prism' ? hsl(t * 90, 100, 70) : p.glow; };
+A.paintGlow = function (p, t) { return !p || !p.glow ? null : p.glow === 'prism' ? hsl(t * 90, 100, 70) : p.glow === 'aurora' ? hsl(150 + 110 * (0.5 + 0.5 * Math.sin(t * 0.9)), 100, 66) : p.glow; };
 A.glints = function (ctx, d, p, t) {
   if (!p || !p.glint) return;
   var top = d.rider.seat[1], i;
@@ -372,6 +383,23 @@ function star(c, x, y, s, col) {
   c.fillStyle = col; c.beginPath(); c.moveTo(x - s, y); c.quadraticCurveTo(x, y, x, y + s * 1.5); c.quadraticCurveTo(x, y, x + s, y); c.quadraticCurveTo(x, y, x, y - s * 1.5); c.quadraticCurveTo(x, y, x - s, y); c.fill();
 }
 A.star4 = star;
+/* a lumpy cloud-like shape: circles [x, y, r] with one outline around the whole outline of the group */
+function puff(c, cs, fill, lw) {
+  var k; lw = lw == null ? LW : lw;
+  c.lineJoin = 'round'; c.strokeStyle = OUT; c.lineWidth = lw * 2;
+  for (k = 0; k < cs.length; k++) { c.beginPath(); c.arc(cs[k][0], cs[k][1], cs[k][2], 0, TAU); c.stroke(); }
+  c.fillStyle = fill;
+  for (k = 0; k < cs.length; k++) { c.beginPath(); c.arc(cs[k][0], cs[k][1], cs[k][2], 0, TAU); c.fill(); }
+}
+/* the tools new art files use: art-patterns.js adds pattern painters, art-heads.js adds heads */
+/* does this paint job or rider change from one moment to the next? (the menus repaint those every frame and everything else once) */
+A.moves = function (it) {
+  if (!it) return false;
+  if (it.kind === 'paint') return !!(it.live || it.glint || (it.pat && (it.pat.t === 'metal' || it.pat.slide)));
+  return !!(it.live || it.shift || it.stars || (HEAD[it.head] && HEAD[it.head].length > 1));
+};
+A.kit = { ci: ci, po: po, bl: bl, ln: ln, eye: eye, el: el, star: star, puff: puff, hsl: hsl, rng: rng, mk: mk, wrap: wrap, blobAt: blobAt, TAU: TAU, SKIN: SKIN, LW: LW, OUT: OUT };
+A.HEADS = HEAD; A.TILES = NEWTILE; A.LIVE = LIVE;
 
 A.head = function (ctx, x, y, r, ang, skin, t) {
   ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(r, r);

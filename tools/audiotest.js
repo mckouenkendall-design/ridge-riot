@@ -47,7 +47,7 @@ const out = process.argv[2] || '/tmp';
       flip1: () => Au.flip(1), flip3: () => Au.flip(3), boost: () => Au.boost(), go: () => Au.go(), finish: () => Au.finish(), star: () => { Au.star(0); }, newBest: () => Au.newBest(), unlocked: () => Au.unlocked(),
       ui_tap: () => Au.ui('tap'), ui_go: () => Au.ui('go'), ui_back: () => Au.ui('back'), ui_no: () => Au.ui('no'), ui_swipe: () => Au.ui('swipe'),
       pad: () => Au.pad(), bus_crunch: () => Au.crunch(), bonk: () => Au.bonk(), knock: () => Au.knock(6), coin: () => Au.coin(3),
-      geode_tap: () => Au.geode('tap', 1), geode_crack: () => Au.geode('crack', 2), geode_ruby: () => Au.geode('open', 0), geode_gold: () => Au.geode('open', 2), geode_opal: () => Au.geode('open', 4) };
+      crate_tap: () => Au.crate('tap', 1), crate_pry: () => Au.crate('crack', 2), crate_common: () => Au.crate('open', 0), crate_rare: () => Au.crate('open', 2), crate_legendary: () => Au.crate('open', 4) };
     ['stars', 'birds', 'inflate', 'pop', 'tumble', 'poof', 'bleat', 'bell', 'smash', 'zap', 'boing', 'whistleUp', 'ting', 'spring', 'boom', 'flutter', 'pat', 'pomf', 'squeak', 'whoosh', 'fwump'].forEach(k => { shots['wipe_' + k] = () => Au.wipe(k, 6); });
     for (const k in shots) { let done = false; const data = await render(k === 'geode_opal' || k === 'wipe_bell' ? 3.2 : 1.9, () => {}, t => { if (!done && t >= 0.1) { done = true; shots[k](); } });
       let end = 0; for (let i = data.length - 1; i > 0; i--) if (Math.abs(data[i]) > 0.004) { end = i / SR; break; }
