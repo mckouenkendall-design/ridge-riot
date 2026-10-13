@@ -184,6 +184,118 @@ RR.BIKES = [
     col: ['#dfe4ea', '#ff6a1f', '#2a3550'], suit: ['#dfe4ea', '#ff6a1f', '#2a3550'],
     snd: { type: 'jet', pitch: 1.0, gears: 0 },
     unlock: { type: 'stars', n: 100 }
+  },
+
+  /* ---- Phase 2: nine bikes, each with one trick no other bike has (trick: the line the garage shows) ---- */
+  {
+    id: 'puffin', name: 'Puffin 150', kind: 'puffer', tag: 'One extra hop in mid-air', wipe: 'puffball',
+    blurb: 'A light trail bike with a tank of compressed air and a nozzle under the seat.',
+    trick: 'Tap brake in the air for one puff straight out of the bottom of the bike. One per jump; landing refills it.',
+    mass: 170, kgyr: 0.46, wb: 1.40, rr: 0.32, rf: 0.33, com: [0.62, 0.80], wheelMass: [10, 9], rake: 27, swing: 10,
+    sus: [{ travel: 0.25, freq: 2.0, sag: 0.3, zc: 0.42, zr: 0.95 }, { travel: 0.26, freq: 1.95, sag: 0.28, zc: 0.40, zr: 0.90 }],
+    accel: 0.62, vp: 9, vmax: 15.8, grip: 1.0, brake: 0.85, leanAcc: 15, spin: 6.2, cda: 0.5, hop: 3.0,
+    rider: { seat: [0.41, 0.92], peg: [0.51, 0.42], grip: [0.96, 1.15], scale: 1, torso: 0.38 },
+    col: ['#2bb3c0', '#f5f1e6', '#ff8a3d'], suit: ['#1d2233', '#2bb3c0', '#ff8a3d'],
+    snd: { type: 'puffer', pitch: 1.1, gears: 5 },
+    unlock: { type: 'gears', n: 6, text: 'Find 6 hidden gears' }
+  },
+  {
+    id: 'hopper', name: 'Grasshopper', kind: 'springer', tag: 'Half a metre of suspension', wipe: 'boingo',
+    blurb: 'A pit bike on stilts. Its legs have twice the travel of anything else, so it floats over bumps and swallows any landing.',
+    trick: 'Bottomless suspension: drops, bumps and logs that rattle every other bike barely move this one. Lands soft from anything, but sags on the lip of a jump, so it flies a little shorter.',
+    mass: 140, kgyr: 0.43, wb: 1.12, rr: 0.25, rf: 0.25, com: [0.50, 0.78], wheelMass: [5.5, 5], rake: 26, swing: 12,
+    sus: [{ travel: 0.48, freq: 1.45, sag: 0.3, zc: 0.40, zr: 0.95 }, { travel: 0.50, freq: 1.45, sag: 0.3, zc: 0.38, zr: 0.92 }],
+    accel: 0.58, vp: 8, vmax: 15.0, grip: 1.0, brake: 0.8, leanAcc: 14, spin: 6.4, cda: 0.5,
+    rider: { seat: [0.30, 0.95], peg: [0.40, 0.52], grip: [0.80, 1.18], scale: 1, torso: 0.30 },
+    col: ['#7ac943', '#2a2f1e', '#f2e14a'], suit: ['#2a2f1e', '#7ac943', '#f2e14a'],
+    snd: { type: 'springer', pitch: 1.35, gears: 4 },
+    unlock: { type: 'jump', n: 25, text: 'Clear 25 m in one jump' }
+  },
+  {
+    id: 'couple', name: 'Odd Couple', kind: 'sidecar', tag: 'Cannot flip, cannot tip', wipe: 'tandem',
+    blurb: 'An old sidecar outfit with a passenger who leans for you. It will not flip, and it will not tip over either.',
+    trick: 'Your passenger keeps the bike close to the line it is travelling, in the air and on the ground. No flips ever, so no flip boosts, but no wheelie or bad landing ever throws you on your head.',
+    mass: 300, kgyr: 0.55, wb: 1.56, rr: 0.32, rf: 0.33, com: [0.72, 0.72], wheelMass: [13, 10], rake: 28, swing: 8,
+    sus: [{ travel: 0.18, freq: 2.0, sag: 0.3, zc: 0.48, zr: 1.0 }, { travel: 0.20, freq: 1.95, sag: 0.3, zc: 0.45, zr: 0.95 }],
+    accel: 0.80, vp: 10, vmax: 18.4, grip: 1.12, brake: 0.95, leanAcc: 10, spin: 3.6, cda: 0.7, rail: 0.6,
+    rider: { seat: [0.46, 0.86], peg: [0.66, 0.40], grip: [1.02, 1.12], scale: 1, torso: 0.22 },
+    col: ['#c23b2e', '#ece3c8', '#2a2f3a'], suit: ['#5a4632', '#ece3c8', '#2a2f3a'],
+    snd: { type: 'boxer', pitch: 0.8, gears: 4 },
+    unlock: { type: 'finishes', n: 60, text: 'Finish 60 runs' }
+  },
+  {
+    id: 'gecko', name: 'Gecko', kind: 'gecko', tag: 'Sticks to walls for a moment', wipe: 'splat',
+    blurb: 'Soft, tacky tyres that suck onto whatever they touch. Lands like it is glued down.',
+    trick: 'Sticky tyres: they hold you onto steep faces, walls and the top of a loop for about a second, then let go until you are back on gentle ground.',
+    mass: 178, kgyr: 0.45, wb: 1.36, rr: 0.30, rf: 0.31, com: [0.62, 0.72], wheelMass: [10, 9], rake: 26, swing: 9,
+    sus: [{ travel: 0.22, freq: 2.1, sag: 0.3, zc: 0.45, zr: 0.95 }, { travel: 0.23, freq: 2.05, sag: 0.3, zc: 0.42, zr: 0.9 }],
+    accel: 0.68, vp: 9, vmax: 16.2, grip: 1.18, brake: 0.9, leanAcc: 15.5, spin: 6.0, cda: 0.5, stick: { f: 1.2, t: 1.2 },
+    rider: { seat: [0.40, 0.84], peg: [0.50, 0.38], grip: [0.92, 1.08], scale: 1, torso: 0.46 },
+    col: ['#3ccf6e', '#f2c230', '#1b1d24'], suit: ['#1b1d24', '#3ccf6e', '#f2c230'],
+    snd: { type: 'gecko', pitch: 1.2, gears: 0 },
+    unlock: { type: 'challenges', n: 12, text: 'Pull off 12 track challenges' }
+  },
+  {
+    id: 'sandpiper', name: 'Sandpiper', kind: 'paddle', tag: 'Flies on sand, skates on rock', wipe: 'sandstorm',
+    blurb: 'A desert racer with a paddle tyre. On loose ground nothing touches it. On rock, tarmac and steel the paddles skate.',
+    trick: 'The paddle tyre: much more grip and much less drag on sand, snow, moon dust and dirt, and a lot less grip on rock, wood, tarmac and steel.',
+    mass: 196, kgyr: 0.48, wb: 1.54, rr: 0.36, rf: 0.345, com: [0.68, 0.84], wheelMass: [13, 10], rake: 28, swing: 10,
+    sus: [{ travel: 0.30, freq: 1.8, sag: 0.3, zc: 0.44, zr: 0.98 }, { travel: 0.31, freq: 1.75, sag: 0.28, zc: 0.42, zr: 0.95 }],
+    accel: 0.78, vp: 10, vmax: 18.0, grip: 1.0, brake: 0.85, leanAcc: 13.5, spin: 5.8, cda: 0.55,
+    surf: { sand: [1.6, 0.35], snow: [1.5, 0.4], dust: [1.45, 0.5], dirt: [1.15, 0.8], rock: [0.6, 1], wood: [0.65, 1], steel: [0.6, 1], tarmac: [0.6, 1], kerb: [0.6, 1], rubber: [0.65, 1], boost: [0.7, 1] },
+    rider: { seat: [0.44, 0.97], peg: [0.54, 0.43], grip: [1.02, 1.22], scale: 1, torso: 0.36 },
+    col: ['#e8b04a', '#3a2a1e', '#2f8fd6'], suit: ['#f2e6c8', '#e8b04a', '#3a2a1e'],
+    snd: { type: 'paddle', pitch: 0.9, gears: 5 },
+    unlock: { type: 'worldgears', w: 'dust', n: 8, text: 'Find all 8 Dustbowl gears' }
+  },
+  {
+    id: 'whiplash', name: 'Whiplash', kind: 'freestyle', tag: 'Hand brake for air pivots', wipe: 'spinout',
+    blurb: 'A freestyle bike with a hand brake on a huge flywheel. In the air it turns where you tell it and stops where you tell it.',
+    trick: 'Hold brake in the air: with a lean the bike spins almost twice as fast, without one it stops turning dead. Flips on demand, landed exactly.',
+    mass: 166, kgyr: 0.45, wb: 1.46, rr: 0.33, rf: 0.345, com: [0.64, 0.82], wheelMass: [10, 9], rake: 27, swing: 10,
+    sus: [{ travel: 0.29, freq: 1.9, sag: 0.3, zc: 0.42, zr: 0.95 }, { travel: 0.30, freq: 1.9, sag: 0.28, zc: 0.40, zr: 0.9 }],
+    accel: 0.70, vp: 9.5, vmax: 16.8, grip: 1.02, brake: 0.9, leanAcc: 16, spin: 6.6, cda: 0.5, pivot: { spin: 1.7, tq: 1.8, lock: 22 },
+    rider: { seat: [0.42, 0.95], peg: [0.52, 0.43], grip: [1.00, 1.20], scale: 1, torso: 0.36 },
+    col: ['#ff3d7f', '#1b1d24', '#ffffff'], suit: ['#1b1d24', '#ff3d7f', '#ffffff'],
+    snd: { type: 'freestyle', pitch: 1.05, gears: 5 },
+    unlock: { type: 'flipstars', n: 16, text: 'Earn 16 flip stars' }
+  },
+  {
+    id: 'icepick', name: 'Icepick', kind: 'ice', tag: 'Spiked tyres bite into ice', wipe: 'shiver',
+    blurb: 'A snow racer on tyres full of steel studs. Ice is like dirt to it. Hard ground is not, quite.',
+    trick: 'Studded tyres: full grip on ice and better grip on snow and oil, so it can brake and climb where nothing else can. A little less grip on rock, tarmac and steel.',
+    mass: 195, kgyr: 0.47, wb: 1.44, rr: 0.33, rf: 0.34, com: [0.66, 0.80], wheelMass: [12, 10], rake: 27, swing: 10,
+    sus: [{ travel: 0.26, freq: 1.95, sag: 0.3, zc: 0.44, zr: 0.98 }, { travel: 0.27, freq: 1.9, sag: 0.28, zc: 0.42, zr: 0.95 }],
+    accel: 0.70, vp: 9.5, vmax: 17.0, grip: 1.0, brake: 1.0, leanAcc: 14.5, spin: 6.0, cda: 0.55,
+    surf: { ice: [4.6, 1], snow: [1.5, 1], oil: [1.6, 1], tarmac: [0.82, 1], steel: [0.75, 1], rock: [0.85, 1], kerb: [0.8, 1], boost: [0.85, 1] },
+    rider: { seat: [0.42, 0.92], peg: [0.52, 0.42], grip: [0.98, 1.16], scale: 1, torso: 0.4 },
+    col: ['#e9f4ff', '#2c5ea8', '#9fe8ff'], suit: ['#2c5ea8', '#e9f4ff', '#9fe8ff'],
+    snd: { type: 'ice', pitch: 1.0, gears: 5 },
+    unlock: { type: 'worldgears', w: 'frost', n: 8, text: 'Find all 8 Frostbite gears' }
+  },
+  {
+    id: 'rhino', name: 'Rhino', kind: 'ram', tag: 'Smashes straight through logs', wipe: 'stampede',
+    blurb: 'A huge adventure bike with a steel bull bar. Heavy, slow to turn, and a log in its way is firewood.',
+    trick: 'The bull bar: logs, rocks and tyres lying on the track break apart when the Rhino hits them faster than a jog. Everything else bounces over them.',
+    mass: 330, kgyr: 0.54, wb: 1.62, rr: 0.38, rf: 0.40, com: [0.78, 0.80], wheelMass: [17, 14], rake: 28, swing: 9,
+    sus: [{ travel: 0.24, freq: 1.8, sag: 0.3, zc: 0.46, zr: 1.0 }, { travel: 0.26, freq: 1.75, sag: 0.3, zc: 0.44, zr: 0.95 }],
+    accel: 0.80, vp: 11, vmax: 18.5, grip: 1.08, brake: 0.9, leanAcc: 12.5, spin: 5.2, cda: 0.7, smash: 2.5,
+    rider: { seat: [0.46, 1.00], peg: [0.58, 0.48], grip: [1.06, 1.26], scale: 1, torso: 0.34 },
+    col: ['#5f6b4e', '#2a2d26', '#e0a43a'], suit: ['#3a3f30', '#e0a43a', '#2a2d26'],
+    snd: { type: 'ram', pitch: 0.7, gears: 6 },
+    unlock: { type: 'challenges', n: 30, text: 'Pull off 30 track challenges' }
+  },
+  {
+    id: 'albatross', name: 'Albatross', kind: 'glider', tag: 'Wings that hold you up', wipe: 'nosedive',
+    blurb: 'A bike with a pair of wings bolted to the frame. Pull the nose up in the air and it floats; push it down and it dives.',
+    trick: 'The wings: the faster you go and the higher you hold the nose, the more they lift, so you can stretch a jump or come down gently. No air on the moon, so in Low Orbit they do nothing.',
+    mass: 182, kgyr: 0.50, wb: 1.48, rr: 0.32, rf: 0.33, com: [0.68, 0.78], wheelMass: [10, 9], rake: 27, swing: 9,
+    sus: [{ travel: 0.22, freq: 2.0, sag: 0.3, zc: 0.45, zr: 0.98 }, { travel: 0.23, freq: 1.95, sag: 0.3, zc: 0.42, zr: 0.95 }],
+    accel: 0.68, vp: 10, vmax: 17.0, grip: 1.0, brake: 0.9, leanAcc: 12, spin: 4.8, airDamp: 2.2, cda: 0.6, glide: { k: 5.5, inc: -0.04, cap: 0.7 },
+    rider: { seat: [0.42, 0.86], peg: [0.52, 0.40], grip: [0.98, 1.08], scale: 1, torso: 0.5 },
+    col: ['#f5f1e6', '#1d4e89', '#f2c230'], suit: ['#1d4e89', '#f5f1e6', '#f2c230'],
+    snd: { type: 'glider', pitch: 1.0, gears: 5 },
+    unlock: { type: 'gears', n: 36, text: 'Find 36 hidden gears' }
   }
 ];
 

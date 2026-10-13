@@ -17,13 +17,14 @@ function TB(world, seed) {
   this.R = 7;
   // back wall, then the start pad
   this.pts.push(-16, 9, -16, 0); this.mats.push(this.mat);
+  this.logIds = [-1]; this._log = -1; this.logN = 0;      // which log (if any) each stretch of ground belongs to
   this.x = -16; this.y = 0;
   this.line(16 + 9);
   this.start = [1.2, 0];
 }
 var P = TB.prototype;
 P.rnd = function () { this.seed = (this.seed * 1664525 + 1013904223) >>> 0; return this.seed / 4294967296; };
-P.push = function (x, y) { this.pts.push(x, y); this.mats.push(this.mat); this.x = x; this.y = y; };
+P.push = function (x, y) { this.pts.push(x, y); this.mats.push(this.mat); this.logIds.push(this._log); this.x = x; this.y = y; };
 P.line = function (len) {
   var n = Math.max(1, Math.round(len / 3)), c = Math.cos(this.ang), s = Math.sin(this.ang);
   var x0 = this.x, y0 = this.y;
@@ -123,12 +124,16 @@ P.logs = function (count, spacing, r) {
     var rr = r * (0.85 + 0.3 * this.rnd()), x0 = this.x, y0 = this.y, hh = rr * 0.72;
     var half = Math.acos(1 - hh / rr), n = 7;
     this.mat = this.world.logMat == null ? RR.MAT.wood : this.world.logMat;
+    var id = this.logN++; this._log = id;
     for (var i = 0; i <= n; i++) {
       var a = -half + 2 * half * i / n;
       this.push(x0 + rr * Math.sin(half) + rr * Math.sin(a), y0 - (rr - hh) + rr * Math.cos(a));
     }
     this.y = y0; this.pts[this.pts.length - 1] = y0;
-    this.feats.push({ t: 'log', x: x0 + rr * Math.sin(half), y: y0 - (rr - hh), r: rr });
+    this._log = -1; this.logIds[this.logIds.length - 1] = -1;
+    // the flat ground under the log, which only a bike that has smashed it ever touches
+    this.chains.push({ pts: [x0 - 0.05, y0, this.x + 0.05, y0], mat: this.baseMat, under: id, depth: 0.4, kind: 'logfloor' });
+    this.feats.push({ t: 'log', x: x0 + rr * Math.sin(half), y: y0 - (rr - hh), r: rr, id: id });
     this.mat = m;
   }
   return this;
@@ -219,7 +224,7 @@ P.finish = function (name, id) {
   this.feats.push({ t: 'finish', x: fx, y: this.y });
   this.line(55);
   this.push(this.x, this.y + 9);
-  var main = { pts: this.pts, mats: this.mats, depth: 0.4, kind: 'ground' };
+  var main = { pts: this.pts, mats: this.mats, logs: this.logIds, depth: 0.4, kind: 'ground' };
   var chains = [main].concat(this.chains);
   var n = this.pts.length / 2, xs = new Float64Array(n), ys = new Float64Array(n), minY = 1e9, maxY = -1e9;
   for (var i = 0; i < n; i++) {
@@ -230,7 +235,7 @@ P.finish = function (name, id) {
   var tr = {
     id: id, name: name, world: this.world.id, gravity: this.world.gravity,
     chains: chains, col: RR.buildCollision(chains), loops: this.loops, hazards: this.hazards, feats: this.feats,
-    start: this.start, finishX: fx, killY: minY - 14, minY: minY, maxY: maxY, xs: xs, ys: ys, mats: this.mats,
+    start: this.start, finishX: fx, killY: minY - 14, minY: minY, maxY: maxY, xs: xs, ys: ys, mats: this.mats, logCount: this.logN,
     length: fx - this.start[0]
   };
   return tr;

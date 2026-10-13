@@ -38,7 +38,8 @@ function run(s, P, untilX, hands, pin) {
   for (let tick = 0; tick < 120 * 200; tick++) {
     RR.botInput(s, P, out);
     const lean = hands ? hands(out.lean) : out.lean;
-    RR.tick(s, pin ? { lean: lean, gas: true, brake: false } : { lean: lean, gas: out.gas, brake: out.brake });
+    // a bike's trick button (brake, in the air) is fair game even for the rider who never lifts
+    RR.tick(s, pin ? { lean: lean, gas: true, brake: !!out.trick } : { lean: lean, gas: out.gas, brake: out.brake || !!out.trick });
     s.events.length = 0;
     if (s.x > lastX + 2) { lastX = s.x; lastT = s.time; }
     if (s.finished) return 'finish';

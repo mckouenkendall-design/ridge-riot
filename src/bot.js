@@ -12,7 +12,7 @@ function wrap(a) { return a - TAU * Math.round(a / TAU); }
 
 RR.botInput = function (s, P, out) {
   var b = s.b, tr = s.track, air = !s.gnd[0] && !s.gnd[1];
-  var err, th = P.th || 0.2, lean = 0;
+  var err, th = P.th || 0.2, lean = 0, trick = false;
   if (!air) {
     var i = s.gnd[0] ? 0 : 1;
     var slope = Math.atan2(-s.nrmX[i], s.nrmY[i]);
@@ -26,6 +26,11 @@ RR.botInput = function (s, P, out) {
       x += vx * h; vy -= g * h; y += vy * h; t += h;
       if (y <= RR.groundY(tr, x)) { target = (RR.groundSlope(tr, x - 0.6) + RR.groundSlope(tr, x + 0.6)) * 0.5; T = t; break; }
     }
+    // the hop bike saves its puff for a jump that is going to come up short
+    if (b.hop && s.hopReady && s.vy < 0 && P.trick !== false) {
+      var hz = tr.hazards;
+      for (var q = 0; q < hz.length; q++) if (x > hz[q].x0 - 0.3 && x < hz[q].x1 + 0.6) { trick = true; break; }
+    }
     if (target > 1.2 || target < -1.2) target = 0;
     target += 0.08 + (P.airBias || 0);
     // where the nose will be pointing at touchdown if we do nothing more
@@ -36,8 +41,10 @@ RR.botInput = function (s, P, out) {
     var big = T > (P.minAir == null ? 0.3 : P.minAir) ? 1 : 2.5;
     if (err > th * big || (cur > 0 && err > th * 0.3)) lean = 1;
     else if (err < -th * big || (cur < 0 && err < -th * 0.3)) lean = -1;
+    // the pivot bike stops its spin dead once the nose is where it wants it
+    if (b.pivot && lean === 0 && P.trick !== false && (s.w > 1 || s.w < -1) && err < th && err > -th) trick = true;
   }
-  out.lean = lean;
+  out.lean = lean; out.trick = trick;
   var sp = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
   var cap = P.vcap || 1e9;
   /* Slow zones: stretches where full gas gets you hurt. The track carries a sensible

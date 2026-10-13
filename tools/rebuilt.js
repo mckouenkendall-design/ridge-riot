@@ -11,7 +11,7 @@ function print(tr) {
   let h = 2166136261;
   const eat = v => { const n = Math.round(v * 100); h ^= n & 0xffff; h = Math.imul(h, 16777619); h ^= (n >> 16) & 0xffff; h = Math.imul(h, 16777619); };
   // a roof's top edge is out of reach, so only its underside counts
-  tr.chains.forEach(c => { for (let i = c.kind === 'roof' ? 4 : 0; i < c.pts.length; i++) eat(c.pts[i]); });
+  tr.chains.forEach(c => { if (c.kind === 'logfloor') return; for (let i = c.kind === 'roof' ? 4 : 0; i < c.pts.length; i++) eat(c.pts[i]); });
   tr.hazards.forEach(z => { eat(z.x0); eat(z.x1); eat(z.y); });
   eat(tr.finishX);
   return (h >>> 0).toString(36);
