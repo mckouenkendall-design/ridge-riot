@@ -3,11 +3,11 @@
    Rarity runs common, uncommon, rare, epic, legendary (legendary is the top), plus trophy,
    which is earned by big achievements and can never come out of a crate.
    The first 24 paint jobs and 20 riders are written out below. The rest are in content-paints.js and content-riders.js
-   (they are loaded first, so they are ready by the time this file builds the full lists). */
+   (content-paints2.js and content-riders2.js hold the later ones; they are loaded first, so they are ready by the time this file builds the full lists). */
 (function (root) {
 'use strict';
 var RR = root.RR || (root.RR = {});
-if (typeof window === 'undefined' && typeof require !== 'undefined') { require('./content-paints.js'); require('./content-riders.js'); }     // the tools that run without a page
+if (typeof window === 'undefined' && typeof require !== 'undefined') { require('./content-paints.js'); require('./content-paints2.js'); require('./content-riders.js'); require('./content-riders2.js'); }     // the tools that run without a page
 
 /* odds are out of 100 for an ordinary crate. TROPHY is a sixth tier that is not in this list on
    purpose: nothing in a crate can ever be a trophy (see RR.TROPHY below). */
@@ -57,7 +57,7 @@ RR.PAINTS = [
   // legendary: the colour moves
   { id: 'whiteopal', name: 'White Opal',   tier: 'legendary', c: ['#f6f4ff', '#c8c0f0', '#ffffff'], pat: { t: 'opal', base: '#fbfaff', fire: ['#9fe8ff', '#ffb8ea', '#fff3a8', '#aaffcf', '#c9b0ff', '#ffc9a8'] }, rim: '#ffffff', glow: 'prism', glint: '#ffffff', trail: { cols: 'prism', w: 0.24, spark: '#ffffff' }, live: true, wide: true, suit: 'prism' },
   { id: 'blackopal', name: 'Black Opal',   tier: 'legendary', c: ['#12141d', '#05060a', '#3dffd2'], pat: { t: 'opal', base: '#0c0e16', fire: ['#00e5ff', '#3dff8a', '#ff3dd0', '#3d6bff', '#ffe23d', '#8a3dff'], dark: true }, rim: '#3dffd2', glow: 'prism', glint: '#9ffff0', trail: { cols: 'prism', w: 0.24, spark: '#9ffff0' }, live: true, wide: true, suit: 'prism' }
-].concat(RR.MORE_PAINTS || []);
+].concat(RR.MORE_PAINTS || [], RR.MORE_PAINTS2 || []);
 
 
 /* Riders can sit on any bike. suit: jacket, trousers, boots and gloves.
@@ -88,7 +88,7 @@ RR.RIDERS = [
   // legendary
   { id: 'prism',   name: 'Prism',         tier: 'legendary', suit: ['#f6f4ff', '#e6e0ff', '#ffffff'], head: 'prism', live: true, shift: true, blurb: 'Every colour at once, and none of them for long.' },
   { id: 'nova',    name: 'Nova',          tier: 'legendary', suit: ['#0c0e1c', '#0c0e1c', '#9fe8ff'], head: 'nova', live: true, stars: true, blurb: 'A piece of the night sky that learned to wheelie.' }
-].concat(RR.MORE_RIDERS || []);
+].concat(RR.MORE_RIDERS || [], RR.MORE_RIDERS2 || []);
 
 /* The theme sets. Every paint job and rider belongs to one, so a collection can be read as sets as well as tiers.
    Written here as lists of ids so a set can be seen whole. */
