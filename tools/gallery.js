@@ -36,7 +36,7 @@ const ONLY = ((args.find(a => a.startsWith('--only=')) || '').slice(7) || '').sp
     await t.wait(80);
     const cv = t.page.locator('#sheet'); await cv.screenshot({ path: out + '/' + name + '.png' });
   };
-  const list = (kind) => t.ev(([kind, orig]) => (kind === 'paint' ? RR.PAINTS : RR.RIDERS).map(x => ({ id: x.id, name: x.name, tier: x.tier, fresh: x.index >= orig && (!ONLY.length || ONLY.includes(x.id)) })), [kind, ORIG[kind]]);
+  const list = (kind) => t.ev(([kind, orig, ONLY]) => (kind === 'paint' ? RR.PAINTS : RR.RIDERS).map(x => ({ id: x.id, name: x.name, tier: x.tier, fresh: x.index >= orig && (!ONLY.length || ONLY.includes(x.id)) })), [kind, ORIG[kind], ONLY]);
 
   if (compare || onlyNew) {
     for (const kind of ['paint', 'rider']) {
