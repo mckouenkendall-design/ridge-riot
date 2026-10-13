@@ -47,9 +47,11 @@ const out = process.argv[2] || '/tmp';
       flip1: () => Au.flip(1), flip3: () => Au.flip(3), boost: () => Au.boost(), go: () => Au.go(), finish: () => Au.finish(), star: () => { Au.star(0); }, newBest: () => Au.newBest(), unlocked: () => Au.unlocked(),
       ui_tap: () => Au.ui('tap'), ui_go: () => Au.ui('go'), ui_back: () => Au.ui('back'), ui_no: () => Au.ui('no'), ui_swipe: () => Au.ui('swipe'),
       pad: () => Au.pad(), bus_crunch: () => Au.crunch(), bonk: () => Au.bonk(), knock: () => Au.knock(6), coin: () => Au.coin(3),
+      hop: () => Au.hop(), smash_wood: () => Au.smash(4), smash_rock: () => Au.smash(1), smash_ice: () => Au.smash(2), smash_tyre: () => Au.smash(12), unstick: () => Au.unstick(), pivot: () => Au.pivot(),
       crate_tap: () => Au.crate('tap', 1), crate_pry: () => Au.crate('crack', 2), crate_common: () => Au.crate('open', 0), crate_rare: () => Au.crate('open', 2), crate_legendary: () => Au.crate('open', 4) };
-    ['stars', 'birds', 'inflate', 'pop', 'tumble', 'poof', 'bleat', 'bell', 'smash', 'zap', 'boing', 'whistleUp', 'ting', 'spring', 'boom', 'flutter', 'pat', 'pomf', 'squeak', 'whoosh', 'fwump'].forEach(k => { shots['wipe_' + k] = () => Au.wipe(k, 6); });
-    for (const k in shots) { let done = false; const data = await render(k === 'geode_opal' || k === 'wipe_bell' ? 3.2 : 1.9, () => {}, t => { if (!done && t >= 0.1) { done = true; shots[k](); } });
+    ['stars', 'birds', 'inflate', 'pop', 'tumble', 'poof', 'bleat', 'bell', 'smash', 'zap', 'boing', 'whistleUp', 'ting', 'spring', 'boom', 'flutter', 'pat', 'pomf', 'squeak', 'whoosh', 'fwump',
+      'vent', 'pfft', 'sproing', 'doing', 'honk', 'yoohoo', 'splat', 'peel', 'stretch', 'swirl', 'tada', 'whirr', 'cuckoo', 'freeze', 'slide', 'brr', 'gallop', 'flap', 'dive', 'plant'].forEach(k => { shots['wipe_' + k] = () => Au.wipe(k, 6); });
+    for (const k in shots) { let done = false; const data = await render(['geode_opal', 'wipe_bell', 'wipe_gallop', 'wipe_cuckoo'].includes(k) ? 3.2 : 1.9, () => {}, t => { if (!done && t >= 0.1) { done = true; shots[k](); } });
       let end = 0; for (let i = data.length - 1; i > 0; i--) if (Math.abs(data[i]) > 0.004) { end = i / SR; break; }
       result.sfx[k] = Object.assign(level(data, 0.1, Math.max(0.3, end)), stats(data, 0.12), { lastsS: +(end - 0.1).toFixed(2) }); }
     // layers + music

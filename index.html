@@ -322,6 +322,7 @@ input[type=range]::-moz-range-thumb { width: 1.3rem; height: 1.3rem; background:
 var RR = root.RR || (root.RR = {});
 var PI = Math.PI, TAU = PI * 2;
 function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+function wrap(a) { return a - TAU * Math.round(a / TAU); }
 RR.clamp = clamp;
 
 /* Surface materials: mu = grip multiplier, roll = rolling drag, */
@@ -357,7 +358,7 @@ RR.buildCollision = function (chains) {
     bx: new Float64Array(n), by: new Float64Array(n),
     dx: new Float64Array(n), dy: new Float64Array(n),
     len: new Float64Array(n), depth: new Float64Array(n),
-    mat: new Uint8Array(n), gate: new Int16Array(n), side: new Uint8Array(n),
+    mat: new Uint8Array(n), gate: new Int16Array(n), side: new Uint8Array(n), log: new Int16Array(n), under: new Int16Array(n),
     next: new Int32Array(n), prev: new Int32Array(n), cvx: new Uint8Array(n),
     mark: new Int32Array(n), stamp: 0
   };
@@ -375,6 +376,9 @@ RR.buildCollision = function (chains) {
       col.mat[k] = ch.mats ? ch.mats[i] : (ch.mat || 0);
       col.gate[k] = ch.gate == null ? -1 : ch.gate;
       col.side[k] = ch.side == null ? 2 : ch.side;
+      // logs a heavy enough bike can smash: the log's own faces, and the flat ground hidden under it
+      col.log[k] = ch.logs ? ch.logs[i] : -1;
+      col.under[k] = ch.under == null ? -1 : ch.under;
       col.prev[k] = k > first ? k - 1 : -1;
       col.next[k] = -1;
       if (k > first) col.next[k - 1] = k;
@@ -402,9 +406,11 @@ RR.buildCollision = function (chains) {
   return col;
 };
 
+var SM = null;      // the smashed-log list of the sim being stepped, or null
+
 function Contacts() {
   this.nx = new Float64Array(8); this.ny = new Float64Array(8);
-  this.pen = new Float64Array(8); this.mat = new Uint8Array(8); this.n = 0;
+  this.pen = new Float64Array(8); this.mat = new Uint8Array(8); this.log = new Int16Array(8); this.n = 0;
 }
 RR.Contacts = Contacts;
 
@@ -416,7 +422,7 @@ function query(col, px, py, r, gates, C) {
   var c0 = Math.floor((px - r - col.x0) / col.cw), c1 = Math.floor((px + r - col.x0) / col.cw);
   if (c0 < 0) c0 = 0; if (c1 >= col.nc) c1 = col.nc - 1;
   var stamp = ++col.stamp;
-  var inD = 1e9, inNx = 0, inNy = 0, inMat = 0;
+  var inD = 1e9, inNx = 0, inNy = 0, inMat = 0, inLog = -1;
   for (var c = c0; c <= c1; c++) {
     var cell = col.cells[c];
     for (var q = 0; q < cell.length; q++) {
@@ -425,6 +431,9 @@ function query(col, px, py, r, gates, C) {
       col.mark[i] = stamp;
       var g = col.gate[i];
       if (g >= 0 && col.side[i] !== 2 && gates[g] !== col.side[i]) continue;
+      // a smashed log is gone and the ground under it takes over; nothing else ever sees that ground
+      if (col.log[i] >= 0 && SM && SM[col.log[i]]) continue;
+      if (col.under[i] >= 0 && !(SM && SM[col.under[i]])) continue;
       var dx = col.dx[i], dy = col.dy[i];
       var rx = px - col.ax[i], ry = py - col.ay[i];
       var d = -rx * dy + ry * dx;                 // signed distance from the surface line
@@ -440,7 +449,7 @@ function query(col, px, py, r, gates, C) {
           if (kk >= 0 && (nearStart ? col.cvx[kk] : col.cvx[i])) {
             if (-(px - col.ax[kk]) * col.dy[kk] + (py - col.ay[kk]) * col.dx[kk] > 0) continue;
           }
-          if (-d < inD) { inD = -d; inNx = -dy; inNy = dx; inMat = col.mat[i]; }
+          if (-d < inD) { inD = -d; inNx = -dy; inNy = dx; inMat = col.mat[i]; inLog = col.log[i]; }
           continue;
         }
         onx = -dy; ony = dx; pen = r - d;
@@ -459,7 +468,7 @@ function query(col, px, py, r, gates, C) {
           if (dist >= col.depth[i]) continue;
           onx = -dy - col.dy[j]; ony = dx + col.dx[j];
           var nl = Math.sqrt(onx * onx + ony * ony) || 1; onx /= nl; ony /= nl;
-          if (dist < inD) { inD = dist; inNx = onx; inNy = ony; inMat = col.mat[i]; }
+          if (dist < inD) { inD = dist; inNx = onx; inNy = ony; inMat = col.mat[i]; inLog = col.log[i]; }
           continue;
         }
       } else {
@@ -469,10 +478,10 @@ function query(col, px, py, r, gates, C) {
         if (dd > 1e-6) { onx = wx / dd; ony = wy / dd; } else { onx = -dy; ony = dx; }
         pen = r - dd;
       }
-      if (n < 7) { C.nx[n] = onx; C.ny[n] = ony; C.pen[n] = pen; C.mat[n] = col.mat[i]; n++; }
+      if (n < 7) { C.nx[n] = onx; C.ny[n] = ony; C.pen[n] = pen; C.mat[n] = col.mat[i]; C.log[n] = col.log[i]; n++; }
     }
   }
-  if (inD < 1e8) { n = 0; C.nx[0] = inNx; C.ny[0] = inNy; C.pen[0] = r + inD; C.mat[0] = inMat; n = 1; }
+  if (inD < 1e8) { n = 0; C.nx[0] = inNx; C.ny[0] = inNy; C.pen[0] = r + inD; C.mat[0] = inMat; C.log[0] = inLog; n = 1; }
   C.n = n;
   return n;
 }
@@ -538,6 +547,22 @@ RR.prepBike = function (def) {
   b.tip = Math.atan2(def.com[0], def.com[1] - rr) + 0.08;   // pitch where the bike balances on the rear wheel
   b.ebrake = def.ebrake == null ? 0.05 : def.ebrake;
   b.bonk = def.bonk || 0;
+  /* the tricks only one bike has (see bikes.js) */
+  b.hop = def.hop || 0;                              // one push straight "up" from the bike per jump, m/s
+  b.stick = def.stick ? def.stick.f * b.Mtot * G0 * 0.5 : 0;   // suction on each tyre, newtons
+  b.stickMax = def.stick ? def.stick.t : 0;          // seconds of wall riding before the tyres let go
+  b.rail = def.rail || 0;                            // furthest the bike can pitch from its line, radians
+  b.pivot = def.pivot || null;
+  b.glide = def.glide || null;
+  b.smash = def.smash || 0;                          // speed (m/s) needed to break a log
+  // a tyre that grips some surfaces better than others: per material grip and rolling drag
+  if (def.surf) {
+    b.matMu = []; b.matRoll = [];
+    for (i = 0; i < RR.MATS.length; i++) {
+      var sf = def.surf[RR.MATS[i].id] || def.surf.other || [1, 1];
+      b.matMu.push(RR.MATS[i].mu * sf[0]); b.matRoll.push(RR.MATS[i].roll * sf[1]);
+    }
+  } else { b.matMu = null; b.matRoll = null; }
   b.pts = [];
   for (i = 0; i < def.body.length; i++) b.pts.push([def.body[i][0] - def.com[0], def.body[i][1] - def.com[1], def.body[i][2]]);
   b.headR = 0.15 * (def.rider.scale || 1);
@@ -589,6 +614,7 @@ RR.createSim = function (bike, track) {
     comp: [0, 0], compV: [0, 0], gnd: [false, false], load: [0, 0], slip: [0, 0], mat: [0, 0],
     nrmX: [0, 1], nrmY: [1, 1], bot: [0, 0], airW: [0, 0],
     gates: new Uint8Array(Math.max(1, track.loops.length)),
+    smash: bike.smash ? new Uint8Array(Math.max(1, track.logCount || 0)) : null,
     events: []
   };
   // In low gravity full power would just flip the bike on the spot, so the push is
@@ -615,6 +641,8 @@ RR.resetSim = function (s) {
   s.flips = 0; s.bestAir = 0; s.jumpX = 0; s.bestJump = 0; s.maxSpeed = 0; s.wheelieT = 0;
   s.finishTime = 0; s.sinceCrash = 0; s.driveF = 0; s.body = false;
   s._pvx = [0, 0]; s._pvy = [0, 0]; s.pendFlip = null;
+  s.hopReady = 1; s.btn = 0; s.stickT = b.stickMax; s.lift = 0;
+  if (s.smash) for (i = 0; i < s.smash.length; i++) s.smash[i] = 0;
   s.events.length = 0;
   // let the suspension settle before the clock starts
   var idle = { lean: 0, brake: true, gas: false };
@@ -632,6 +660,8 @@ function substep(s, inp, dt) {
   var gas = inp.gas && !inp.brake && !s.crashed && !s.finished;
   var braking = inp.brake || s.finished;
   var boost = s.boost > 0 ? 1 : 0;
+  SM = s.smash;
+  var stickF = b.stick && s.stickT > 0 && !s.crashed ? b.stick : 0;
 
   for (i = 0; i < 2; i++) {
     var W = b.wh[i];
@@ -665,15 +695,17 @@ function substep(s, inp, dt) {
       if (N > NMAX) N = NMAX;
       var tx = ny, ty = -nx;
       var slip = s.wvx[i] * tx + s.wvy[i] * ty + s.ww[i] * W.r;
-      var mat = RR.MATS[C.mat[k]];
-      var lim = b.mu * mat.mu * N;
+      var mat = RR.MATS[C.mat[k]], mmu = b.matMu ? b.matMu[C.mat[k]] : mat.mu;
+      if (stickF) { wfx -= stickF * nx; wfy -= stickF * ny; N += stickF; }     // sticky tyres: pulled onto whatever they touch
+      if (C.log[k] >= 0 && SM && !SM[C.log[k]] && sp > b.smash) { SM[C.log[k]] = 1; s.events.push({ t: 'smash', log: C.log[k], x: s.wx[i], y: s.wy[i], v: sp }); }
+      var lim = b.mu * mmu * N;
       if (slip > 1.5 || slip < -1.5) lim *= 0.88;
       var Ft = -slip * W.meff * FB / dt;
       if (Ft > lim) Ft = lim; else if (Ft < -lim) Ft = -lim;
       wfx += N * nx + Ft * tx; wfy += N * ny + Ft * ty;
       wt += Ft * W.r;
       // rolling drag
-      var rollT = mat.roll * N * W.r, wAbs = s.ww[i] < 0 ? -s.ww[i] : s.ww[i];
+      var rollT = (b.matRoll ? b.matRoll[C.mat[k]] : mat.roll) * (stickF ? N - stickF : N) * W.r, wAbs = s.ww[i] < 0 ? -s.ww[i] : s.ww[i];
       if (wAbs > 0.5) wt += s.ww[i] > 0 ? -rollT : rollT;
       Nsum += N; slipSum += slip * N;
       s.nrmX[i] = nx; s.nrmY[i] = ny; s.mat[i] = C.mat[k];
@@ -715,6 +747,7 @@ function substep(s, inp, dt) {
     n = query(col, s.x + prx, s.y + pry, pr, s.gates, C);
     for (k = 0; k < n; k++) {
       var bnx = C.nx[k], bny = C.ny[k];
+      if (C.log[k] >= 0 && SM && !SM[C.log[k]] && sp > b.smash) { SM[C.log[k]] = 1; s.events.push({ t: 'smash', log: C.log[k], x: s.x + prx, y: s.y + pry, v: sp }); }
       var pvx = s.vx - s.w * pry, pvy = s.vy + s.w * prx;
       var bvn = pvx * bnx + pvy * bny;
       var BN = KB * C.pen[k] - CB * bvn;
@@ -769,21 +802,43 @@ function substep(s, inp, dt) {
   if (!s.crashed && !s.finished) {
     var L = inp.lean;
     var grounded = s.airW[0] < 0.03 || s.airW[1] < 0.03;
+    // the pivot bike: hand brake on in the air spins it faster, or stops it dead if you are not leaning
+    var pv = b.pivot && !grounded && inp.brake ? b.pivot : null;
     if (L !== 0) {
       // on the ground the rider can throw their weight forward faster than they can haul the front up
-      var wtgt = -L * (grounded ? Math.min(b.spin, L > 0 ? b.groundSpin * 1.8 : b.groundSpin) : b.spin), dw = wtgt - s.w, tl = 0;
+      var wtgt = -L * (grounded ? Math.min(b.spin, L > 0 ? b.groundSpin * 1.8 : b.groundSpin) : b.spin * (pv ? pv.spin : 1)), dw = wtgt - s.w, tl = 0;
       if (dw * wtgt > 0) {
         tl = dw * b.Isys * 14;
         // the rider has to shift their weight first, so a quick tap is a nudge and a hold is a full heave
         var ramp = L < 0 ? -s.lp : s.lp; ramp = ramp < 0 ? 0 : ramp > 1 ? 1 : ramp;
-        var tm = b.leanTq * (grounded ? 1 : LEAN_AIR) * (L < 0 ? -L : L) * (LEAN_FLOOR + (1 - LEAN_FLOOR) * ramp);
+        var tm = b.leanTq * (grounded ? 1 : LEAN_AIR) * (L < 0 ? -L : L) * (LEAN_FLOOR + (1 - LEAN_FLOOR) * ramp) * (pv ? pv.tq : 1);
         if (tl > tm) tl = tm; else if (tl < -tm) tl = -tm;
       }
       // Leaning forward pulls a wheelie back down at full strength, but once the front tyre is on
       // the ground the rider cannot lever the bike over its own front wheel, so it does much less.
       if (grounded) tl *= L > 0 ? (s.airW[1] > 0.03 ? Math.max(1, b.leanGround) : 0.3) : b.leanGround;
       tq += tl;
-    } else if (!grounded) tq -= s.w * (s.relT > 0 ? LEAN_STOP : b.airDamp) * b.Isys;
+    } else if (pv) tq -= s.w * pv.lock * b.Isys;
+    else if (!grounded) tq -= s.w * (s.relT > 0 ? LEAN_STOP : b.airDamp) * b.Isys;
+    // the sidecar: the passenger and the third wheel keep it within b.rail of its line, so it can neither flip nor tip
+    if (b.rail) {
+      var ref = 0;
+      if (grounded) { var gi = s.airW[0] < 0.03 ? 0 : 1; ref = Math.atan2(-s.nrmX[gi], s.nrmY[gi]); }
+      else if (s.vx > 1) ref = clamp(Math.atan2(s.vy, s.vx), -0.8, 0.8);
+      var rel = wrap(s.a - ref), lim = b.rail;
+      if (rel > lim) tq -= ((rel - lim) * 80 + (s.w > 0 ? s.w * 12 : 0)) * b.Isys;
+      else if (rel < -lim) tq -= ((rel + lim) * 80 + (s.w < 0 ? s.w * 12 : 0)) * b.Isys;
+    }
+    // the glider: a wing lifts in proportion to speed squared and how far the nose is above the line of flight
+    s.lift = 0;
+    if (b.glide && s.air0 && !s.gnd[0] && !s.gnd[1] && s.vx > 1.5) {
+      var gam = Math.atan2(s.vy, s.vx), aoa = wrap(s.a - gam) + b.glide.inc, aab = aoa < 0 ? -aoa : aoa;
+      var cl = clamp(aoa * 2.2, -0.5, 1.1);
+      if (aab > 0.55) cl *= Math.max(0, 1 - (aab - 0.55) * 2.5);           // stalls if pointed too far off its line
+      var Lf = clamp(b.glide.k * cl * sp * sp, -0.5 * b.Mtot * g, b.glide.cap * b.Mtot * g), Df = b.glide.k * 0.22 * cl * cl * sp * sp;
+      fx += (-s.vy * Lf - s.vx * Df) / sp; fy += (s.vx * Lf - s.vy * Df) / sp;
+      s.lift = Lf / (b.Mtot * g);
+    }
     if (b.rocket && gas) {
       var rk = b.rocket * (boost ? 1.3 : 1), fwd = s.vx * ca + s.vy * sa;
       var rl = (b.rocketV * (boost ? 1.15 : 1) - fwd) / 4;
@@ -814,6 +869,7 @@ function substep(s, inp, dt) {
   for (i = 0; i < 2; i++) {
     s.wx[i] += s.wvx[i] * dt; s.wy[i] += s.wvy[i] * dt; s.wa[i] += s.ww[i] * dt;
   }
+  SM = null;
 }
 
 /* One 120th of a second of game time. */
@@ -832,7 +888,25 @@ function tick(s, inp, settling) {
   if (tgt === 0 && s.pl !== 0) s.relT = LEAN_STOP_T;
   if (s.relT > 0) s.relT -= DT;
   s.pl = tgt;
+  // the hop bike: tap brake in the air for one puff of air straight out of the bottom of the bike
+  var btn = inp.brake ? 1 : 0;
+  if (b.hop && !settling) {
+    if (s.gnd[0] || s.gnd[1]) s.hopReady = 1;
+    else if (btn && !s.btn && s.hopReady && !s.crashed && !s.finished && s.airW[0] > 0.08 && s.airW[1] > 0.08) {
+      var hx = -Math.sin(s.a) * b.hop, hy = Math.cos(s.a) * b.hop;
+      s.vx += hx; s.vy += hy;
+      for (i = 0; i < 2; i++) { s.wvx[i] += hx; s.wvy[i] += hy; }
+      s.hopReady = 0; s.events.push({ t: 'hop', x: s.x, y: s.y, a: s.a });
+    }
+  }
+  s.btn = btn;
   for (i = 0; i < NSUB; i++) substep(s, inp, H);
+  // sticky tyres let go after b.stickMax seconds on anything steep, and recover on gentle ground
+  if (b.stick) {
+    var steep = (s._gnd[0] && s.nrmY[0] < 0.6) || (s._gnd[1] && s.nrmY[1] < 0.6);
+    if (steep) s.stickT = Math.max(0, s.stickT - DT);
+    else if (s._gnd[0] || s._gnd[1]) s.stickT = Math.min(b.stickMax, s.stickT + DT * 1.5);
+  }
 
   var wasAir = s.air;
   for (i = 0; i < 2; i++) {
@@ -919,7 +993,7 @@ function tick(s, inp, settling) {
 RR.tick = function (s, inp) { tick(s, inp, false); };
 
 /* Copy of everything that changes, so the test bot can rewind. */
-var NUMS = ['x', 'y', 'a', 'vx', 'vy', 'w', 'time', 'lp', 'airT', 'rot', 'boost', 'flips', 'bestAir', 'jumpX', 'bestJump', 'maxSpeed', 'wheelieT', 'finishTime', 'sinceCrash', 'driveF', 'pl', 'relT', 'padT', 'bonks', 'bonkT'];
+var NUMS = ['x', 'y', 'a', 'vx', 'vy', 'w', 'time', 'lp', 'airT', 'rot', 'boost', 'flips', 'bestAir', 'jumpX', 'bestJump', 'maxSpeed', 'wheelieT', 'finishTime', 'sinceCrash', 'driveF', 'pl', 'relT', 'padT', 'bonks', 'bonkT', 'hopReady', 'btn', 'stickT', 'lift'];
 var ARRS = ['wx', 'wy', 'wvx', 'wvy', 'wa', 'ww', 'comp', 'compV', 'gnd', 'load', 'slip', 'mat', 'nrmX', 'nrmY', 'bot', 'airW', '_pvx', '_pvy'];
 RR.snapshot = function (s) {
   var o = {}, i;
@@ -927,6 +1001,7 @@ RR.snapshot = function (s) {
   for (i = 0; i < ARRS.length; i++) o[ARRS[i]] = s[ARRS[i]].slice();
   o.started = s.started; o.crashed = s.crashed; o.finished = s.finished; o.air = s.air; o.crashCause = s.crashCause;
   o.gates = Array.prototype.slice.call(s.gates);
+  o.smash = s.smash ? Array.prototype.slice.call(s.smash) : null;
   o.pendFlip = s.pendFlip ? { n: s.pendFlip.n, dir: s.pendFlip.dir, t: s.pendFlip.t, air: s.pendFlip.air } : null;
   return o;
 };
@@ -936,6 +1011,7 @@ RR.restore = function (s, o) {
   for (i = 0; i < ARRS.length; i++) s[ARRS[i]] = o[ARRS[i]].slice();
   s.started = o.started; s.crashed = o.crashed; s.finished = o.finished; s.air = o.air; s.crashCause = o.crashCause;
   for (i = 0; i < o.gates.length; i++) s.gates[i] = o.gates[i];
+  if (s.smash && o.smash) for (i = 0; i < o.smash.length; i++) s.smash[i] = o.smash[i];
   s.pendFlip = o.pendFlip ? { n: o.pendFlip.n, dir: o.pendFlip.dir, t: o.pendFlip.t, air: o.pendFlip.air } : null;
   s.events.length = 0;
 };
@@ -963,13 +1039,14 @@ function TB(world, seed) {
   this.R = 7;
   // back wall, then the start pad
   this.pts.push(-16, 9, -16, 0); this.mats.push(this.mat);
+  this.logIds = [-1]; this._log = -1; this.logN = 0;      // which log (if any) each stretch of ground belongs to
   this.x = -16; this.y = 0;
   this.line(16 + 9);
   this.start = [1.2, 0];
 }
 var P = TB.prototype;
 P.rnd = function () { this.seed = (this.seed * 1664525 + 1013904223) >>> 0; return this.seed / 4294967296; };
-P.push = function (x, y) { this.pts.push(x, y); this.mats.push(this.mat); this.x = x; this.y = y; };
+P.push = function (x, y) { this.pts.push(x, y); this.mats.push(this.mat); this.logIds.push(this._log); this.x = x; this.y = y; };
 P.line = function (len) {
   var n = Math.max(1, Math.round(len / 3)), c = Math.cos(this.ang), s = Math.sin(this.ang);
   var x0 = this.x, y0 = this.y;
@@ -1069,12 +1146,16 @@ P.logs = function (count, spacing, r) {
     var rr = r * (0.85 + 0.3 * this.rnd()), x0 = this.x, y0 = this.y, hh = rr * 0.72;
     var half = Math.acos(1 - hh / rr), n = 7;
     this.mat = this.world.logMat == null ? RR.MAT.wood : this.world.logMat;
+    var id = this.logN++; this._log = id;
     for (var i = 0; i <= n; i++) {
       var a = -half + 2 * half * i / n;
       this.push(x0 + rr * Math.sin(half) + rr * Math.sin(a), y0 - (rr - hh) + rr * Math.cos(a));
     }
     this.y = y0; this.pts[this.pts.length - 1] = y0;
-    this.feats.push({ t: 'log', x: x0 + rr * Math.sin(half), y: y0 - (rr - hh), r: rr });
+    this._log = -1; this.logIds[this.logIds.length - 1] = -1;
+    // the flat ground under the log, which only a bike that has smashed it ever touches
+    this.chains.push({ pts: [x0 - 0.05, y0, this.x + 0.05, y0], mat: this.baseMat, under: id, depth: 0.4, kind: 'logfloor' });
+    this.feats.push({ t: 'log', x: x0 + rr * Math.sin(half), y: y0 - (rr - hh), r: rr, id: id });
     this.mat = m;
   }
   return this;
@@ -1165,7 +1246,7 @@ P.finish = function (name, id) {
   this.feats.push({ t: 'finish', x: fx, y: this.y });
   this.line(55);
   this.push(this.x, this.y + 9);
-  var main = { pts: this.pts, mats: this.mats, depth: 0.4, kind: 'ground' };
+  var main = { pts: this.pts, mats: this.mats, logs: this.logIds, depth: 0.4, kind: 'ground' };
   var chains = [main].concat(this.chains);
   var n = this.pts.length / 2, xs = new Float64Array(n), ys = new Float64Array(n), minY = 1e9, maxY = -1e9;
   for (var i = 0; i < n; i++) {
@@ -1176,7 +1257,7 @@ P.finish = function (name, id) {
   var tr = {
     id: id, name: name, world: this.world.id, gravity: this.world.gravity,
     chains: chains, col: RR.buildCollision(chains), loops: this.loops, hazards: this.hazards, feats: this.feats,
-    start: this.start, finishX: fx, killY: minY - 14, minY: minY, maxY: maxY, xs: xs, ys: ys, mats: this.mats,
+    start: this.start, finishX: fx, killY: minY - 14, minY: minY, maxY: maxY, xs: xs, ys: ys, mats: this.mats, logCount: this.logN,
     length: fx - this.start[0]
   };
   return tr;
@@ -1394,6 +1475,118 @@ RR.BIKES = [
     col: ['#dfe4ea', '#ff6a1f', '#2a3550'], suit: ['#dfe4ea', '#ff6a1f', '#2a3550'],
     snd: { type: 'jet', pitch: 1.0, gears: 0 },
     unlock: { type: 'stars', n: 100 }
+  },
+
+  /* ---- Phase 2: nine bikes, each with one trick no other bike has (trick: the line the garage shows) ---- */
+  {
+    id: 'puffin', name: 'Puffin 150', kind: 'puffer', tag: 'One extra hop in mid-air', wipe: 'puffball',
+    blurb: 'A light trail bike with a tank of compressed air and a nozzle under the seat.',
+    trick: 'Tap brake in the air for one puff straight out of the bottom of the bike. One per jump; landing refills it.',
+    mass: 170, kgyr: 0.46, wb: 1.40, rr: 0.32, rf: 0.33, com: [0.62, 0.80], wheelMass: [10, 9], rake: 27, swing: 10,
+    sus: [{ travel: 0.25, freq: 2.0, sag: 0.3, zc: 0.42, zr: 0.95 }, { travel: 0.26, freq: 1.95, sag: 0.28, zc: 0.40, zr: 0.90 }],
+    accel: 0.62, vp: 9, vmax: 15.8, grip: 1.0, brake: 0.85, leanAcc: 15, spin: 6.2, cda: 0.5, hop: 3.0,
+    rider: { seat: [0.41, 0.92], peg: [0.51, 0.42], grip: [0.96, 1.15], scale: 1, torso: 0.38 },
+    col: ['#2bb3c0', '#f5f1e6', '#ff8a3d'], suit: ['#1d2233', '#2bb3c0', '#ff8a3d'],
+    snd: { type: 'puffer', pitch: 1.1, gears: 5 },
+    unlock: { type: 'gears', n: 6, text: 'Find 6 hidden gears' }
+  },
+  {
+    id: 'hopper', name: 'Grasshopper', kind: 'springer', tag: 'Half a metre of suspension', wipe: 'boingo',
+    blurb: 'A pit bike on stilts. Its legs have twice the travel of anything else, so it floats over bumps and swallows any landing.',
+    trick: 'Bottomless suspension: drops, bumps and logs that rattle every other bike barely move this one. Lands soft from anything, but sags on the lip of a jump, so it flies a little shorter.',
+    mass: 140, kgyr: 0.43, wb: 1.12, rr: 0.25, rf: 0.25, com: [0.50, 0.78], wheelMass: [5.5, 5], rake: 26, swing: 12,
+    sus: [{ travel: 0.48, freq: 1.45, sag: 0.3, zc: 0.40, zr: 0.95 }, { travel: 0.50, freq: 1.45, sag: 0.3, zc: 0.38, zr: 0.92 }],
+    accel: 0.58, vp: 8, vmax: 15.0, grip: 1.0, brake: 0.8, leanAcc: 14, spin: 6.4, cda: 0.5,
+    rider: { seat: [0.30, 0.95], peg: [0.40, 0.52], grip: [0.80, 1.18], scale: 1, torso: 0.30 },
+    col: ['#7ac943', '#2a2f1e', '#f2e14a'], suit: ['#2a2f1e', '#7ac943', '#f2e14a'],
+    snd: { type: 'springer', pitch: 1.35, gears: 4 },
+    unlock: { type: 'jump', n: 25, text: 'Clear 25 m in one jump' }
+  },
+  {
+    id: 'couple', name: 'Odd Couple', kind: 'sidecar', tag: 'Cannot flip, cannot tip', wipe: 'tandem',
+    blurb: 'An old sidecar outfit with a passenger who leans for you. It will not flip, and it will not tip over either.',
+    trick: 'Your passenger keeps the bike close to the line it is travelling, in the air and on the ground. No flips ever, so no flip boosts, but no wheelie or bad landing ever throws you on your head.',
+    mass: 300, kgyr: 0.55, wb: 1.56, rr: 0.32, rf: 0.33, com: [0.72, 0.72], wheelMass: [13, 10], rake: 28, swing: 8,
+    sus: [{ travel: 0.18, freq: 2.0, sag: 0.3, zc: 0.48, zr: 1.0 }, { travel: 0.20, freq: 1.95, sag: 0.3, zc: 0.45, zr: 0.95 }],
+    accel: 0.80, vp: 10, vmax: 18.4, grip: 1.12, brake: 0.95, leanAcc: 10, spin: 3.6, cda: 0.7, rail: 0.6,
+    rider: { seat: [0.46, 0.86], peg: [0.66, 0.40], grip: [1.02, 1.12], scale: 1, torso: 0.22 },
+    col: ['#c23b2e', '#ece3c8', '#2a2f3a'], suit: ['#5a4632', '#ece3c8', '#2a2f3a'],
+    snd: { type: 'boxer', pitch: 0.8, gears: 4 },
+    unlock: { type: 'finishes', n: 60, text: 'Finish 60 runs' }
+  },
+  {
+    id: 'gecko', name: 'Gecko', kind: 'gecko', tag: 'Sticks to walls for a moment', wipe: 'splat',
+    blurb: 'Soft, tacky tyres that suck onto whatever they touch. Lands like it is glued down.',
+    trick: 'Sticky tyres: they hold you onto steep faces, walls and the top of a loop for about a second, then let go until you are back on gentle ground.',
+    mass: 178, kgyr: 0.45, wb: 1.36, rr: 0.30, rf: 0.31, com: [0.62, 0.72], wheelMass: [10, 9], rake: 26, swing: 9,
+    sus: [{ travel: 0.22, freq: 2.1, sag: 0.3, zc: 0.45, zr: 0.95 }, { travel: 0.23, freq: 2.05, sag: 0.3, zc: 0.42, zr: 0.9 }],
+    accel: 0.68, vp: 9, vmax: 16.2, grip: 1.18, brake: 0.9, leanAcc: 15.5, spin: 6.0, cda: 0.5, stick: { f: 1.2, t: 1.2 },
+    rider: { seat: [0.40, 0.84], peg: [0.50, 0.38], grip: [0.92, 1.08], scale: 1, torso: 0.46 },
+    col: ['#3ccf6e', '#f2c230', '#1b1d24'], suit: ['#1b1d24', '#3ccf6e', '#f2c230'],
+    snd: { type: 'gecko', pitch: 1.2, gears: 0 },
+    unlock: { type: 'challenges', n: 12, text: 'Pull off 12 track challenges' }
+  },
+  {
+    id: 'sandpiper', name: 'Sandpiper', kind: 'paddle', tag: 'Flies on sand, skates on rock', wipe: 'sandstorm',
+    blurb: 'A desert racer with a paddle tyre. On loose ground nothing touches it. On rock, tarmac and steel the paddles skate.',
+    trick: 'The paddle tyre: much more grip and much less drag on sand, snow, moon dust and dirt, and a lot less grip on rock, wood, tarmac and steel.',
+    mass: 196, kgyr: 0.48, wb: 1.54, rr: 0.36, rf: 0.345, com: [0.68, 0.84], wheelMass: [13, 10], rake: 28, swing: 10,
+    sus: [{ travel: 0.30, freq: 1.8, sag: 0.3, zc: 0.44, zr: 0.98 }, { travel: 0.31, freq: 1.75, sag: 0.28, zc: 0.42, zr: 0.95 }],
+    accel: 0.78, vp: 10, vmax: 18.0, grip: 1.0, brake: 0.85, leanAcc: 13.5, spin: 5.8, cda: 0.55,
+    surf: { sand: [1.6, 0.35], snow: [1.5, 0.4], dust: [1.45, 0.5], dirt: [1.15, 0.8], rock: [0.6, 1], wood: [0.65, 1], steel: [0.6, 1], tarmac: [0.6, 1], kerb: [0.6, 1], rubber: [0.65, 1], boost: [0.7, 1] },
+    rider: { seat: [0.44, 0.97], peg: [0.54, 0.43], grip: [1.02, 1.22], scale: 1, torso: 0.36 },
+    col: ['#e8b04a', '#3a2a1e', '#2f8fd6'], suit: ['#f2e6c8', '#e8b04a', '#3a2a1e'],
+    snd: { type: 'paddle', pitch: 0.9, gears: 5 },
+    unlock: { type: 'worldgears', w: 'dust', n: 8, text: 'Find all 8 Dustbowl gears' }
+  },
+  {
+    id: 'whiplash', name: 'Whiplash', kind: 'freestyle', tag: 'Hand brake for air pivots', wipe: 'spinout',
+    blurb: 'A freestyle bike with a hand brake on a huge flywheel. In the air it turns where you tell it and stops where you tell it.',
+    trick: 'Hold brake in the air: with a lean the bike spins almost twice as fast, without one it stops turning dead. Flips on demand, landed exactly.',
+    mass: 166, kgyr: 0.45, wb: 1.46, rr: 0.33, rf: 0.345, com: [0.64, 0.82], wheelMass: [10, 9], rake: 27, swing: 10,
+    sus: [{ travel: 0.29, freq: 1.9, sag: 0.3, zc: 0.42, zr: 0.95 }, { travel: 0.30, freq: 1.9, sag: 0.28, zc: 0.40, zr: 0.9 }],
+    accel: 0.70, vp: 9.5, vmax: 16.8, grip: 1.02, brake: 0.9, leanAcc: 16, spin: 6.6, cda: 0.5, pivot: { spin: 1.7, tq: 1.8, lock: 22 },
+    rider: { seat: [0.42, 0.95], peg: [0.52, 0.43], grip: [1.00, 1.20], scale: 1, torso: 0.36 },
+    col: ['#ff3d7f', '#1b1d24', '#ffffff'], suit: ['#1b1d24', '#ff3d7f', '#ffffff'],
+    snd: { type: 'freestyle', pitch: 1.05, gears: 5 },
+    unlock: { type: 'flipstars', n: 16, text: 'Earn 16 flip stars' }
+  },
+  {
+    id: 'icepick', name: 'Icepick', kind: 'ice', tag: 'Spiked tyres bite into ice', wipe: 'shiver',
+    blurb: 'A snow racer on tyres full of steel studs. Ice is like dirt to it. Hard ground is not, quite.',
+    trick: 'Studded tyres: full grip on ice and better grip on snow and oil, so it can brake and climb where nothing else can. A little less grip on rock, tarmac and steel.',
+    mass: 195, kgyr: 0.47, wb: 1.44, rr: 0.33, rf: 0.34, com: [0.66, 0.80], wheelMass: [12, 10], rake: 27, swing: 10,
+    sus: [{ travel: 0.26, freq: 1.95, sag: 0.3, zc: 0.44, zr: 0.98 }, { travel: 0.27, freq: 1.9, sag: 0.28, zc: 0.42, zr: 0.95 }],
+    accel: 0.70, vp: 9.5, vmax: 17.0, grip: 1.0, brake: 1.0, leanAcc: 14.5, spin: 6.0, cda: 0.55,
+    surf: { ice: [4.6, 1], snow: [1.5, 1], oil: [1.6, 1], tarmac: [0.82, 1], steel: [0.75, 1], rock: [0.85, 1], kerb: [0.8, 1], boost: [0.85, 1] },
+    rider: { seat: [0.42, 0.92], peg: [0.52, 0.42], grip: [0.98, 1.16], scale: 1, torso: 0.4 },
+    col: ['#e9f4ff', '#2c5ea8', '#9fe8ff'], suit: ['#2c5ea8', '#e9f4ff', '#9fe8ff'],
+    snd: { type: 'ice', pitch: 1.0, gears: 5 },
+    unlock: { type: 'worldgears', w: 'frost', n: 8, text: 'Find all 8 Frostbite gears' }
+  },
+  {
+    id: 'rhino', name: 'Rhino', kind: 'ram', tag: 'Smashes straight through logs', wipe: 'stampede',
+    blurb: 'A huge adventure bike with a steel bull bar. Heavy, slow to turn, and a log in its way is firewood.',
+    trick: 'The bull bar: logs, rocks and tyres lying on the track break apart when the Rhino hits them faster than a jog. Everything else bounces over them.',
+    mass: 330, kgyr: 0.54, wb: 1.62, rr: 0.38, rf: 0.40, com: [0.78, 0.80], wheelMass: [17, 14], rake: 28, swing: 9,
+    sus: [{ travel: 0.24, freq: 1.8, sag: 0.3, zc: 0.46, zr: 1.0 }, { travel: 0.26, freq: 1.75, sag: 0.3, zc: 0.44, zr: 0.95 }],
+    accel: 0.80, vp: 11, vmax: 18.5, grip: 1.08, brake: 0.9, leanAcc: 12.5, spin: 5.2, cda: 0.7, smash: 2.5,
+    rider: { seat: [0.46, 1.00], peg: [0.58, 0.48], grip: [1.06, 1.26], scale: 1, torso: 0.34 },
+    col: ['#5f6b4e', '#2a2d26', '#e0a43a'], suit: ['#3a3f30', '#e0a43a', '#2a2d26'],
+    snd: { type: 'ram', pitch: 0.7, gears: 6 },
+    unlock: { type: 'challenges', n: 30, text: 'Pull off 30 track challenges' }
+  },
+  {
+    id: 'albatross', name: 'Albatross', kind: 'glider', tag: 'Wings that hold you up', wipe: 'nosedive',
+    blurb: 'A bike with a pair of wings bolted to the frame. Pull the nose up in the air and it floats; push it down and it dives.',
+    trick: 'The wings: the faster you go and the higher you hold the nose, the more they lift, so you can stretch a jump or come down gently. No air on the moon, so in Low Orbit they do nothing.',
+    mass: 182, kgyr: 0.50, wb: 1.48, rr: 0.32, rf: 0.33, com: [0.68, 0.78], wheelMass: [10, 9], rake: 27, swing: 9,
+    sus: [{ travel: 0.22, freq: 2.0, sag: 0.3, zc: 0.45, zr: 0.98 }, { travel: 0.23, freq: 1.95, sag: 0.3, zc: 0.42, zr: 0.95 }],
+    accel: 0.68, vp: 10, vmax: 17.0, grip: 1.0, brake: 0.9, leanAcc: 12, spin: 4.8, airDamp: 2.2, cda: 0.6, glide: { k: 5.5, inc: -0.04, cap: 0.7 },
+    rider: { seat: [0.42, 0.86], peg: [0.52, 0.40], grip: [0.98, 1.08], scale: 1, torso: 0.5 },
+    col: ['#f5f1e6', '#1d4e89', '#f2c230'], suit: ['#1d4e89', '#f5f1e6', '#f2c230'],
+    snd: { type: 'glider', pitch: 1.0, gears: 5 },
+    unlock: { type: 'gears', n: 36, text: 'Find 36 hidden gears' }
   }
 ];
 
@@ -2527,7 +2720,7 @@ function wrap(a) { return a - TAU * Math.round(a / TAU); }
 
 RR.botInput = function (s, P, out) {
   var b = s.b, tr = s.track, air = !s.gnd[0] && !s.gnd[1];
-  var err, th = P.th || 0.2, lean = 0;
+  var err, th = P.th || 0.2, lean = 0, trick = false;
   if (!air) {
     var i = s.gnd[0] ? 0 : 1;
     var slope = Math.atan2(-s.nrmX[i], s.nrmY[i]);
@@ -2541,6 +2734,11 @@ RR.botInput = function (s, P, out) {
       x += vx * h; vy -= g * h; y += vy * h; t += h;
       if (y <= RR.groundY(tr, x)) { target = (RR.groundSlope(tr, x - 0.6) + RR.groundSlope(tr, x + 0.6)) * 0.5; T = t; break; }
     }
+    // the hop bike saves its puff for a jump that is going to come up short
+    if (b.hop && s.hopReady && s.vy < 0 && P.trick !== false) {
+      var hz = tr.hazards;
+      for (var q = 0; q < hz.length; q++) if (x > hz[q].x0 - 0.3 && x < hz[q].x1 + 0.6) { trick = true; break; }
+    }
     if (target > 1.2 || target < -1.2) target = 0;
     target += 0.08 + (P.airBias || 0);
     // where the nose will be pointing at touchdown if we do nothing more
@@ -2551,8 +2749,10 @@ RR.botInput = function (s, P, out) {
     var big = T > (P.minAir == null ? 0.3 : P.minAir) ? 1 : 2.5;
     if (err > th * big || (cur > 0 && err > th * 0.3)) lean = 1;
     else if (err < -th * big || (cur < 0 && err < -th * 0.3)) lean = -1;
+    // the pivot bike stops its spin dead once the nose is where it wants it
+    if (b.pivot && lean === 0 && P.trick !== false && (s.w > 1 || s.w < -1) && err < th && err > -th) trick = true;
   }
-  out.lean = lean;
+  out.lean = lean; out.trick = trick;
   var sp = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
   var cap = P.vcap || 1e9;
   /* Slow zones: stretches where full gas gets you hurt. The track carries a sensible
@@ -9468,6 +9668,575 @@ KINDS.chute = {
   }
 };
 
+/* ------------------------------ phase 2 bikes ------------------------------ */
+/* where point i of a figure is in the world */
+function fw(f, i) { var p = f.pts[i], ca = Math.cos(f.a), sa = Math.sin(f.a), x = p.x * f.sx, y = p.y * f.sy; return { x: f.x + x * ca - y * sa, y: f.y + x * sa + y * ca }; }
+/* a figure let go: a rag doll in the same pose, moving at vx, vy */
+function ragFrom(f, vx, vy) { var pts = [], i; for (i = 0; i < f.pts.length; i++) { var q = fw(f, i); pts.push({ x: q.x, y: q.y, px: q.x - vx / 120, py: q.y - vy / 120 }); } return { pts: pts, sc: f.sc, t: 0 }; }
+/* a rag doll frozen stiff: a figure measured from its hips, upright */
+function figFrom(rag) { var p = rag.pts, hx = p[2].x, hy = p[2].y, loc = [], i; for (i = 0; i < p.length; i++) loc.push({ x: p[i].x - hx, y: p[i].y - hy }); return { pts: loc, sc: rag.sc, x: hx, y: hy, a: 0, vx: 0, vy: 0, w: 0, sx: 1, sy: 1 }; }
+/* ease a figure's pose toward P (hip at 0,0, y up, for a rider of scale 1) */
+function setPose(f, P, k) { for (var i = 0; i < P.length; i++) { f.pts[i].x += (P[i][0] * f.sc - f.pts[i].x) * k; f.pts[i].y += (P[i][1] * f.sc - f.pts[i].y) * k; } }
+/* the same angle as a, but within half a turn of b, so easing from one to the other goes the short way */
+function near(a, b) { while (a - b > Math.PI) a -= TAU; while (a - b < -Math.PI) a += TAU; return a; }
+/* ground height, or a stand-in where there is none (over a gap) */
+function floorAt(G, x, alt) { var gy = groundAt(G, x); return gy < G.track.minY - 5 ? alt : gy; }
+/* clip drawing to what is above the ground, from x - span to x + span */
+function aboveGround(c, tr, x, span, top) {
+  c.beginPath(); c.moveTo(x - span, RR.groundY(tr, x - span) - 0.02);
+  for (var i = -span + 0.2; i <= span + 0.01; i += 0.2) c.lineTo(x + i, RR.groundY(tr, x + i) - 0.02);
+  c.lineTo(x + span, top); c.lineTo(x - span, top); c.closePath(); c.clip();
+}
+function dustCol(G) { return R.THEMES[G.track.worldIndex].dust; }
+function hexMix(a, b, k) {
+  if (typeof a !== 'string' || a[0] !== '#' || a.length !== 7) return k > 0.5 ? b : a;
+  var x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16), r = ((x >> 16) * (1 - k) + (y >> 16) * k) | 0, g = (((x >> 8) & 255) * (1 - k) + ((y >> 8) & 255) * k) | 0, bl = ((x & 255) * (1 - k) + (y & 255) * k) | 0;
+  return 'rgb(' + r + ',' + g + ',' + bl + ')';
+}
+function feather(c, p) {
+  var r = p.r; c.rotate(Math.sin(p.age * 5 + p.seed) * 0.7);
+  c.beginPath(); c.moveTo(0, -r); c.quadraticCurveTo(r * 0.55, -r * 0.1, 0, r); c.quadraticCurveTo(-r * 0.45, 0, 0, -r); c.closePath();
+  c.fillStyle = p.col; c.fill(); c.lineWidth = 0.014; c.strokeStyle = OUT; c.stroke();
+  c.beginPath(); c.moveTo(0, -r * 1.25); c.lineTo(0, r * 0.8); c.lineWidth = 0.012; c.stroke();
+}
+function feathers(x, y, n, cols, sp) { for (var i = 0; i < n; i++) R.emit(8, x + rnd(-0.2, 0.2), y + rnd(-0.1, 0.3), rnd(-sp, sp), rnd(0.5, sp * 1.3), rnd(1.6, 2.6), rnd(0.1, 0.15), cols[i % cols.length], { g: 0.18, drag: 2.4, front: 1, rot: rnd(0, 6), vr: rnd(-3, 3), seed: rnd(0, 6), fade: 0.3, draw: feather }); }
+/* a little motorbike, for the dizzy rider to see going round */
+function tinyBike(c, s, col) {
+  c.scale(s, s);
+  A.circ(c, -0.5, 0, 0.32, '#1c1d22', 0.09); A.circ(c, 0.55, 0, 0.32, '#1c1d22', 0.09);
+  A.shape(c, [-0.5, 0, -0.1, 0.5, 0.45, 0.5, 0.55, 0], col, 0.09);
+  A.line(c, [0.45, 0.5, 0.35, 0.82, 0.62, 0.86], 0.1, OUT);
+}
+/* poses for the stiff figure: hip at 0,0, y up, facing +x */
+var STAND = [[0.03, 0.72], [0, 0.5], [0, 0], [0.3, 0.52], [0.59, 0.55], [0.04, -0.44], [0.02, -0.9], [-0.3, 0.52], [-0.59, 0.55], [0.27, -0.31], [0.1, -0.66]];
+var SITUP = [[0.05, 0.72], [0.02, 0.5], [0, 0], [0.16, 0.76], [0.22, 1.04], [0.42, 0.02], [0.58, -0.4], [-0.12, 0.76], [-0.14, 1.04], [0.38, 0.06], [0.5, -0.38]];
+var FELL = [[0.02, 0.72], [0, 0.5], [0, 0], [0.04, 0.76], [0.06, 1.02], [0.03, -0.44], [0.02, -0.9], [-0.02, 0.76], [-0.02, 1.02], [0.0, -0.44], [-0.01, -0.9]];
+var FLY = [[0, 0.72], [0, 0.5], [0, 0], [0, 0.5], [0, 0.5], [0.05, -0.43], [0.02, -0.89], [0, 0.5], [0, 0.5], [-0.04, -0.43], [-0.08, -0.88]];
+
+/* Puffin: the air tank lets go and jets the rider about like a balloon let go of */
+function tankOn(c, p0, p1, col, stripe) {
+  var tx = p1.x - p0.x, ty = p1.y - p0.y, L = Math.sqrt(tx * tx + ty * ty) || 1, ux = tx / L, uy = ty / L, bx = -uy, by = ux;
+  var cx = (p0.x + p1.x) / 2 + bx * 0.17, cy = (p0.y + p1.y) / 2 + by * 0.17;
+  c.save(); c.translate(cx, cy); c.rotate(Math.atan2(uy, ux) - Math.PI / 2);
+  c.beginPath(); if (c.roundRect) c.roundRect(-0.085, -0.22, 0.17, 0.44, 0.08); else c.rect(-0.085, -0.22, 0.17, 0.44);
+  c.fillStyle = col; c.fill(); c.lineWidth = 0.03; c.strokeStyle = OUT; c.stroke();
+  A.line(c, [-0.085, 0.06, 0.085, 0.06], 0.05, stripe);
+  A.line(c, [-0.04, 0.1, -0.04, 0.18], 0.025, 'rgba(255,255,255,0.7)');
+  A.shape(c, [-0.04, -0.22, 0.04, -0.22, 0.06, -0.3, -0.06, -0.3], '#555b66', 0.025);
+  c.restore();
+}
+KINDS.puffball = {
+  start: function (w, G) { var f = w.f = figure(G); f.vx = G.sim.vx * 0.3; f.vy = 3; w.hx = f.x + 1.2; w.hy = Math.max(f.y, floorAt(G, f.x, f.y) + 1) + 2; w.limp = false; Au().wipe('vent'); },
+  step: function (w, G, dt) {
+    var f = w.f, g = G.sim.g;
+    if (!w.limp) {
+      // spinning every which way, pushed out of the seat of the pants, with a soft pull that keeps it in shot
+      f.w = 7 + 9 * Math.sin(w.t * 2.3 + 0.5) + 6 * Math.sin(w.t * 5.1);
+      f.a += f.w * dt;
+      var ax = -Math.sin(f.a), ay = Math.cos(f.a), th = 19 * (1 - w.t / 2.1);
+      f.vx += (ax * th + (w.hx - f.x) * 2.2) * dt; f.vy += (ay * th + (w.hy - f.y) * 2.2 - g * 0.3) * dt;
+      var dk = Math.exp(-2.2 * dt); f.vx *= dk; f.vy *= dk;
+      f.x += f.vx * dt; f.y += f.vy * dt;
+      var gy = floorAt(G, f.x, f.y - 1);
+      if (f.y < gy + 0.55) { f.y = gy + 0.55; f.vy = Math.abs(f.vy) * 0.6 + 1; }
+      if (Math.random() < dt * 40) R.emit(0, f.x - ax * 0.2, f.y - ay * 0.2, -ax * rnd(4, 7) + f.vx * 0.3, -ay * rnd(4, 7) + f.vy * 0.3, rnd(0.25, 0.45), rnd(0.07, 0.12), '#ffffff', { gr: 0.9, a: 0.7, drag: 3, front: 1 });
+      if (w.t > 1.8) { w.limp = true; Au().wipe('pfft'); w.rag = ragFrom(f, f.vx * 0.5, f.vy * 0.5); puff(f.x, f.y, 4, '#ffffff', 1.2); }
+      w.fx = f.x; w.fy = f.y;
+    } else { R.stepRag(w.rag, G.track, g, dt); w.fx = w.rag.pts[2].x; w.fy = w.rag.pts[2].y; }
+  },
+  draw: function (w, c, dd) {
+    var col = '#cfd6de', st = dd.suit[1];
+    if (!w.limp) {
+      var f = w.f;
+      c.save(); c.translate(f.x, f.y); c.rotate(f.a); tankOn(c, f.pts[2], f.pts[1], col, st); c.restore();
+      drawFigure(c, f, dd);
+    } else { tankOn(c, w.rag.pts[2], w.rag.pts[1], col, st); R.drawRag(c, w.rag, dd); }
+  }
+};
+
+var SPRING = 1.35;
+/* Grasshopper: the suspension takes the rider with it. Off on a pogo spring, then a doorstop wobble */
+KINDS.boingo = {
+  start: function (w, G) {
+    var f = w.f = figure(G), s = G.sim;
+    f.a = near(f.a, 0);
+    w.x = f.x; w.y = f.y + 0.3; w.vy = 2.5; w.dir = s.vx < -1 ? -1 : 1; w.vx = w.dir * 1.2; w.n = 0; w.on = false; w.L = SPRING; w.gy0 = floorAt(G, f.x, f.y - 1); w.done = false; w.sway = 0;
+    w.hops = [1.5, 1.05, 0.65];
+  },
+  step: function (w, G, dt) {
+    var f = w.f, g = G.sim.g, L0 = SPRING;
+    setPose(f, SITUP, Math.min(1, dt * 8)); f.a += (0 - f.a) * Math.min(1, dt * 7);
+    if (!w.done) {
+      var gy = floorAt(G, w.x, w.gy0); w.gy0 = gy;
+      w.vy -= g * dt;
+      if (w.y - L0 < gy) {            // spring on the ground: squashes, then fires back up
+        w.L = Math.max(0.3, w.y - gy);
+        if (!w.on) { w.on = true; Au().wipe('pat'); puff(w.x, gy + 0.05, 3, dustCol(G), 0.8, 0.7); }
+        w.vy += (L0 - w.L) * 90 * dt; w.vx *= 1 - Math.min(1, dt * 6);
+        if (w.y < gy + 0.3) { w.y = gy + 0.3; if (w.vy < 0) w.vy = 0; }
+        if (w.vy > 0 && w.L > SPRING - 0.15) {
+          w.on = false;
+          if (w.n >= w.hops.length) { w.done = true; w.dt0 = w.t; w.bx = w.x; w.by = gy; Au().wipe('doing'); }
+          else { var h = w.hops[w.n++] * Math.sqrt(Math.min(1, g / 9.8)), v = Math.sqrt(2 * g * h); w.vy = v; w.vx = w.dir * 1.3 / (2 * v / g); w.y = gy + L0 + 0.01; w.L = L0; Au().wipe('sproing'); }
+        }
+      } else { w.L += (L0 - w.L) * Math.min(1, dt * 25); w.on = false; }
+      if (!w.done) { w.x += w.vx * dt; w.y += w.vy * dt; }
+      f.sy = 1 - Math.max(0, L0 - w.L) * 0.25;
+    } else {
+      var tt = w.t - w.dt0; w.sway = 0.55 * Math.exp(-tt * 1.3) * Math.sin(tt * 13); f.sy = 1;
+      w.x = w.bx; w.y = w.by + L0;
+    }
+    w.fx = w.x; w.fy = w.y;
+  },
+  draw: function (w, c, dd) {
+    var f = w.f, top = w.done ? { x: w.bx, y: w.by + SPRING } : { x: w.x, y: w.y }, bot = w.done ? { x: w.bx, y: w.by } : { x: w.x, y: w.y - w.L };
+    c.save();
+    if (w.done) { c.translate(bot.x, bot.y); c.rotate(-w.sway); c.translate(-bot.x, -bot.y); }
+    var n = 9, i, dx = top.x - bot.x, dy = top.y - bot.y, pts = [bot.x, bot.y];
+    for (i = 0; i <= n * 2; i++) { var k = (i + 0.5) / (n * 2 + 1); pts.push(bot.x + dx * k + (i % 2 ? 0.13 : -0.13), bot.y + dy * k); }
+    pts.push(top.x, top.y - 0.02);
+    A.line(c, pts, 0.08, OUT); A.line(c, pts, 0.045, '#dfe4ea');
+    A.shape(c, [bot.x - 0.2, bot.y - 0.02, bot.x + 0.2, bot.y - 0.02, bot.x + 0.17, bot.y + 0.06, bot.x - 0.17, bot.y + 0.06], '#3a3f4b', 0.03);
+    A.shape(c, [top.x - 0.16, top.y - 0.06, top.x + 0.16, top.y - 0.06, top.x + 0.16, top.y, top.x - 0.16, top.y], dd.suit[1], 0.03);
+    f.x = top.x; f.y = top.y + 0.04;
+    drawFigure(c, f, dd);
+    c.restore();
+  }
+};
+
+/* Odd Couple: rider and passenger come off together, hand in hand, and the passenger never stops waving */
+var PASS = ['#7a5a3a', '#c9b48a', '#3a2a1e'];
+KINDS.tandem = {
+  start: function (w, G, dd) {
+    var s = G.sim, ca = Math.cos(s.a), sa = Math.sin(s.a), ox = ca * 0.34 + sa * 0.3, oy = sa * 0.34 - ca * 0.3, i;
+    w.rag = R.makeRag(s, G.bikeDef); w.rag2 = R.makeRag(s, G.bikeDef);
+    w.dir = s.vx < -1 ? -1 : 1; var th = Math.sqrt(Math.min(1, s.g / 9.8)), up = 0.035 * th, fw2 = 0.03 * th;
+    // the outfit cannot tip, so the pair are thrown clear over the front together
+    for (i = 0; i < w.rag2.pts.length; i++) { var p = w.rag2.pts[i]; p.x += ox; p.y += oy; p.px += ox + 0.012 - w.dir * fw2; p.py += oy - 0.008 - up; p = w.rag.pts[i]; p.px -= w.dir * fw2 * 0.9; p.py -= up; }
+    w.landT = -1;
+    w.pd = Object.create(dd); w.pd.suit = PASS; w.pd._skin = null;
+    w.said = false; Au().wipe('honk');
+  },
+  step: function (w, G, dt) {
+    var g = G.sim.g, a = w.rag.pts, b = w.rag2.pts, i;
+    R.stepRag(w.rag, G.track, g, dt); R.stepRag(w.rag2, G.track, g, dt);
+    // holding hands
+    for (i = 0; i < 3; i++) { var h1 = a[8], h2 = b[8], dx = h2.x - h1.x, dy = h2.y - h1.y, d = Math.sqrt(dx * dx + dy * dy) || 1e-6; if (d > 0.1) { var f = (d - 0.1) / d * 0.5; h1.x += dx * f; h1.y += dy * f; h2.x -= dx * f; h2.y -= dy * f; } }
+    // the wave: whatever the rest of the passenger is doing, this arm is up and waving
+    if (w.landT < 0 && w.t > 0.3 && b[2].y - floorAt(G, b[2].x, b[2].y - 1) < 0.45) w.landT = w.t;
+    var lt = w.landT < 0 ? -1 : w.t - w.landT;
+    if (lt > 0.15) {                 // once down, sits up to make sure you saw
+      var su = Math.min(1, (lt - 0.15) * 2) * Math.min(1, dt * 8), up = [[1, 0.1 * w.dir, 0.48], [0, 0.14 * w.dir, 0.71]];
+      for (i = 0; i < 2; i++) { var q = b[up[i][0]], tx = b[2].x + up[i][1], ty = b[2].y + up[i][2]; q.x += (tx - q.x) * su; q.y += (ty - q.y) * su; q.px += (tx - q.px) * su; q.py += (ty - q.py) * su; }
+    }
+    var sh = b[1], wv = Math.sin(w.t * 13);
+    b[3].x = sh.x + 0.26 * w.dir; b[3].y = sh.y + 0.16; b[4].x = b[3].x + (0.1 + 0.14 * wv) * w.dir; b[4].y = b[3].y + 0.25;
+    b[3].px = b[3].x; b[3].py = b[3].y; b[4].px = b[4].x; b[4].py = b[4].y;
+    w.lt = lt;
+    if (!w.said && lt > 0.5) { w.said = true; Au().wipe('yoohoo'); }
+    w.fx = (a[2].x + b[2].x) / 2; w.fy = (a[2].y + b[2].y) / 2;
+  },
+  draw: function (w, c, dd) {
+    var b = w.rag2.pts, t = w.t, k;
+    // a scarf streaming off the passenger's neck
+    var sc = [b[1].x, b[1].y + 0.08];
+    for (k = 1; k <= 4; k++) sc.push(b[1].x - 0.17 * k, b[1].y + 0.1 + Math.sin(t * 15 - k * 1.3) * 0.05 * k);
+    A.curve(c, sc, 0.07, '#e2402f', 0.035);
+    R.drawRag(c, w.rag2, w.pd);
+    // a leather flying cap and goggles over the helmet
+    var ha = Math.atan2(b[0].y - b[1].y, b[0].x - b[1].x) - Math.PI / 2;
+    c.save(); c.translate(b[0].x, b[0].y); c.rotate(ha);
+    A.circ(c, 0, 0, 0.165, '#6b4a2e', 0.03);
+    c.beginPath(); c.ellipse(0.06, -0.06, 0.1, 0.09, 0, 0, TAU); c.fillStyle = '#e8b890'; c.fill(); c.lineWidth = 0.02; c.strokeStyle = OUT; c.stroke();
+    A.shape(c, [-0.08, -0.04, -0.02, -0.04, -0.03, -0.17, -0.08, -0.15], '#5a3c24', 0.02);
+    A.line(c, [-0.16, 0.04, 0.16, 0.02], 0.045, '#3a2a1e');
+    A.circ(c, 0.1, 0.03, 0.05, '#9fe8ff', 0.022, '#c9a347');
+    c.beginPath(); c.arc(0.08, -0.08, 0.035, 0.2, 2.6); c.lineWidth = 0.018; c.strokeStyle = OUT; c.stroke();
+    c.restore();
+    R.drawRag(c, w.rag, dd);
+    var lt = w.lt == null ? -1 : w.lt;
+    if (lt > 0.5) {
+      var al = Math.min(1, (lt - 0.5) * 5) * (lt > 3 ? Math.max(0, (3.5 - lt) * 2) : 1);
+      if (al > 0) {
+        var x = b[0].x + 0.3, y = b[0].y + 0.5;
+        c.globalAlpha = al;
+        c.beginPath(); if (c.roundRect) c.roundRect(x, y, 1.3, 0.46, 0.16); else c.rect(x, y, 1.3, 0.46);
+        c.moveTo(x + 0.18, y); c.lineTo(x + 0.04, y - 0.22); c.lineTo(x + 0.4, y);
+        c.fillStyle = '#ffffff'; c.fill(); c.lineWidth = 0.035; c.strokeStyle = OUT; c.stroke();
+        c.save(); c.translate(x + 0.65, y + 0.23); c.scale(1, -1); c.font = '800 0.28px ' + R.FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = OUT; c.fillText('Cheerio!', 0, 0); c.restore();
+        c.globalAlpha = 1;
+      }
+    }
+  }
+};
+
+/* Gecko: flies at the camera and splats on the glass like a gecko on a window, then peels off a toe at a time */
+var LIMB = { root: [[0.2, 0.3], [-0.2, 0.3], [0.12, -0.28], [-0.12, -0.28]], len: [0.62, 0.62, 0.72, 0.72], wid: [0.15, 0.15, 0.19, 0.19], spread: [0.5, Math.PI - 0.5, -0.95, -Math.PI + 0.95], bend: [0.35, -0.35, -0.3, 0.3], off: [2.15, 1.65, 1.0, 1.3] };
+var SPLAT_T = 0.32;
+function padAt(w, i) { var r = LIMB.root[i], L = LIMB.len[i] * w.ls[i], a = w.la[i]; return { x: r[0] + Math.cos(a) * L, y: r[1] + Math.sin(a) * L, a: a }; }
+function starfish(c, dd, w) {
+  var i, q, s = dd.suit;
+  for (i = 3; i >= 0; i--) {
+    var r = LIMB.root[i], a = w.la[i], L = LIMB.len[i] * w.ls[i], b = a + LIMB.bend[i] * (w.lstuck[i] ? 0.3 : 1);
+    var e = padAt(w, i), mx = r[0] + Math.cos(b) * L * 0.5, my = r[1] + Math.sin(b) * L * 0.5;
+    A.curve(c, [r[0], r[1], mx, my, e.x, e.y], LIMB.wid[i], i < 2 ? s[0] : s[1], 0.05);
+    for (q = -1.5; q <= 1.5; q++) { var ta = a + q * 0.42, tl = w.lstuck[i] ? 0.15 : 0.11; A.circ(c, e.x + Math.cos(ta) * tl, e.y + Math.sin(ta) * tl, w.lstuck[i] ? 0.055 : 0.04, '#3ccf6e', 0.025); }
+    A.circ(c, e.x, e.y, 0.1, s[2], 0.03);
+  }
+  c.beginPath(); c.ellipse(0, 0.02, 0.27, 0.4, 0, 0, TAU); c.fillStyle = s[0]; c.fill(); c.lineWidth = 0.035; c.strokeStyle = OUT; c.stroke();
+  c.beginPath(); c.ellipse(0, -0.02, 0.26, 0.1, 0, 0.15, Math.PI - 0.15); c.lineWidth = 0.08; c.strokeStyle = s[1]; c.stroke();
+  A.helmet(c, 0, 0.62, 0.27, 0.15, dd, dd.kind);
+}
+KINDS.splat = {
+  start: function (w, G) {
+    var s = G.sim; w.x0 = s.x; w.y0 = s.y + 0.4; w.cx = G.cam.x; w.cy = G.cam.y; w.vh = G.cam.vh; w.hit = false; w.gone = false; w.slide = 0;
+    w.la = LIMB.spread.slice(); w.lv = [0, 0, 0, 0]; w.ls = [1, 1, 1, 1]; w.lstuck = [0, 0, 0, 0]; w.marks = []; w.fall = 0;
+    w.fx = s.x; w.fy = s.y; Au().wipe('whoosh');
+  },
+  step: function (w, G, dt) {
+    var i, S = 0.3;
+    // pinned to the screen, not the world: the camera's position is the glass
+    w.cx = G.cam.x; w.cy = G.cam.y; w.vh = G.cam.vh; w.fx = G.sim.x; w.fy = G.sim.y;
+    if (w.t < SPLAT_T) { for (i = 0; i < 4; i++) w.la[i] = LIMB.spread[i] + 0.7 * Math.sin(w.t * 22 + i * 1.7); return; }
+    if (!w.hit) { w.hit = true; Au().wipe('splat'); G.cam.shake = Math.max(G.cam.shake, 0.35); for (i = 0; i < 4; i++) { w.la[i] = LIMB.spread[i]; w.lstuck[i] = 1; } }
+    var tt = w.t - SPLAT_T;
+    w.slide = 0.012 * tt + 0.02 * tt * tt;
+    for (i = 0; i < 4; i++) {
+      if (w.lstuck[i] && w.t > LIMB.off[i]) {
+        w.lstuck[i] = 0; Au().wipe('peel');
+        var p = padAt(w, i); w.marks.push({ x: 0.04 + p.x * S, y: 0.1 - w.slide + p.y * S, a: p.a, t: w.t });
+      }
+      if (!w.lstuck[i]) {            // a limb let go swings down and dangles
+        var da = near(-Math.PI / 2 + (i % 2 ? -0.12 : 0.12), w.la[i]) - w.la[i];
+        w.lv[i] += (da * 40 - w.lv[i] * 4) * dt; w.la[i] += w.lv[i] * dt; w.ls[i] += (1 - w.ls[i]) * Math.min(1, dt * 8);
+      }
+    }
+    // the last hand to go stretches first
+    if (w.lstuck[0] && w.t > LIMB.off[0] - 0.45) { if (!w.str) { w.str = true; Au().wipe('stretch'); } w.ls[0] = 1 + (w.t - (LIMB.off[0] - 0.45)) * 1.0; }
+    if (w.t > LIMB.off[0]) { w.fall += dt; if (w.fall > 1.2) w.gone = true; }
+  },
+  draw: function (w, c, dd) {
+    var vh = w.vh, S = 0.3 * vh, i, k, x, y, sc, rot = 0, sqx = 1, sqy = 1;
+    // prints left on the glass
+    for (i = 0; i < w.marks.length; i++) {
+      var m = w.marks[i], al = 0.55 * Math.max(0, 1 - (w.t - m.t) / 2.5);
+      if (al <= 0) continue;
+      var mx = w.cx + m.x * vh, my = w.cy + m.y * vh;
+      c.globalAlpha = al;
+      A.circ(c, mx, my, 0.1 * S, '#e6fff0', 0);
+      for (k = -1.5; k <= 1.5; k++) A.circ(c, mx + Math.cos(m.a + k * 0.42) * 0.15 * S, my + Math.sin(m.a + k * 0.42) * 0.15 * S, 0.05 * S, '#e6fff0', 0);
+      c.globalAlpha = 1;
+    }
+    if (w.gone) return;
+    if (w.t < SPLAT_T) {
+      var q = w.t / SPLAT_T, e = q * q;
+      x = w.x0 + (w.cx + 0.04 * vh - w.x0) * e; y = w.y0 + (w.cy + 0.1 * vh - w.y0) * e;
+      sc = 0.5 * Math.pow(S / 0.5, e); rot = (1 - q) * 9;
+    } else {
+      var tt = w.t - SPLAT_T;
+      x = w.cx + 0.04 * vh; y = w.cy + (0.1 - w.slide) * vh - 1.3 * w.fall * w.fall * vh;
+      sc = S; rot = w.fall * 0.8;
+      var sq = Math.exp(-tt * 9) * Math.cos(tt * 30) * 0.22; sqx = 1 + sq; sqy = 1 - sq;
+    }
+    c.save(); c.translate(x, y); c.rotate(rot); c.scale(sc * sqx, sc * sqy);
+    starfish(c, dd, w);
+    c.restore();
+    if (w.t >= SPLAT_T && w.t < SPLAT_T + 0.3) {             // the slap
+      var kk = (w.t - SPLAT_T) / 0.3; c.globalAlpha = 1 - kk; c.lineWidth = 0.06; c.strokeStyle = '#ffffff';
+      for (i = 0; i < 10; i++) { var a = i * TAU / 10 + 0.2, r0 = S * (1.0 + kk * 0.3), r1 = r0 + S * 0.22; c.beginPath(); c.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); c.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); c.stroke(); }
+      c.globalAlpha = 1;
+    }
+  }
+};
+
+/* Sandpiper: a sand devil swallows the rider and leaves a sandcastle wearing the helmet */
+var SAND = ['#e8c77a', '#d4ac5a', '#f4dfa4'];
+KINDS.sandstorm = {
+  start: function (w, G) { w.rag = R.makeRag(G.sim, G.bikeDef); w.dx = G.sim.x; w.dir = G.sim.vx < -1 ? -1 : 1; w.gy0 = floorAt(G, G.sim.x, G.sim.y - 1); w.gy = w.gy0; w.castle = false; w.k = 0; Au().wipe('swirl'); },
+  step: function (w, G, dt) {
+    var p = w.rag.pts, i, t = w.t;
+    w.k = t < 0.2 ? 0 : t < 0.55 ? (t - 0.2) / 0.35 : t < 1.5 ? 1 : Math.max(0, 1 - (t - 1.5) / 0.4);
+    if (t < 1.45) w.dx += w.dir * 1.4 * dt;
+    w.gy = floorAt(G, w.dx, w.gy0); w.gy0 = w.gy;
+    if (!w.castle) {
+      R.stepRag(w.rag, G.track, G.sim.g, dt);
+      if (t > 0.25) for (i = 0; i < p.length; i++) {            // sucked up into the swirl
+        var ax = w.dx + Math.sin(t * 9 + i) * 0.25, ay = w.gy + 0.9 + i * 0.07;
+        p[i].x += (ax - p[i].x) * Math.min(1, dt * 5); p[i].y += (ay - p[i].y) * Math.min(1, dt * 5);
+      }
+    }
+    if (w.k > 0.3 && Math.random() < dt * 60 * w.k) { var h = rnd(0, 2.4), a = rnd(0, TAU); R.emit(1, w.dx + Math.cos(a) * (0.4 + h * 0.3), w.gy + h, -Math.sin(a) * 4 + w.dir, rnd(0.5, 2), rnd(0.3, 0.6), rnd(0.025, 0.05), SAND[(Math.random() * 3) | 0], { g: 0.3, front: 1, vr: rnd(-8, 8) }); }
+    if (!w.castle && t > 1.45) { w.castle = true; w.cx = w.dx; w.cy = w.gy; puff(w.cx, w.cy + 0.3, 10, SAND[2], 2, 1.3); Au().wipe('tada'); }
+    if (w.castle && Math.random() < dt * 3) R.emit(1, w.cx + rnd(-0.4, 0.4), w.cy + 0.8, rnd(-0.2, 0.2), 0, rnd(0.4, 0.8), 0.025, SAND[0], { g: 1, front: 1 });
+    w.fx = w.dx; w.fy = w.gy + 1;
+  },
+  draw: function (w, c, dd) {
+    var t = w.t, i, k = w.k;
+    if (!w.castle && t < 0.75) R.drawRag(c, w.rag, dd);
+    if (w.castle) this.castle(w, c, dd);
+    if (k <= 0.01) return;
+    // the devil: rings that widen going up, each one spinning
+    var x = w.dx, y = w.gy, n = 9;
+    for (i = 0; i < n; i++) {
+      var h = (i + 0.5) / n * 2.6 * k, r = (0.25 + h * 0.32) * k, wob = Math.sin(t * 6 + i * 0.9) * 0.12 * h, ph = t * 11 + i * 1.3, ry = 0.12 + r * 0.18;
+      c.globalAlpha = Math.min(1, k * 1.2) * 0.85;
+      c.beginPath(); c.ellipse(x + wob, y + h, r, ry, 0, 0, TAU); c.fillStyle = SAND[i % 3]; c.fill();
+      c.lineWidth = 0.035; c.strokeStyle = 'rgba(120,80,30,0.6)'; c.beginPath(); c.ellipse(x + wob, y + h, r, ry, 0, ph % TAU, ph % TAU + 2.2); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.5)'; c.beginPath(); c.ellipse(x + wob, y + h, r * 0.8, ry * 0.8, 0, (ph + 3) % TAU, (ph + 3) % TAU + 1.4); c.stroke();
+    }
+    c.globalAlpha = 1;
+  },
+  castle: function (w, c, dd) {
+    var x = w.cx, y = w.cy, rise = Math.min(1, (w.t - 1.45) * 3), tr = dd._track, i;
+    var b = y - 1.2 + rise * 1.2;           // rises up out of the ground
+    c.save(); aboveGround(c, tr, x, 1.6, y + 5);
+    c.translate(x, y); c.scale(1.4, 1.4); c.translate(-x, -y);
+    var S1 = SAND[0], S2 = SAND[1];
+    // two side towers, a wall and a middle keep, all with battlements
+    function tower(cx, w2, h) { A.shape(c, [cx - w2, b - 0.4, cx - w2, b + h, cx - w2 * 0.5, b + h, cx - w2 * 0.5, b + h + 0.1, cx, b + h + 0.1, cx, b + h, cx + w2 * 0.5, b + h, cx + w2 * 0.5, b + h + 0.1, cx + w2, b + h + 0.1, cx + w2, b - 0.4], S1, 0.035); }
+    A.shape(c, [x - 0.7, b - 0.4, x - 0.7, b + 0.42, x + 0.7, b + 0.42, x + 0.7, b - 0.4], S2, 0.035);
+    tower(x - 0.62, 0.17, 0.62); tower(x + 0.62, 0.17, 0.62); tower(x, 0.24, 0.85);
+    A.blob(c, [x - 0.1, b - 0.02, x - 0.1, b + 0.22, x, b + 0.3, x + 0.1, b + 0.22, x + 0.1, b - 0.02], '#5a4128', 0.03);
+    A.line(c, [x - 0.15, b + 0.55, x - 0.05, b + 0.52, x + 0.08, b + 0.58], 0.02, 'rgba(120,80,30,0.6)');
+    A.line(c, [x - 0.62, b + 0.72, x - 0.62, b + 1.02], 0.025, '#5a4128');
+    A.shape(c, [x - 0.62, b + 1.02, x - 0.42, b + 0.95, x - 0.62, b + 0.88], dd.suit[1], 0.02);
+    c.restore();
+    // the helmet sat on top of the keep, a little crooked
+    if (rise > 0.6) { c.save(); c.translate(x, y); c.scale(1.4, 1.4); c.translate(-x, -y); A.helmet(c, x + 0.02, b + 0.95 + 0.14, 0.17, 0.25 + Math.sin(w.t * 1.7) * 0.03, dd, dd.kind); c.restore(); }
+  }
+};
+
+/* Whiplash: spins like a top on the spot, topples over, and sees little motorbikes going round */
+KINDS.spinout = {
+  start: function (w, G) {
+    var f = w.f = figure(G);
+    w.ph = 0; w.fell = false; w.gy0 = floorAt(G, f.x, f.y - 1); w.dir = G.sim.vx < -1 ? -1 : 1; w.fa = 0; w.fv = 0; w.side = 1; w.dz = false;
+    w.px = f.x; w.a0 = near(f.a, 0); w.x0 = f.x; w.y0 = f.y; Au().wipe('whirr');
+  },
+  step: function (w, G, dt) {
+    var f = w.f, t = w.t, gy, fl = 0.9 * f.sc;
+    setPose(f, w.fell ? FELL : STAND, Math.min(1, dt * 10));
+    // flung clear of the bike first, landing on one foot a couple of metres on
+    w.px = w.x0 + w.dir * 2.2 * Math.min(1, t / 0.35) * (2 - Math.min(1, t / 0.35));
+    gy = floorAt(G, w.px, w.gy0); w.gy0 = gy;
+    if (t < 1.65) {
+      var om = t < 1.0 ? 24 : 24 * Math.max(0.15, 1 - (t - 1.0) / 0.8);
+      w.ph += om * dt;
+      f.sx = Math.cos(w.ph); if (Math.abs(f.sx) < 0.1) f.sx = f.sx < 0 ? -0.1 : 0.1;
+      w.fa = Math.sin(t * 8) * (t < 0.9 ? 0.04 : 0.04 + (t - 0.9) * 0.45);
+      if (Math.random() < dt * 12) R.emit(0, w.px + rnd(-0.2, 0.2), gy + 0.05, rnd(-1.5, 1.5), rnd(0.2, 0.8), rnd(0.3, 0.6), rnd(0.08, 0.14), dustCol(G), { gr: 0.6, a: 0.5, drag: 2, front: 1 });
+    } else {
+      if (!w.fell) { w.fell = true; w.side = -w.dir; }
+      f.sx += (1 - f.sx) * Math.min(1, dt * 10);
+      if (Math.abs(w.fa) < 1.45) { w.fv += 9 * dt; w.fa += w.side * w.fv * dt; if (Math.abs(w.fa) >= 1.45) { w.fa = 1.45 * w.side; Au().wipe('pat'); puff(w.px - w.side * 0.8, gy + 0.1, 6, dustCol(G), 1.4); } }
+      if (!w.dz && t > 2.0) { w.dz = true; Au().wipe('cuckoo'); }
+    }
+    // standing on one foot, tipping about that foot; the first moment eases in from the crash pose
+    var tx = w.px - Math.sin(w.fa) * fl, ty = gy + 0.06 + Math.cos(w.fa) * fl + Math.sin(Math.PI * Math.min(1, t / 0.35)) * 0.8, e = Math.min(1, t / 0.25);
+    f.x = w.x0 + (tx - w.x0) * e; f.y = w.y0 + (ty - w.y0) * e; f.a = w.fa + w.a0 * (1 - e);
+    w.fx = f.x; w.fy = f.y;
+  },
+  draw: function (w, c, dd) {
+    var f = w.f, t = w.t, i;
+    drawFigure(c, f, dd);
+    if (t < 1.65) {                 // whoosh lines going round
+      c.lineWidth = 0.03; c.strokeStyle = 'rgba(255,255,255,0.75)';
+      for (i = 0; i < 3; i++) { var a0 = w.ph + i * 2.1, yy = f.y - 0.3 + i * 0.4; c.beginPath(); c.ellipse(f.x, yy, 0.62, 0.12, 0, a0 % TAU, a0 % TAU + 1.6); c.stroke(); }
+    }
+    if (w.fell && t > 2.0) {
+      var k = Math.min(1, (t - 2.0) * 4), hp = fw(f, 0), hx = hp.x, hy = hp.y;
+      // a spiral where the eyes would be
+      c.save(); c.translate(hx + 0.05, hy + 0.02); c.rotate(-t * 7); c.beginPath();
+      for (i = 0; i < 40; i++) { var ra = i * 0.35, rr = 0.004 * i * k; c[i ? 'lineTo' : 'moveTo'](Math.cos(ra) * rr, Math.sin(ra) * rr); }
+      c.lineWidth = 0.028; c.strokeStyle = '#ffe23d'; c.stroke(); c.restore();
+      var col = typeof dd.col[0] === 'string' ? dd.col[0] : '#ff3d7f';
+      for (i = 0; i < 3; i++) {
+        var a = t * 3.6 + i * TAU / 3, x = hx + Math.cos(a) * 0.55, y = hy + 0.45 + Math.sin(a) * 0.12, s = 0.19 * k * (0.8 + 0.2 * Math.sin(a));
+        c.save(); c.translate(x, y); c.scale(-Math.sin(a) > 0 ? 1 : -1, 1); c.rotate(Math.sin(t * 9 + i) * 0.25); tinyBike(c, s, i === 1 ? '#ffe23d' : col); c.restore();
+      }
+    }
+  }
+};
+
+/* Icepick: freezes into a block of ice and slides away like a curling stone, then shivers */
+var FROST = '#cfefff';
+function frosted(dd, fd, k) { fd.suit = [hexMix(dd.suit[0], FROST, k), hexMix(dd.suit[1], FROST, k), hexMix(dd.suit[2], FROST, k)]; return fd; }
+KINDS.shiver = {
+  start: function (w, G, dd) { w.rag = R.makeRag(G.sim, G.bikeDef); w.frozen = false; w.v = clamp(Math.abs(G.sim.vx) * 0.6, 2.4, 4.5) * (G.sim.vx < -1 ? -1 : 1); w.stop = false; w.brrT = 0.6; w.jit = 0; w.fd = Object.create(dd); w.gy0 = floorAt(G, G.sim.x, G.sim.y - 1); Au().wipe('freeze'); },
+  step: function (w, G, dt) {
+    var g = G.sim.g, i;
+    if (!w.frozen) {
+      R.stepRag(w.rag, G.track, g, dt);
+      var hp = w.rag.pts[2];
+      w.fx = hp.x; w.fy = hp.y;
+      if (w.t < 0.45 || (hp.y - floorAt(G, hp.x, hp.y - 1) > 0.7 && w.t < 0.9)) return;
+      // frozen stiff: measure the pose square to the ground, and build the block round it
+      w.frozen = true; var f = figFrom(w.rag), sl = RR.groundSlope(G.track, f.x), ca = Math.cos(-sl), sa = Math.sin(-sl), x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+      for (i = 0; i < f.pts.length; i++) { var p = f.pts[i], rx = p.x * ca - p.y * sa, ry = p.x * sa + p.y * ca, r = i === 0 ? 0.24 : 0.12; p.x = rx; p.y = ry; x0 = Math.min(x0, rx - r); x1 = Math.max(x1, rx + r); y0 = Math.min(y0, ry - r); y1 = Math.max(y1, ry + r); }
+      var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+      for (i = 0; i < f.pts.length; i++) { f.pts[i].x -= cx; f.pts[i].y -= cy; }
+      w.f = f; w.bw = (x1 - x0) / 2 + 0.06; w.bh = (y1 - y0) / 2 + 0.06; w.x = f.x + cx * Math.cos(sl); w.dist = 0; w.sl = sl;
+      for (i = 0; i < 8; i++) R.emit(2, w.x + rnd(-w.bw, w.bw), f.y + rnd(0, w.bh), rnd(-3, 3), rnd(1, 4), rnd(0.2, 0.4), 0.04, '#ffffff', { g: 1, front: 1 });
+      Au().wipe('slide'); G.cam.shake = Math.max(G.cam.shake, 0.3);
+    }
+    var gy = groundAt(G, w.x), ok = gy > G.track.minY - 5;
+    if (ok) { w.sl = RR.groundSlope(G.track, w.x); w.gy0 = gy; } else gy = w.gy0;
+    if (!w.stop) {
+      w.v += (-g * Math.sin(w.sl) - 0.07 * g * (w.v > 0 ? 1 : -1) - (w.dist > 4.5 ? w.v * 2 : 0)) * dt;
+      if (!ok) w.v *= 0.9;
+      w.x += w.v * Math.cos(w.sl) * dt; w.dist += Math.abs(w.v) * dt;
+      if (Math.abs(w.v) < 0.08 && w.t > 0.9) { w.stop = true; w.v = 0; }
+      if (Math.random() < dt * 30 * Math.min(1, Math.abs(w.v))) R.emit(2, w.x - w.bw * (w.v > 0 ? 1 : -1), gy + 0.02, -w.v * rnd(0.2, 0.6), rnd(0.5, 2), rnd(0.15, 0.3), 0.035, '#e9f8ff', { g: 1, front: 1 });
+    } else {
+      w.brrT -= dt;
+      if (w.brrT <= 0) { w.brrT = 1.5; w.jit = 0.45; Au().wipe('brr'); }
+    }
+    w.jit = Math.max(0, w.jit - dt);
+    // the block's middle sits half its height off the ground, square to the slope
+    w.bx = w.x - Math.sin(w.sl) * w.bh; w.by = gy + Math.cos(w.sl) * w.bh;
+    w.fx = w.bx; w.fy = w.by;
+  },
+  draw: function (w, c, dd) {
+    var i;
+    if (!w.frozen) { R.drawRag(c, w.rag, frosted(dd, w.fd, Math.min(1, w.t / 0.45) * 0.6)); return; }
+    var j = w.jit > 0 ? Math.sin(w.t * 90) * 0.03 : 0, bw = w.bw, bh = w.bh;
+    c.save(); c.translate(w.bx + j, w.by); c.rotate(w.sl);
+    R.drawRag(c, w.f, frosted(dd, w.fd, 0.6));
+    c.beginPath(); if (c.roundRect) c.roundRect(-bw, -bh, bw * 2, bh * 2, 0.1); else c.rect(-bw, -bh, bw * 2, bh * 2);
+    c.fillStyle = 'rgba(175,228,255,0.5)'; c.fill(); c.lineWidth = 0.08; c.strokeStyle = 'rgba(233,248,255,0.9)'; c.stroke(); c.lineWidth = 0.03; c.strokeStyle = '#2c5ea8'; c.stroke();
+    c.lineWidth = 0.04; c.strokeStyle = 'rgba(255,255,255,0.8)';
+    c.beginPath(); c.moveTo(-bw + 0.12, bh - 0.12); c.lineTo(-bw + 0.12 + bh * 0.6, bh - 0.12 - bh * 0.6); c.moveTo(-bw + 0.26, bh - 0.1); c.lineTo(-bw + 0.36, bh - 0.2); c.stroke();
+    c.lineWidth = 0.02; c.strokeStyle = 'rgba(255,255,255,0.55)'; c.beginPath(); c.moveTo(bw - 0.3, -bh + 0.1); c.lineTo(bw - 0.45, -bh + 0.3); c.lineTo(bw - 0.38, -bh + 0.42); c.stroke();
+    // icicles hanging off the top edge
+    for (i = 0; i < 3; i++) { var ix = bw - 0.15 - i * 0.18; A.shape(c, [ix - 0.05, bh, ix + 0.05, bh, ix, bh + 0.1 + (i % 2) * 0.06], '#e9f8ff', 0.015); }
+    c.restore();
+    if (w.stop && w.jit > 0) {
+      c.save(); c.translate(w.bx + w.bw * 0.2, w.by + w.bh + 0.35); c.scale(1, -1); c.font = '900 italic 0.26px ' + R.FONT; c.textAlign = 'center'; c.lineWidth = 0.06; c.strokeStyle = OUT; c.strokeText('brrr', 0, 0); c.fillStyle = '#9fe8ff'; c.fillText('brrr', 0, 0); c.restore();
+    }
+  }
+};
+
+/* Rhino: carried off in a stampede, a brawl cloud full of hooves and horns, leaving hoofprints (some of them on you) */
+function hoofprint(c, x, y, a, s) {
+  c.save(); c.translate(x, y); c.rotate(a); c.scale(s, s); c.fillStyle = 'rgba(40,28,18,0.55)';
+  c.beginPath(); c.ellipse(0, 0, 0.11, 0.035, 0, 0, TAU); c.fill();
+  for (var i = -1; i <= 1; i++) { c.beginPath(); c.ellipse(i * 0.1, 0.05 - Math.abs(i) * 0.015, 0.04, 0.025, 0, 0, TAU); c.fill(); }
+  c.restore();
+}
+KINDS.stampede = {
+  start: function (w, G) { w.rag = R.makeRag(G.sim, G.bikeDef); w.cx = G.sim.x; w.dir = G.sim.vx < -1 ? -1 : 1; w.prints = []; w.lastP = w.cx; w.pokes = []; w.out = false; w.k = 0; w.gy0 = floorAt(G, w.cx, G.sim.y - 1); w.cy = w.gy0; Au().wipe('gallop'); },
+  step: function (w, G, dt) {
+    var t = w.t, p = w.rag.pts, i, gy;
+    w.k = t < 0.12 ? 0 : t < 0.3 ? (t - 0.12) / 0.18 : t < 1.9 ? 1 : Math.max(0, 1 - (t - 1.9) / 0.3);
+    var mv = t > 0.2 && t < 1.95 ? w.dir * 2.3 * dt : 0;
+    w.cx += mv; gy = floorAt(G, w.cx, w.gy0); w.gy0 = gy; w.cy = gy;
+    R.stepRag(w.rag, G.track, G.sim.g, dt);
+    if (t > 0.2 && t < 1.95) {            // carried along, and well trodden on
+      for (i = 0; i < p.length; i++) { p[i].x += mv + (w.cx - p[2].x) * dt * 2; p[i].px += mv; }
+      if (Math.random() < dt * 8) { var j = (Math.random() * p.length) | 0; p[j].py -= rnd(0.01, 0.03); }
+      if (Math.abs(w.cx - w.lastP) > 0.3) { w.lastP = w.cx; var px = w.cx + rnd(-0.8, 0.4) * w.dir; w.prints.push({ x: px, y: floorAt(G, px, gy) + 0.02, a: RR.groundSlope(G.track, px), t: t }); }
+      if (Math.random() < dt * 14) R.emit(0, w.cx + rnd(-0.9, 0.9), gy + rnd(0, 0.4), -w.dir * rnd(0.5, 2), rnd(0.3, 1.2), rnd(0.4, 0.8), rnd(0.15, 0.3), dustCol(G), { gr: 0.8, a: 0.5, drag: 2, front: 1 });
+      if (Math.random() < dt * 14) w.pokes.push({ k: ['hoof', 'hoof', 'horn', 'boot', 'helmet', 'bang'][(Math.random() * 6) | 0], a: rnd(-0.5, Math.PI + 0.5), t: t, life: rnd(0.25, 0.4) });
+    }
+    if (!w.out && t > 1.95) { w.out = true; puff(w.cx, gy + 0.6, 16, '#e8dcc4', 3, 1.6); Au().wipe('poof'); }
+    for (i = w.pokes.length - 1; i >= 0; i--) if (t - w.pokes[i].t > w.pokes[i].life) w.pokes.splice(i, 1);
+    w.fx = w.k > 0.2 ? w.cx : p[2].x; w.fy = gy + 1;
+  },
+  draw: function (w, c, dd) {
+    var t = w.t, i, k = w.k, p = w.rag.pts;
+    for (i = 0; i < w.prints.length; i++) { var q = w.prints[i], al = Math.max(0, 1 - (t - q.t) / 5); if (al <= 0) continue; c.globalAlpha = al; hoofprint(c, q.x, q.y, q.a, 1); c.globalAlpha = 1; }
+    if (k < 0.95) {
+      R.drawRag(c, w.rag, dd);
+      if (w.out) {            // trodden on: two prints across the back of the suit
+        var hx = p[2].x, hy = p[2].y, sx = p[1].x, sy = p[1].y, a = Math.atan2(sy - hy, sx - hx);
+        hoofprint(c, hx + (sx - hx) * 0.35, hy + (sy - hy) * 0.35, a, 0.9); hoofprint(c, hx + (sx - hx) * 0.72, hy + (sy - hy) * 0.72, a + 0.4, 0.9);
+      }
+    }
+    if (k <= 0.01) return;
+    var x = w.cx, y = w.cy + 0.95 * k, R0 = 1.3 * k;
+    // things sticking out of the cloud, drawn first so the cloud covers where they join
+    for (i = 0; i < w.pokes.length; i++) {
+      var pk = w.pokes[i], e = Math.sin(Math.PI * Math.min(1, (t - pk.t) / pk.life)), ex = x + Math.cos(pk.a) * (R0 * 0.8 + 0.3 * e), ey = y + Math.sin(pk.a) * (R0 * 0.6 + 0.3 * e);
+      c.save(); c.translate(ex, ey); c.rotate(pk.a - Math.PI / 2);
+      if (pk.k === 'hoof') { A.tube(c, [0, -0.3, 0, 0.12], 0.12, '#8d939d', 0.035); A.shape(c, [-0.09, 0.1, 0.09, 0.1, 0.08, 0.2, -0.08, 0.2], '#3a3f4b', 0.03); }
+      else if (pk.k === 'horn') { A.blob(c, [-0.18, -0.3, -0.2, 0.1, 0.0, 0.22, 0.2, 0.1, 0.18, -0.3], '#8d939d', 0.035); A.shape(c, [-0.06, 0.16, 0.06, 0.16, 0.0, 0.44], '#f1ecdc', 0.03); A.circ(c, -0.08, 0.02, 0.025, OUT, 0); }
+      else if (pk.k === 'boot') { A.tube(c, [0, -0.3, 0, 0.1], 0.11, dd.suit[1], 0.035); A.circ(c, 0, 0.13, 0.08, dd.suit[2], 0.03); }
+      else if (pk.k === 'helmet') A.helmet(c, 0, 0.05, 0.15, 0, dd, dd.kind);
+      else { c.beginPath(); for (var q2 = 0; q2 < 14; q2++) { var sa = q2 * Math.PI / 7, sr = q2 % 2 ? 0.08 : 0.2; c[q2 ? 'lineTo' : 'moveTo'](Math.sin(sa) * sr, Math.cos(sa) * sr); } c.closePath(); c.fillStyle = '#ffe23d'; c.fill(); c.lineWidth = 0.025; c.strokeStyle = OUT; c.stroke(); }
+      c.restore();
+    }
+    // the cloud: a ring of boiling puffs, outlined as one shape
+    var n = 10, cs = [];
+    for (i = 0; i < n; i++) { var ang = i * TAU / n + t * 1.5, r = (0.45 + 0.12 * Math.sin(t * 13 + i * 2.1)) * k; cs.push(x + Math.cos(ang) * R0 * 0.75, y + Math.sin(ang) * R0 * 0.5, r); }
+    cs.push(x, y, 0.85 * k);
+    c.fillStyle = OUT; for (i = 0; i < cs.length; i += 3) { c.beginPath(); c.arc(cs[i], cs[i + 1], cs[i + 2] + 0.035, 0, TAU); c.fill(); }
+    c.fillStyle = '#e8dcc4'; for (i = 0; i < cs.length; i += 3) { c.beginPath(); c.arc(cs[i], cs[i + 1], cs[i + 2], 0, TAU); c.fill(); }
+    c.fillStyle = 'rgba(255,255,255,0.45)'; for (i = 0; i < cs.length - 3; i += 6) { c.beginPath(); c.arc(cs[i] - 0.08, cs[i + 1] + 0.1, cs[i + 2] * 0.4, 0, TAU); c.fill(); }
+    c.lineWidth = 0.03; c.strokeStyle = 'rgba(140,110,70,0.8)';
+    for (i = 0; i < 3; i++) { var sa2 = t * 9 + i * 2.1; c.beginPath(); c.arc(x + Math.cos(sa2) * 0.2, y + Math.sin(sa2 * 1.3) * 0.15, 0.14, sa2, sa2 + 3.5); c.stroke(); }
+  }
+};
+
+/* Albatross: flaps like a bird, glides a little, then plants face first in a puff of feathers */
+function wings(w, f, th, sw) {
+  // th: how far up the arms are (radians), sw: how far they are swept back
+  var sh = f.pts[1], sc = f.sc, i;
+  for (i = 0; i < 2; i++) {
+    var a = th + (i ? 0.15 : 0), b = a - 0.5 * Math.cos(w.t * 14) * (w.mode === 0 ? 1 : 0.2);
+    var ux = -Math.sin(a), uy = -sw, L = Math.sqrt(ux * ux + uy * uy), vx = -Math.sin(b), vy = -sw * 1.3, L2 = Math.sqrt(vx * vx + vy * vy);
+    var e = f.pts[i ? 7 : 3], h = f.pts[i ? 8 : 4];
+    e.x = sh.x + ux / L * 0.3 * sc; e.y = sh.y + uy / L * 0.3 * sc; h.x = e.x + vx / L2 * 0.29 * sc; h.y = e.y + vy / L2 * 0.29 * sc;
+  }
+}
+KINDS.nosedive = {
+  start: function (w, G, dd) {
+    var f = w.f = figure(G), s = G.sim;
+    w.dir = s.vx < -0.5 ? -1 : 1; w.vx = w.dir * clamp(Math.abs(s.vx) * 0.4, 1.8, 3.5); w.vy = 2.5; w.mode = 0; w.gy0 = floorAt(G, f.x, f.y - 1);
+    w.fcol = ['#ffffff', '#f5f1e6', dd.suit[1], '#ffffff']; w.dust = dustCol(G);
+    Au().wipe('flap');
+  },
+  step: function (w, G, dt) {
+    var f = w.f, t = w.t, gy = floorAt(G, f.x, w.gy0), aim = 0;
+    w.gy0 = gy;
+    setPose(f, FLY, Math.min(1, dt * 9));
+    if (w.mode === 0) {            // flapping
+      wings(w, f, 1.1 * Math.sin(t * 14), 0.25);
+      w.vy += (0.6 + 0.9 * Math.sin(t * 14) - w.vy) * Math.min(1, dt * 4);
+      aim = -w.dir * Math.PI / 2 + w.dir * 0.15;
+      if (Math.random() < dt * 4) feathers(f.x, f.y + 0.4, 1, w.fcol, 0.6);
+      if (t > 1.0) w.mode = 1;
+    } else if (w.mode === 1) {     // gliding
+      wings(w, f, 0.05 + Math.sin(t * 3) * 0.08, 0.3);
+      w.vy += (-0.6 - w.vy) * Math.min(1, dt * 3);
+      aim = -w.dir * Math.PI / 2 - w.dir * Math.sin(t * 4) * 0.08;
+      if (t > 1.55) { w.mode = 2; Au().wipe('dive'); }
+    } else if (w.mode === 2) {     // nose down
+      wings(w, f, -0.9, 1.2);
+      w.vy -= 10 * dt; w.vx *= 1 - Math.min(1, dt * 1.5);
+      aim = -w.dir * Math.PI * 0.85;
+    }
+    if (w.mode < 3) {
+      f.a = near(f.a, aim); f.a += (aim - f.a) * Math.min(1, dt * (w.mode === 2 ? 6 : 5));
+      f.x += w.vx * dt; f.y += w.vy * dt;
+      if (w.mode < 2 && f.y < gy + 1.1) { f.y = gy + 1.1; if (w.vy < 0) w.vy = 0; }
+      var hd = fw(f, 0), hg = floorAt(G, hd.x, gy);
+      if (w.mode === 2 && hd.y < hg + 0.02) {
+        w.mode = 3; w.pt = t; f.y += hg - 0.12 - hd.y; w.hx = hd.x; w.hy = hg; Au().wipe('plant'); G.cam.shake = Math.max(G.cam.shake, 0.4);
+        feathers(hd.x, hg + 0.2, 22, w.fcol, 2.4); puff(hd.x, hg + 0.1, 6, w.dust, 1.6);
+      }
+    } else {                        // legs kicking in the air, slower and slower
+      var kk = Math.max(0, 1 - (t - w.pt) / 1.6), s = Math.sin((t - w.pt) * 16) * 0.22 * kk;
+      f.pts[5].x = (0.05 + s) * f.sc; f.pts[6].x = (0.02 + s * 1.8) * f.sc; f.pts[9].x = (-0.04 - s) * f.sc; f.pts[10].x = (-0.08 - s * 1.8) * f.sc;
+      wings(w, f, 0.4 + 0.9 * Math.sin((t - w.pt) * 11) * kk, -0.2);
+    }
+    w.fx = f.x; w.fy = f.y;
+  },
+  draw: function (w, c, dd) {
+    if (w.mode === 3) { c.save(); aboveGround(c, dd._track, w.hx, 2, w.hy + 6); drawFigure(c, w.f, dd); c.restore(); } else drawFigure(c, w.f, dd);
+    if (w.mode === 3) { c.beginPath(); c.ellipse(w.hx, w.hy, 0.32, 0.12, 0, 0, Math.PI); c.fillStyle = w.dust; c.fill(); c.lineWidth = 0.03; c.strokeStyle = OUT; c.stroke(); }
+  }
+};
+
 RR.Wipe = {
   KINDS: KINDS,
   start: function (kind, G, e) {
@@ -9598,7 +10367,19 @@ var ENG = {
   vtwin: { pattern: [[0, 1], [0.4375, 0.8]], lo: 7, hi: 44, ring: 8.0, decay: 0.07, grit: 0.3, bright: 0.7, noise: 0.4, drive: 2.8 },
   twin:  { pattern: [[0, 1], [0.375, 0.95]], lo: 9, hi: 62, ring: 7.0, decay: 0.08, grit: 0.25, bright: 0.95, noise: 0.35, drive: 2.4 },
   four:  { pattern: [[0, 1], [0.25, 0.9], [0.5, 1], [0.75, 0.93]], lo: 10, hi: 104, ring: 9.0, decay: 0.045, grit: 0.2, bright: 1.4, noise: 0.3, drive: 2.2 },
-  drag:  { pattern: [[0, 1], [0.5, 0.9]], lo: 13, hi: 86, ring: 5.0, decay: 0.11, grit: 0.7, bright: 1.3, noise: 0.6, drive: 3.6 }
+  drag:  { pattern: [[0, 1], [0.5, 0.9]], lo: 13, hi: 86, ring: 5.0, decay: 0.11, grit: 0.7, bright: 1.3, noise: 0.6, drive: 3.6 },
+  /* phase 2. Optional extras: jit = how unevenly the cylinders fire, hp = low cut, level = trim,
+     hiss = [Hz, gain] a steady bed of air hiss, whine = [Hz at standstill, Hz at top speed, gain] a belt
+     whine that follows road speed, prop = [blade Hz at idle, at the limiter, gain] a propeller drone */
+  puffer:    { pattern: [[0, 1]], lo: 14, hi: 84, ring: 4.4, decay: 0.09, grit: 0.2, bright: 1.0, noise: 0.3, drive: 2.2, level: 1.2, hiss: [5200, 0.035] },
+  springer:  { pattern: [[0, 1]], lo: 26, hi: 128, ring: 7.0, decay: 0.06, grit: 0.45, bright: 1.6, noise: 0.25, drive: 3.0, hp: 170, level: 1.25 },
+  boxer:     { pattern: [[0, 1], [0.5, 0.72]], lo: 7.5, hi: 46, ring: 4.2, decay: 0.15, grit: 0.12, bright: 0.62, noise: 0.25, drive: 1.8, jit: 0.07, level: 0.8 },
+  gecko:     { pattern: [[0, 1]], lo: 19, hi: 70, ring: 3.2, decay: 0.2, grit: 0.08, bright: 0.65, noise: 0.15, drive: 1.5, hp: 90, level: 0.9, whine: [220, 1500, 0.05] },
+  paddle:    { pattern: [[0, 1], [0.07, 0.42]], lo: 8.5, hi: 58, ring: 2.6, decay: 0.13, grit: 0.45, bright: 0.85, noise: 0.55, drive: 3.4, level: 0.78 },
+  freestyle: { pattern: [[0, 1]], lo: 17, hi: 112, ring: 6.0, decay: 0.055, grit: 0.12, bright: 1.7, noise: 0.35, drive: 2.8, hp: 70, level: 1.3 },
+  ice:       { pattern: [[0, 1], [0.5, 0.96]], lo: 21, hi: 132, ring: 3.6, decay: 0.26, grit: 0.35, bright: 1.35, noise: 0.45, drive: 2.4, hp: 150, level: 0.6 },
+  ram:       { pattern: [[0, 1], [0.3333, 0.9], [0.6667, 0.95]], lo: 8, hi: 54, ring: 6.0, decay: 0.06, grit: 0.3, bright: 0.72, noise: 0.4, drive: 2.7 },
+  glider:    { pattern: [[0, 1], [0.5, 0.88]], lo: 12, hi: 84, ring: 5.5, decay: 0.07, grit: 0.18, bright: 1.05, noise: 0.25, drive: 2.2, level: 0.85, prop: [26, 105, 0.12] }
 };
 var F0 = 30;
 function engineBuffer(E, pitch) {
@@ -9607,7 +10388,7 @@ function engineBuffer(E, pitch) {
   function rnd() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }
   for (k = 0; k < K; k++) {
     for (c = 0; c < E.pattern.length; c++) {
-      var start = Math.round((k + E.pattern[c][0] + (rnd() - 0.5) * 0.012) * cyc);
+      var start = Math.round((k + E.pattern[c][0] + (rnd() - 0.5) * (E.jit || 0.012)) * cyc);
       var amp = E.pattern[c][1] * (0.9 + rnd() * 0.2);
       var len = Math.round(cyc * Math.min(0.98, E.decay * 5));
       var ph = rnd() * 0.3;
@@ -9631,6 +10412,54 @@ function shaper(amount) {
   for (var i = 0; i < n; i++) { var x = i / (n - 1) * 2 - 1; c[i] = Math.tanh(x * amount) / Math.tanh(amount); }
   var w = ac.createWaveShaper(); w.curve = c; w.oversample = '2x';
   return w;
+}
+
+/* the layers a few engines carry on top of their firing pulses */
+function engineExtras(e, E) {
+  if (E.hiss) {            // the air tank: a faint steady hiss under everything
+    e.hsrc = ac.createBufferSource(); e.hsrc.buffer = noiseBuf; e.hsrc.loop = true;
+    e.hf = ac.createBiquadFilter(); e.hf.type = 'bandpass'; e.hf.frequency.value = E.hiss[0]; e.hf.Q.value = 0.9;
+    e.hg = ac.createGain(); e.hg.gain.value = 0;
+    e.hsrc.connect(e.hf); e.hf.connect(e.hg); e.hg.connect(e.out); e.hsrc.start(0, Math.random());
+    e.nodes.push(e.hsrc, e.hf, e.hg);
+  }
+  if (E.whine) {           // the drive belt: a thin whine that climbs with road speed, not with the revs
+    e.wo = ac.createOscillator(); e.wo.type = 'triangle'; e.wo2 = ac.createOscillator(); e.wo2.type = 'sine';
+    e.wf = ac.createBiquadFilter(); e.wf.type = 'bandpass'; e.wf.Q.value = 2.5;
+    e.wg = ac.createGain(); e.wg.gain.value = 0;
+    e.wo.connect(e.wf); e.wo2.connect(e.wf); e.wf.connect(e.wg); e.wg.connect(e.out);
+    e.wo.frequency.value = E.whine[0]; e.wo2.frequency.value = E.whine[0] * 2.01; e.wo.start(); e.wo2.start();
+    e.nodes.push(e.wo, e.wo2, e.wf, e.wg);
+  }
+  if (E.prop) {            // the propeller: a buzzing blade tone, and air chopped at the same rate
+    e.po = ac.createOscillator(); e.po.type = 'sawtooth'; e.pf = ac.createBiquadFilter(); e.pf.type = 'lowpass'; e.pf.Q.value = 1.2;
+    e.pg = ac.createGain(); e.pg.gain.value = 0;
+    e.po.connect(e.pf); e.pf.connect(e.pg); e.pg.connect(e.out);
+    e.pn = ac.createBufferSource(); e.pn.buffer = noiseBuf; e.pn.loop = true; e.pnf = ac.createBiquadFilter(); e.pnf.type = 'bandpass'; e.pnf.frequency.value = 520; e.pnf.Q.value = 0.8;
+    e.pam = ac.createGain(); e.pam.gain.value = 0;
+    e.lfo = ac.createOscillator(); e.lfo.type = 'sine'; e.lfoG = ac.createGain(); e.lfoG.gain.value = 0;
+    e.lfo.connect(e.lfoG); e.lfoG.connect(e.pam.gain);
+    e.pn.connect(e.pnf); e.pnf.connect(e.pam); e.pam.connect(e.out);
+    e.po.frequency.value = E.prop[0]; e.lfo.frequency.value = E.prop[0];
+    e.po.start(); e.pn.start(0, Math.random()); e.lfo.start();
+    e.nodes.push(e.po, e.pf, e.pg, e.pn, e.pnf, e.pam, e.lfo, e.lfoG);
+  }
+}
+function engineExtrasUpdate(e, E, x, load, t) {
+  if (E.hiss) e.hg.gain.setTargetAtTime(E.hiss[1] * (0.8 + 0.4 * load), t, 0.05);
+  if (E.whine) {
+    var xs = Math.min(1.15, x), wf = (E.whine[0] + (E.whine[1] - E.whine[0]) * xs) * e.pitch;
+    e.wo.frequency.setTargetAtTime(wf, t, 0.03); e.wo2.frequency.setTargetAtTime(wf * 2.01, t, 0.03); e.wf.frequency.setTargetAtTime(wf * 1.4, t, 0.03);
+    e.wg.gain.setTargetAtTime(E.whine[2] * (0.35 + 0.65 * e.thr) * (0.15 + Math.min(1, xs * 1.4)), t, 0.04);
+  }
+  if (E.prop) {
+    var bf = (E.prop[0] + (E.prop[1] - E.prop[0]) * Math.min(1.1, e.rpm)) * e.pitch;
+    e.po.frequency.setTargetAtTime(bf, t, 0.03); e.lfo.frequency.setTargetAtTime(bf, t, 0.03);
+    e.pf.frequency.setTargetAtTime(bf * 5 + 200, t, 0.04);
+    var pl = E.prop[2] * (0.45 + 0.55 * load) * (0.6 + 0.5 * Math.min(1, e.rpm));
+    e.pg.gain.setTargetAtTime(pl * 0.7, t, 0.04); e.pam.gain.setTargetAtTime(pl, t, 0.04); e.lfoG.gain.setTargetAtTime(pl * 0.9, t, 0.04);
+    e.pnf.frequency.setTargetAtTime(380 + 900 * Math.min(1, e.rpm), t, 0.05);
+  }
 }
 
 var eng = null;
@@ -9672,7 +10501,7 @@ S.engineStart = function (def) {
     e.lp = ac.createBiquadFilter(); e.lp.type = 'lowpass'; e.lp.frequency.value = 900; e.lp.Q.value = 0.9;
     e.ws = shaper(E.drive);
     e.post = ac.createGain(); e.post.gain.value = 0.5;
-    e.hp = ac.createBiquadFilter(); e.hp.type = 'highpass'; e.hp.frequency.value = sd.type === 'mini' || sd.type === 'two' || sd.type === 'scoot' ? 140 : 45;
+    e.hp = ac.createBiquadFilter(); e.hp.type = 'highpass'; e.hp.frequency.value = E.hp || (sd.type === 'mini' || sd.type === 'two' || sd.type === 'scoot' ? 140 : 45);
     e.src.connect(e.pre); e.pre.connect(e.ws); e.ws.connect(e.lp); e.lp.connect(e.hp); e.hp.connect(e.post); e.post.connect(e.out);
     // intake / exhaust hiss that opens up with the throttle
     e.n1 = ac.createBufferSource(); e.n1.buffer = noiseBuf; e.n1.loop = true; e.nf = ac.createBiquadFilter(); e.nf.type = 'bandpass'; e.nf.Q.value = 1.2; e.ng = ac.createGain(); e.ng.gain.value = 0;
@@ -9680,6 +10509,7 @@ S.engineStart = function (def) {
     e.src.playbackRate.value = E.lo * sd.pitch / F0;
     e.src.start(); e.n1.start();
     e.nodes.push(e.src, e.pre, e.lp, e.ws, e.post, e.hp, e.n1, e.nf, e.ng);
+    engineExtras(e, E);
   }
   eng = e;
 };
@@ -9737,6 +10567,7 @@ S.engineUpdate = function (st) {
   e.post.gain.setTargetAtTime((0.4 + 0.22 * load + 0.1 * k) * (E.level || 1), t, 0.03);
   e.nf.frequency.setTargetAtTime(600 + 3200 * k, t, 0.03);
   e.ng.gain.setTargetAtTime(E.noise * load * (0.03 + 0.1 * k), t, 0.03);
+  engineExtrasUpdate(e, E, x, load, t);
   return e.rpm;
 };
 S.engineInfo = function () { return eng ? { rpm: eng.rpm, gear: eng.gear } : null; };
@@ -9852,6 +10683,50 @@ S.crunch = function () {
 /* the roll hoop doing its job */
 S.bonk = function () { if (!ok) return; tone('sine', 170, 520, 0.09, 0.4); tone('sine', 520, 150, 0.3, 0.3, 0.07); tone('triangle', 780, 760, 0.12, 0.1, 0.01); };
 S.knock = function (v) { if (!ok) return; var k = Math.min(1, v / 8); if (k < 0.12) return; tone('triangle', 260, 180, 0.06, 0.22 * k); noise(0.04, 'bandpass', 1400, 0, 2, 0.1 * k); };
+/* ---- the phase 2 bikes' tricks ---- */
+/* Puffin: one sharp blast of compressed air out of the bottom of the bike */
+S.hop = function () {
+  if (!ok) return;
+  noise(0.2, 'bandpass', 3400, 900, 0.9, 0.5, 0, null, false, 0.002);
+  noise(0.06, 'highpass', 6500, 4000, 0.7, 0.25, 0, null, false, 0.001);
+  tone('sine', 150, 55, 0.12, 0.42); tone('triangle', 900, 300, 0.05, 0.08);
+};
+/* Rhino: the bull bar going through something. mat is the log's material (RR.MAT) */
+S.smash = function (mat) {
+  if (!ok) return;
+  var i, f;
+  if (mat === 1) {                       // rock: a heavy crack and a rattle of gravel
+    tone('sine', 85, 32, 0.32, 0.6); noise(0.32, 'lowpass', 1600, 220, 0.8, 0.55, 0, null, true);
+    noise(0.05, 'highpass', 2500, 0, 0.7, 0.35);
+    for (i = 0; i < 9; i++) { f = 700 + Math.random() * 1800; noise(0.035, 'bandpass', f, 0, 4, 0.16, 0.05 + i * 0.045 + Math.random() * 0.03); tone('triangle', f * 0.6, f * 0.5, 0.03, 0.05, 0.05 + i * 0.05); }
+  } else if (mat === 2) {                // ice: a glassy crack and tinkling shards
+    noise(0.12, 'highpass', 4500, 7000, 0.7, 0.4); tone('sine', 120, 50, 0.2, 0.35);
+    for (i = 0; i < 12; i++) { f = 2200 + Math.random() * 3600; tone('sine', f, f * 0.98, 0.08 + Math.random() * 0.14, 0.07, 0.03 + Math.random() * 0.4); }
+  } else if (mat === 12) {               // a tyre: a fat rubber thump and a bounce
+    tone('sine', 95, 50, 0.22, 0.6); noise(0.1, 'lowpass', 500, 150, 0.8, 0.4);
+    tone('sine', 120, 210, 0.12, 0.3, 0.16); tone('sine', 210, 90, 0.18, 0.22, 0.27);
+    tone('sine', 110, 170, 0.08, 0.14, 0.48); tone('sine', 170, 85, 0.12, 0.1, 0.55);
+  } else {                               // wood: a splintering crack
+    noise(0.04, 'highpass', 2000, 0, 0.7, 0.6); tone('sine', 110, 45, 0.25, 0.5); tone('triangle', 260, 150, 0.12, 0.3, 0.005);
+    noise(0.35, 'bandpass', 1400, 600, 1.2, 0.3, 0.02, null, false, 0.01);
+    for (i = 0; i < 10; i++) noise(0.025, 'bandpass', 1800 + Math.random() * 3200, 0, 5, 0.2, 0.03 + i * 0.03 + Math.random() * 0.02);
+    for (i = 0; i < 4; i++) tone('triangle', 420 + Math.random() * 300, 300, 0.05, 0.08, 0.2 + i * 0.07);
+  }
+};
+/* Gecko: sticky tyres letting go of a wall, a wet suction pop */
+S.unstick = function () {
+  if (!ok) return;
+  noise(0.09, 'bandpass', 700, 1900, 4, 0.22, 0, null, false, 0.05);
+  tone('sine', 190, 820, 0.06, 0.4, 0.07); tone('sine', 380, 1500, 0.04, 0.12, 0.07);
+  noise(0.05, 'lowpass', 1500, 400, 0.8, 0.25, 0.08);
+};
+/* Whiplash: the hand brake grabbing the flywheel: a click and a short disc squeal */
+S.pivot = function () {
+  if (!ok) return;
+  noise(0.015, 'highpass', 3500, 0, 0.7, 0.4); tone('square', 2100, 1800, 0.018, 0.1);
+  tone('sine', 2950, 3050, 0.2, 0.08, 0.02, null, 0.015); tone('sine', 3010, 3110, 0.2, 0.07, 0.02, null, 0.015);
+  tone('triangle', 5900, 6100, 0.14, 0.025, 0.02, null, 0.015);
+};
 /* the crash animations: one small sound each */
 S.wipe = function (kind, v) {
   if (!ok) return;
@@ -9878,6 +10753,58 @@ S.wipe = function (kind, v) {
     case 'squeak': f = 900 + Math.random() * 500; tone('sine', f, f * 1.6, 0.06, 0.12); break;
     case 'whoosh': noise(0.4, 'bandpass', 400, 1800, 1, 0.5, 0, null, false, 0.08); break;
     case 'fwump': noise(0.3, 'lowpass', 500, 150, 0.7, 0.6, 0, null, true, 0.01); tone('sine', 110, 60, 0.25, 0.4); break;
+    /* phase 2 */
+    case 'vent':            // the air tank lets go, with a rubbery balloon raspberry on top
+      noise(1.3, 'highpass', 3200, 1400, 0.7, 0.3, 0, null, false, 0.01);
+      for (i = 0; i < 20; i++) { f = 230 + 110 * Math.sin(i * 1.3) + i * 6; tone('sawtooth', f, f * 0.92, 0.07, 0.07 * (1 - i / 26), i * 0.06); }
+      break;
+    case 'pfft': noise(0.16, 'bandpass', 1600, 500, 1, 0.45); tone('sawtooth', 150, 80, 0.14, 0.09); break;
+    case 'sproing':         // a coil spring bottoming out and firing back up
+      tone('sine', 85, 380, 0.13, 0.45); tone('triangle', 170, 760, 0.13, 0.08); tone('sine', 380, 300, 0.2, 0.12, 0.12); break;
+    case 'doing':           // the doorstop wobble
+      for (i = 0; i < 18; i++) tone('triangle', i % 2 ? 330 : 270, i % 2 ? 320 : 280, 0.045, 0.16 * Math.pow(0.88, i), i * 0.04);
+      tone('sine', 300, 290, 0.8, 0.08); break;
+    case 'honk':            // an old bulb horn, twice
+      for (i = 0; i < 2; i++) { tone('sawtooth', 360, 320, 0.13, 0.16, i * 0.2); tone('square', 180, 165, 0.13, 0.1, i * 0.2); noise(0.04, 'lowpass', 900, 0, 0.7, 0.2, i * 0.2); }
+      for (i = 0; i < 5; i++) noise(0.04, 'bandpass', 1200 + Math.random() * 2000, 0, 3, 0.1, 0.45 + i * 0.08);
+      break;
+    case 'yoohoo': tone('sine', 1250, 1700, 0.13, 0.12); tone('sine', 1500, 2300, 0.2, 0.12, 0.17); tone('sine', 2300, 2000, 0.12, 0.06, 0.37); break;
+    case 'splat':           // wet slap on glass
+      noise(0.2, 'lowpass', 1800, 260, 0.8, 0.65, 0, null, false, 0.002); tone('sine', 170, 55, 0.16, 0.5);
+      for (i = 0; i < 5; i++) { f = 300 + Math.random() * 500; tone('sine', f, f * 1.5, 0.04, 0.08, 0.06 + i * 0.05); }
+      break;
+    case 'peel': tone('sine', 220, 900, 0.055, 0.32); noise(0.05, 'bandpass', 1300, 2400, 3, 0.15); break;
+    case 'stretch':         // a long stretchy squeak as the last toe slides tone('sine', 600, 1150, 0.4, 0.07, 0, null, 0.08); tone('sine', 1200, 2300, 0.4, 0.02, 0, null, 0.08); break;
+    case 'swirl':           // a sand devil spinning up
+      for (i = 0; i < 4; i++) noise(0.55, 'bandpass', 300 + i * 120, 1500 + i * 200, 1.2, 0.28, i * 0.28, null, false, 0.2);
+      noise(1.4, 'highpass', 3500, 5000, 0.7, 0.1, 0.1, null, false, 0.2);
+      break;
+    case 'tada': [523.3, 659.3, 784].forEach(function (n, j) { tone('square', n, n, j === 2 ? 0.3 : 0.08, 0.05, j * 0.09); tone('triangle', n, n, j === 2 ? 0.3 : 0.08, 0.07, j * 0.09); }); break;
+    case 'whirr':           // a top spinning up
+      for (i = 0, k = 0; i < 18; i++) { k += 0.075 - i * 0.0032; tone('triangle', 420 + i * 45, 440 + i * 45, 0.05, 0.09, k); }
+      break;
+    case 'cuckoo':
+      tone('sine', 900, 380, 0.45, 0.1, 0, null, 0.02);
+      for (i = 0; i < 2; i++) { tone('sine', 784, 784, 0.14, 0.13, 0.5 + i * 0.36); tone('sine', 622.3, 622.3, 0.2, 0.13, 0.66 + i * 0.36); }
+      break;
+    case 'freeze':          // frost crackling over, then the ice settling
+      for (i = 0; i < 14; i++) noise(0.02, 'highpass', 4000 + Math.random() * 3000, 0, 0.7, 0.14, i * 0.03 + Math.random() * 0.02);
+      tone('sine', 1700, 3400, 0.4, 0.05, 0, null, 0.1); tone('sine', 140, 60, 0.18, 0.3, 0.42); noise(0.08, 'highpass', 3000, 1500, 0.7, 0.25, 0.42);
+      break;
+    case 'slide': noise(1.0, 'highpass', 2600, 1800, 0.7, 0.13, 0, null, false, 0.05); break;
+    case 'brr': for (i = 0; i < 10; i++) { tone('square', 820, 760, 0.018, 0.05, i * 0.04); noise(0.015, 'highpass', 3000, 0, 0.7, 0.06, i * 0.04); } break;
+    case 'gallop':          // hooves, a lot of them
+      noise(1.8, 'lowpass', 220, 120, 0.7, 0.45, 0, null, true, 0.15);
+      for (i = 0; i < 6; i++) [0, 0.08, 0.17].forEach(function (o, j) { tone('sine', 125 - j * 15, 50, 0.08, 0.32, i * 0.27 + o + Math.random() * 0.015); noise(0.05, 'lowpass', 700, 200, 0.7, 0.16, i * 0.27 + o); });
+      noise(0.25, 'bandpass', 800, 260, 1.4, 0.3, 1.6, null, false, 0.01); noise(0.2, 'bandpass', 600, 200, 1.4, 0.24, 1.82, null, false, 0.01);
+      break;
+    case 'flap': for (i = 0; i < 6; i++) noise(0.09, 'bandpass', 800, 380, 1.3, 0.55, i * 0.13, null, false, 0.02); break;
+    case 'dive': tone('sine', 1900, 520, 0.5, 0.1, 0, null, 0.03); break;
+    case 'plant':           // face first into the ground, and a pillow's worth of feathers
+      tone('sine', 95, 38, 0.24, 0.6); noise(0.18, 'lowpass', 900, 200, 0.8, 0.5);
+      noise(0.5, 'highpass', 2600, 4500, 0.7, 0.1, 0.05, null, false, 0.05);
+      tone('sawtooth', 950, 760, 0.07, 0.05, 0.25); tone('sawtooth', 900, 700, 0.09, 0.05, 0.36);
+      break;
   }
 };
 /* nuggets and crates */
