@@ -2,12 +2,14 @@
    usage: node tools/gallery.js <outdir>               every bike, paint job and rider
           node tools/gallery.js <outdir> --compare     new items next to existing ones, one row per tier
           node tools/gallery.js <outdir> --new         only the items added since the first collection, in tier order, big
+          add --only=id,id to show only those ids as the new ones, and --zoom=2 to draw everything twice as big
    Paint jobs and riders are also shown on other bikes, so a look that only works on one bike shows up. */
 const lib = require('./lib.js');
 const args = process.argv.slice(2), out = args.find(a => !a.startsWith('--')) || '/tmp';
 const compare = args.includes('--compare'), onlyNew = args.includes('--new');
 const ZOOM = +((args.find(a => a.startsWith('--zoom=')) || '--zoom=1').split('=')[1]);     // --zoom=2 draws every cell twice as big
-const ORIG = { paint: 24, rider: 20 };      // how many of each there were in the first collection
+const ORIG = { paint: 24, rider: 20 };
+const ONLY = ((args.find(a => a.startsWith('--only=')) || '').slice(7) || '').split(',').filter(Boolean);      // --only=id,id shows just those as the new ones      // how many of each there were in the first collection
 (async () => {
   const t = await lib.open({ w: 2400, h: 2200, dpr: 1, touch: false });
   const sheet = async (name, cells, cols, cw, ch, time) => {
@@ -34,12 +36,12 @@ const ORIG = { paint: 24, rider: 20 };      // how many of each there were in th
     await t.wait(80);
     const cv = t.page.locator('#sheet'); await cv.screenshot({ path: out + '/' + name + '.png' });
   };
-  const list = (kind) => t.ev(([kind, orig]) => (kind === 'paint' ? RR.PAINTS : RR.RIDERS).map(x => ({ id: x.id, name: x.name, tier: x.tier, fresh: x.index >= orig })), [kind, ORIG[kind]]);
+  const list = (kind) => t.ev(([kind, orig]) => (kind === 'paint' ? RR.PAINTS : RR.RIDERS).map(x => ({ id: x.id, name: x.name, tier: x.tier, fresh: x.index >= orig && (!ONLY.length || ONLY.includes(x.id)) })), [kind, ORIG[kind]]);
 
   if (compare || onlyNew) {
     for (const kind of ['paint', 'rider']) {
       const all = await list(kind), key = kind === 'paint' ? 'paint' : 'skin';
-      const tiers = await t.ev(() => RR.TIERS.map(x => x.id));
+      const tiers = (await t.ev(() => RR.TIERS.map(x => x.id))).concat('trophy');
       const rows = tiers.map(id => ({ old: all.filter(x => !x.fresh && x.tier === id).slice(0, 3), nw: all.filter(x => x.fresh && x.tier === id) }));
       const maxNew = Math.max(...rows.map(r => r.nw.length)), cols = onlyNew ? Math.min(maxNew, ZOOM > 1 ? 3 : 8) : 3 + maxNew;
       const cells = [];
