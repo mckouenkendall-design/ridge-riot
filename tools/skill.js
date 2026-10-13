@@ -80,7 +80,9 @@ function calibrateAt(t, id, G) {
       row.push(res === 'there' || res === 'finish');
     }
     RR.restore(s, snap); caps[k] = 1e9;
-    const free = (r => r === 'there' || r === 'finish')(run(s, { caps: caps, vcap: G }, end));
+    let free = (r => r === 'there' || r === 'finish')(run(s, { caps: caps, vcap: G }, end));
+    // "no limit here" has to hold up with a person's hands too, not just for one tidy robot run
+    for (let q = 0; q < 3 && free; q++) { RR.restore(s, snap); free = (r => r === 'there' || r === 'finish')(run(s, { caps: caps, vcap: G }, end, Hands(31 + q * 977 + t * 7, {}))); }
     let best = null, cur = null;
     row.forEach((okv, i) => { const v = 3 + i * 0.5; if (okv) { if (!cur) cur = { lo: v, hi: v }; else cur.hi = v; if (!best || cur.hi - cur.lo > best.hi - best.lo) best = cur; } else cur = null; });
     if (!best) { ok = false; deadAt = k; win.push(null); break; }

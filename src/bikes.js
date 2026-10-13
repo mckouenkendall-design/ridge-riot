@@ -293,7 +293,7 @@ RR.BIKES = [
     trick: 'Wings: the faster you go and the higher the nose, the more they lift. No air in Low Orbit, so no lift there.',
     mass: 182, kgyr: 0.50, wb: 1.48, rr: 0.32, rf: 0.33, com: [0.68, 0.78], wheelMass: [10, 9], rake: 27, swing: 9,
     sus: [{ travel: 0.22, freq: 2.0, sag: 0.3, zc: 0.45, zr: 0.98 }, { travel: 0.23, freq: 1.95, sag: 0.3, zc: 0.42, zr: 0.95 }],
-    accel: 0.68, vp: 10, vmax: 17.0, grip: 1.0, brake: 0.9, leanAcc: 12, spin: 4.8, airDamp: 2.2, cda: 0.6, glide: { k: 5.5, inc: -0.04, cap: 0.7 },
+    accel: 0.68, vp: 10, vmax: 17.0, grip: 1.0, brake: 0.9, leanAcc: 12, spin: 4.8, airDamp: 1.6, cda: 0.6, glide: { k: 5.5, inc: -0.04, cap: 0.7, drag: 0.08 },
     rider: { seat: [0.42, 0.86], peg: [0.52, 0.40], grip: [0.98, 1.08], scale: 1, torso: 0.5 },
     col: ['#f5f1e6', '#1d4e89', '#f2c230'], suit: ['#1d4e89', '#f5f1e6', '#f2c230'],
     snd: { type: 'glider', pitch: 1.0, gears: 5 },

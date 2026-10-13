@@ -13,6 +13,7 @@ function wrap(a) { return a - TAU * Math.round(a / TAU); }
 RR.botInput = function (s, P, out) {
   var b = s.b, tr = s.track, air = !s.gnd[0] && !s.gnd[1];
   var err, th = P.th || 0.2, lean = 0, trick = false;
+  P.wantV = out.cap != null && out.cap < 1e8 ? out.cap : null;
   if (!air) {
     var i = s.gnd[0] ? 0 : 1;
     var slope = Math.atan2(-s.nrmX[i], s.nrmY[i]);
@@ -33,6 +34,8 @@ RR.botInput = function (s, P, out) {
     }
     if (target > 1.2 || target < -1.2) target = 0;
     target += 0.08 + (P.airBias || 0);
+    // a winged bike that is going too fast for what is coming keeps its nose down, so the wings stop lifting and it lands to brake
+    if (b.glide && P.wantV != null && Math.sqrt(s.vx * s.vx + s.vy * s.vy) > P.wantV + 0.5) target = Math.atan2(s.vy, s.vx) - 0.04;
     // where the nose will be pointing at touchdown if we do nothing more
     var d = b.airDamp, coast = d > 0.01 ? (1 - Math.exp(-d * T)) / d : T;
     err = wrap(s.a + s.w * coast - target);
