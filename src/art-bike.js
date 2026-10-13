@@ -636,6 +636,12 @@ A.helmet = function (ctx, x, y, r, ang, d, kind) {
 };
 
 /* layer 0 = the far arm and leg (behind the bike), 1 = body, 2 = near leg and arm */
+/* a small five-point star with a thin dark edge, centred at (x, y), r to the tips, turned by ang */
+function star5(ctx, x, y, r, ang, fill) {
+  ctx.beginPath();
+  for (var k = 0; k < 10; k++) { var a = ang + Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * 0.42 : r; ctx[k ? 'lineTo' : 'moveTo'](x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+  ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = r * 0.22; ctx.strokeStyle = OUT; ctx.lineJoin = 'round'; ctx.stroke();
+}
 function bone(ctx, J, w) { line(ctx, [J[0] * 0.15 + J[2] * 0.85, J[1] * 0.15 + J[3] * 0.85, J[0], J[1]], w, '#f1ecdc'); }
 A.rider = function (ctx, d, v, layer) {
   var R = d.rider, sc = R.scale || 1, s = d.suit, sk = d._skin || null, t = d._t || 0;
@@ -667,6 +673,10 @@ A.rider = function (ctx, d, v, layer) {
     if (sk && sk.bones) {
       for (var rb = 0; rb < 3; rb++) { var f = 0.42 + rb * 0.2; line(ctx, [hx + tx * f + nx * w0 * 0.7, hy + ty * f + ny * w0 * 0.7, hx + tx * (f + 0.06) - nx * w0 * 0.75, hy + ty * (f + 0.06) - ny * w0 * 0.75], 0.03 * sc, '#f1ecdc'); }
       line(ctx, [hx + tx * 0.2, hy + ty * 0.2, hx + tx * 0.95, hy + ty * 0.95], 0.03 * sc, '#f1ecdc');
+    } else if (sk && sk.stars && sk.stars.length) {
+      // stars: [colours] scatters small five-point stars over the suit (a star-spangled jumpsuit), each one gently pulsing
+      for (var sp = 0; sp < sk.stars.length; sp++) { var fp = 0.14 + sp * (0.74 / sk.stars.length), op = (RR.Render.hash(sp * 7.7 + 3) - 0.5) * 1.3, pul = 0.85 + 0.15 * Math.sin(t * 4 + sp * 1.7);
+        star5(ctx, hx + tx * fp + nx * w0 * op, hy + ty * fp + ny * w0 * op, 0.03 * sc * pul, Math.atan2(ty, tx) - Math.PI / 2 + sp * 0.4, sk.stars[sp]); }
     } else if (sk && sk.stars) {
       for (var st = 0; st < 5; st++) { var fs = 0.15 + st * 0.18, tw = 0.5 + 0.5 * Math.sin(t * 5 + st * 2.1), o2 = (RR.Render.hash(st * 7.7) - 0.5) * 1.4;
         ctx.globalAlpha = 0.35 + 0.65 * tw; circ(ctx, hx + tx * fs + nx * w0 * o2, hy + ty * fs + ny * w0 * o2, 0.014 + 0.012 * tw, st % 2 ? '#ffffff' : '#9fe8ff', 0); }

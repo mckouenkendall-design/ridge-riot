@@ -90,7 +90,7 @@ function tile(p) {
 var LIVE = {};
 var liveCv = {};
 function liveTile(p, t) {
-  var N = 64, o = liveCv[p.id] || (liveCv[p.id] = { cv: mk(N, N), t: -9 });
+  var N = p.pat.res || 64, o = liveCv[p.id] || (liveCv[p.id] = { cv: mk(N, N), t: -9 });      // pat.res: a finer picture for a pattern with small sharp parts
   if (o.t === t) return o;                      // already painted for this moment
   o.t = t; o.pat = null;
   // kept as a plain in-memory picture: it is small, repainted often and copied into a pattern each time

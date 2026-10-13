@@ -1704,7 +1704,8 @@ RR.MORE_PAINTS2 = [
   { id: 'grandtour',  name: 'Grand Tour',      tier: 'trophy', c: ['#e8b12e', '#7a5210', '#fff3b0'], pat: { t: 'grandtour', size: 0.6, ang: 0, dx: 0, dy: 0 }, rim: '#ffe27a', glow: '#ffd23f', glint: '#fff7cf', trail: { cols: ['#fff7cf', '#ffc22e'], w: 0.28, spark: '#fff3b0' }, live: true, wide: true },
   { id: 'pinwheel',   name: 'Pinwheel',        tier: 'trophy', c: ['#f6d65a', '#fffaf0', '#b8841a'], pat: { t: 'pinwheel', size: 0.5, ang: 0, dx: 0, dy: 0 }, rim: '#fffaf0', glow: '#ffd23f', glint: '#ffffff', trail: { cols: ['#ffffff', '#ffc22e'], w: 0.28, spark: '#fff3b0' }, live: true, wide: true },
   { id: 'longhaul',   name: 'Long Haul',       tier: 'trophy', c: ['#14161e', '#ffc83a', '#f4e9c0'], pat: { t: 'longhaul', size: 0.9, ang: 0, dx: 0, dy: 0 }, rim: '#ffc83a', glow: '#ffd23f', glint: '#fff0b0', trail: { cols: ['#fff3b0', '#ff9a1f'], w: 0.28, spark: '#ffe9a0' }, live: true, wide: true },
-  { id: 'curator',    name: 'Curator',         tier: 'trophy', c: ['#f2efe8', '#c8962a', '#7a1830'], pat: { t: 'curator', size: 0.6, ang: 0, dx: 0, dy: 0 }, rim: '#e2ae34', glow: '#ffd23f', glint: '#ffffff', trail: { cols: ['#ffffff', '#ffc22e'], w: 0.28, spark: '#fff7cf' }, live: true, wide: true }
+  { id: 'curator',    name: 'Curator',         tier: 'trophy', c: ['#f2efe8', '#c8962a', '#7a1830'], pat: { t: 'curator', size: 0.6, ang: 0, dx: 0, dy: 0 }, rim: '#e2ae34', glow: '#ffd23f', glint: '#ffffff', trail: { cols: ['#ffffff', '#ffc22e'], w: 0.28, spark: '#fff7cf' }, live: true, wide: true },
+  { id: 'gearhead',   name: 'Gearhead',        tier: 'trophy', c: ['#d9a63a', '#2b2824', '#e6ebf0'], pat: { t: 'gearhead', size: 0.7, res: 128, ang: 0, dx: 0, dy: 0 }, rim: '#e6ebf0', glow: '#ffc24a', glint: '#fff4cc', trail: { cols: ['#fff4cc', '#d99a2a'], w: 0.28, spark: '#ffe9a0' }, live: true, wide: true }
 ];
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -1777,7 +1778,8 @@ RR.MORE_RIDERS2 = [
   { id: 'void',      name: 'Void',             tier: 'legendary', suit: ['#0b0912', '#0b0912', '#ff9a3f'], head: 'void', live: true, blurb: 'Where the head should be, there is only a mild draught.' },
   // trophy
   { id: 'champ',     name: 'The Champ',        tier: 'trophy', suit: ['#ffd23f', '#f6f1e2', '#fff3b0'], head: 'champ', live: true, blurb: 'Three stars on every track. Still checks the mirror first.' },
-  { id: 'goldie',    name: 'Goldie',           tier: 'trophy', suit: ['#f3e6c4', '#e8c25a', '#fff2cc'], head: 'goldie', live: true, blurb: 'Broken five hundred times. Every crack is the good part.' }
+  { id: 'goldie',    name: 'Goldie',           tier: 'trophy', suit: ['#f3e6c4', '#e8c25a', '#fff2cc'], head: 'goldie', live: true, blurb: 'Broken five hundred times. Every crack is the good part.' },
+  { id: 'daredevil', name: 'Daredevil',        tier: 'trophy', suit: ['#f8f6ef', '#f1ede2', '#d3232e'], head: 'daredevil', cape: '#1f4aa8', stars: ['#1f4aa8', '#d3232e', '#1f4aa8', '#d3232e', '#e8b030'], live: true, blurb: 'Jumped everything on the list. Wrote a longer list.' }
 ];
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -3435,6 +3437,12 @@ A.helmet = function (ctx, x, y, r, ang, d, kind) {
 };
 
 /* layer 0 = the far arm and leg (behind the bike), 1 = body, 2 = near leg and arm */
+/* a small five-point star with a thin dark edge, centred at (x, y), r to the tips, turned by ang */
+function star5(ctx, x, y, r, ang, fill) {
+  ctx.beginPath();
+  for (var k = 0; k < 10; k++) { var a = ang + Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * 0.42 : r; ctx[k ? 'lineTo' : 'moveTo'](x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+  ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = r * 0.22; ctx.strokeStyle = OUT; ctx.lineJoin = 'round'; ctx.stroke();
+}
 function bone(ctx, J, w) { line(ctx, [J[0] * 0.15 + J[2] * 0.85, J[1] * 0.15 + J[3] * 0.85, J[0], J[1]], w, '#f1ecdc'); }
 A.rider = function (ctx, d, v, layer) {
   var R = d.rider, sc = R.scale || 1, s = d.suit, sk = d._skin || null, t = d._t || 0;
@@ -3466,6 +3474,10 @@ A.rider = function (ctx, d, v, layer) {
     if (sk && sk.bones) {
       for (var rb = 0; rb < 3; rb++) { var f = 0.42 + rb * 0.2; line(ctx, [hx + tx * f + nx * w0 * 0.7, hy + ty * f + ny * w0 * 0.7, hx + tx * (f + 0.06) - nx * w0 * 0.75, hy + ty * (f + 0.06) - ny * w0 * 0.75], 0.03 * sc, '#f1ecdc'); }
       line(ctx, [hx + tx * 0.2, hy + ty * 0.2, hx + tx * 0.95, hy + ty * 0.95], 0.03 * sc, '#f1ecdc');
+    } else if (sk && sk.stars && sk.stars.length) {
+      // stars: [colours] scatters small five-point stars over the suit (a star-spangled jumpsuit), each one gently pulsing
+      for (var sp = 0; sp < sk.stars.length; sp++) { var fp = 0.14 + sp * (0.74 / sk.stars.length), op = (RR.Render.hash(sp * 7.7 + 3) - 0.5) * 1.3, pul = 0.85 + 0.15 * Math.sin(t * 4 + sp * 1.7);
+        star5(ctx, hx + tx * fp + nx * w0 * op, hy + ty * fp + ny * w0 * op, 0.03 * sc * pul, Math.atan2(ty, tx) - Math.PI / 2 + sp * 0.4, sk.stars[sp]); }
     } else if (sk && sk.stars) {
       for (var st = 0; st < 5; st++) { var fs = 0.15 + st * 0.18, tw = 0.5 + 0.5 * Math.sin(t * 5 + st * 2.1), o2 = (RR.Render.hash(st * 7.7) - 0.5) * 1.4;
         ctx.globalAlpha = 0.35 + 0.65 * tw; circ(ctx, hx + tx * fs + nx * w0 * o2, hy + ty * fs + ny * w0 * o2, 0.014 + 0.012 * tw, st % 2 ? '#ffffff' : '#9fe8ff', 0); }
@@ -4523,7 +4535,7 @@ function tile(p) {
 var LIVE = {};
 var liveCv = {};
 function liveTile(p, t) {
-  var N = 64, o = liveCv[p.id] || (liveCv[p.id] = { cv: mk(N, N), t: -9 });
+  var N = p.pat.res || 64, o = liveCv[p.id] || (liveCv[p.id] = { cv: mk(N, N), t: -9 });      // pat.res: a finer picture for a pattern with small sharp parts
   if (o.t === t) return o;                      // already painted for this moment
   o.t = t; o.pat = null;
   // kept as a plain in-memory picture: it is small, repainted often and copied into a pattern each time
@@ -7113,6 +7125,137 @@ LIVE.curator = function (c, N, P, t) {
   c.restore();
 };
 
+/* gearhead: a train of brass and steel gears on a dark machined plate. Every pair that touches really meshes:
+   sizes go with tooth counts, each turns the other way at the speed its teeth allow, and the teeth sit in each
+   other's gaps the whole way round. The gears tile across the seams of the picture like everything else. */
+var GEARM = 1.3, GEARADD = 2.3, GEARDED = 2.6;                        // pitch radius per tooth, tooth height out and in (tile pixels)
+var GEARS = [                                                        // n teeth, centre, parent it meshes with (-1: the driver), brass or steel
+  { n: 14, x: 18, y: 18, p: -1, brass: true },
+  { n: 9, x: 46.33, y: 27.55, p: 0, brass: false },
+  { n: 12, x: 52.27, y: 54.2, p: 1, brass: true },
+  { n: 7, x: 20.17, y: 54.79, p: 0, brass: false }
+];
+(function () {
+  // work out turning direction and starting angle so the teeth of every meshing pair interlock
+  GEARS.forEach(function (g, i) {
+    g.r = GEARM * g.n;
+    if (g.p < 0) { g.dir = 1; g.a0 = 0; return; }
+    var P = GEARS[g.p], best = null, a, b;
+    for (a = -1; a <= 1; a++) for (b = -1; b <= 1; b++) {                     // the copy of this gear that touches the parent
+      var dx = g.x + a * 64 - P.x, dy = g.y + b * 64 - P.y, e = Math.abs(Math.sqrt(dx * dx + dy * dy) - (P.r + g.r));
+      if (!best || e < best[0]) best = [e, dx, dy];
+    }
+    var phi = Math.atan2(best[2], best[1]), u = mod((phi - P.a0) * P.n / TAU, 1);
+    g.dir = -P.dir; g.a0 = phi + Math.PI - TAU * (0.5 - u) / g.n;
+  });
+})();
+function gearPath(g, x, y, n, r) {
+  var k, P = TAU / n, ra = r + GEARADD, rf = r - GEARDED;
+  g.beginPath();
+  for (k = 0; k < n; k++) {
+    var a = k * P;
+    g.arc(x, y, rf, a - P * 0.5, a - P * 0.27);
+    g.arc(x, y, ra, a - P * 0.15, a + P * 0.15);
+    g.arc(x, y, rf, a + P * 0.27, a + P * 0.5);
+  }
+  g.closePath();
+}
+/* one gear, drawn once with its centre in the middle of a small picture, then turned as it is copied onto the tile */
+function gearSprite(gd) {
+  var S = Math.ceil(2 * (gd.r + GEARADD) + 4);
+  return layer('gear' + gd.n + (gd.brass ? 'b' : 's'), S * GEARRES, function (g) {
+    g.scale(GEARRES, GEARRES);
+    var o = S / 2, r = gd.r, n = gd.n, k, P = TAU / n;
+    var col = gd.brass ? { body: '#f2c24c', web: '#c8922c', hub: '#f6d77a', line: '#4a2e04', tip: 'rgba(255,246,200,0.95)', deep: '#8a5a12' }
+      : { body: '#bcc6d0', web: '#7d8896', hub: '#e6ebf0', line: '#1c222a', tip: 'rgba(255,255,255,0.95)', deep: '#5a6572' };
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    gearPath(g, o, o, n, r); g.fillStyle = col.body; g.fill(); g.lineWidth = 1.5; g.strokeStyle = col.line; g.stroke();
+    // a lit edge across every tooth tip and a cut line at the tooth roots
+    var rt = r + GEARADD - 0.6;
+    g.beginPath(); for (k = 0; k < n; k++) { g.moveTo(o + Math.cos(k * P - P * 0.12) * rt, o + Math.sin(k * P - P * 0.12) * rt); g.arc(o, o, rt, k * P - P * 0.12, k * P + P * 0.12); }
+    g.lineWidth = 0.8; g.strokeStyle = col.tip; g.stroke();
+    g.beginPath(); g.arc(o, o, r - GEARDED - 0.9, 0, TAU); g.lineWidth = 0.7; g.strokeStyle = 'rgba(0,0,0,0.3)'; g.stroke();
+    // recessed web
+    var rw = r - GEARDED - 1.6;
+    g.beginPath(); g.arc(o, o, rw, 0, TAU); g.fillStyle = col.web; g.fill(); g.lineWidth = 0.8; g.strokeStyle = col.deep; g.stroke();
+    g.beginPath(); g.arc(o, o, rw - 0.6, Math.PI * 0.15, Math.PI * 0.95); g.lineWidth = 0.7; g.strokeStyle = 'rgba(0,0,0,0.35)'; g.stroke();
+    // sunk pockets between the spokes on the big gears, round dimples on the small ones (dark but not see-through, so a gear still reads as one solid wheel)
+    g.fillStyle = gd.brass ? '#74500f' : '#4d5763';
+    var ri = Math.max(r * 0.34, 3.2), holes = [];
+    if (n >= 12) {
+      var m = 5, half = Math.PI / m * 0.55;
+      for (k = 0; k < m; k++) { var a = k * TAU / m + 0.3; g.beginPath(); g.arc(o, o, rw - 1.4, a - half, a + half); g.arc(o, o, ri + 1.4, a + half * 0.8, a - half * 0.8, true); g.closePath(); g.fill(); holes.push(a); }
+      holes.forEach(function (a) {
+        g.beginPath(); g.arc(o, o, rw - 1.4, a - half, a + half); g.arc(o, o, ri + 1.4, a + half * 0.8, a - half * 0.8, true); g.closePath(); g.lineWidth = 1.3; g.strokeStyle = col.line; g.stroke();
+      });
+    } else {
+      var hr = (rw - ri) * 0.36, hm = (rw + ri) / 2;
+      for (k = 0; k < 4; k++) { var a2 = k * TAU / 4 + 0.4; g.beginPath(); g.arc(o + Math.cos(a2) * hm, o + Math.sin(a2) * hm, hr, 0, TAU); g.fill(); holes.push(a2); }
+      holes.forEach(function (a) { g.beginPath(); g.arc(o + Math.cos(a) * hm, o + Math.sin(a) * hm, hr, 0, TAU); g.lineWidth = 1.3; g.strokeStyle = col.line; g.stroke(); });
+    }
+    // hub, a ring of bolt heads and the keyed axle
+    g.beginPath(); g.arc(o, o, ri, 0, TAU); g.fillStyle = col.hub; g.fill(); g.lineWidth = 1; g.strokeStyle = col.line; g.stroke();
+    g.beginPath(); g.arc(o, o, ri - 1, Math.PI * 1.1, Math.PI * 1.75); g.lineWidth = 0.7; g.strokeStyle = '#ffffff'; g.stroke();
+    if (ri > 4) for (k = 0; k < 4; k++) { var b = k * TAU / 4 + 0.8; g.beginPath(); g.arc(o + Math.cos(b) * (ri - 1.9), o + Math.sin(b) * (ri - 1.9), 0.75, 0, TAU); g.fillStyle = col.deep; g.fill(); }
+    g.beginPath(); for (k = 0; k < 6; k++) { var hx = k * TAU / 6; g[k ? 'lineTo' : 'moveTo'](o + Math.cos(hx) * 1.9, o + Math.sin(hx) * 1.9); } g.closePath(); g.fillStyle = col.web; g.fill(); g.lineWidth = 0.7; g.strokeStyle = col.line; g.stroke();
+    g.beginPath(); g.arc(o, o, 0.8, 0, TAU); g.fillStyle = '#16120e'; g.fill();
+    g.fillStyle = col.deep; g.fillRect(o + 1.2, o - 0.4, 1.6, 0.8);                                   // the index mark, so the turning shows
+  });
+}
+function gearStatic(N) {
+  return CACHE.gearbase || (CACHE.gearbase = layer('gearbase', N * GEARRES, function (g) {
+    g.scale(GEARRES, GEARRES);
+    var s = rng(48), i;
+    g.fillStyle = lg(g, 0, 0, N * 0.6, N, [[0, '#3a352f'], [0.5, '#26231f'], [1, '#332e28']]); g.fillRect(0, 0, N, N);
+    for (i = 0; i < 70; i++) { var y = s() * N, x = s() * N, L = 8 + s() * 30; g.fillStyle = s() < 0.55 ? 'rgba(255,240,210,0.07)' : 'rgba(0,0,0,0.2)'; g.fillRect(x, y, L, 0.6); g.fillRect(x - N, y, L, 0.6); }     // brushed grain
+    // rivets on the plate, wherever there is room between the gears
+    var placed = 0, tries = 0;
+    while (placed < 7 && tries++ < 400) {
+      var rx = s() * N, ry = s() * N, ok = true;
+      GEARS.forEach(function (gd) { for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) { var dx = rx - gd.x - a * N, dy = ry - gd.y - b * N; if (dx * dx + dy * dy < (gd.r + GEARADD + 3.2) * (gd.r + GEARADD + 3.2)) ok = false; } });
+      if (!ok) continue; placed++;
+      wrap(N, rx, ry, 3, function (px, py) {
+        g.beginPath(); g.arc(px + 0.5, py + 0.7, 1.7, 0, TAU); g.fillStyle = 'rgba(0,0,0,0.5)'; g.fill();
+        g.beginPath(); g.arc(px, py, 1.6, 0, TAU); g.fillStyle = rg(g, px - 0.5, py - 0.5, 0.1, 1.7, [[0, '#f6dc8c'], [1, '#8a5a12']]); g.fill();
+      });
+    }
+    // the shadow each gear throws on the plate
+    GEARS.forEach(function (gd) { wrap(N, gd.x + 1.3, gd.y + 1.9, gd.r + 3, function (px, py) { g.beginPath(); g.arc(px, py, gd.r + GEARADD * 0.6, 0, TAU); g.fillStyle = 'rgba(0,0,0,0.42)'; g.fill(); }); });
+  }));
+}
+var GEARRES = 2;                                                     // the gears and plate are painted twice as fine as the tile units
+var GEARW = 5.5;                                                     // how fast the train runs: a gear with n teeth turns GEARW / n radians a second
+LIVE.gearhead = function (c, NR, P, t) {
+  var N = 64, S = gearStatic(N);                                   // drawn in 64ths of the tile whatever its real size (pat.res)
+  c.save(); up(c, NR); c.scale(NR / N, NR / N);
+  c.drawImage(S, 0, 0, N, N);
+  GEARS.forEach(function (gd) {
+    var spr = gearSprite(gd), h = spr.width / GEARRES / 2, ang = gd.a0 + gd.dir * t * GEARW / gd.n, R = gd.r + GEARADD;
+    put(c, N, gd.x, gd.y, R + 1, function () {
+      c.save(); c.rotate(ang); c.drawImage(spr, -h, -h, h * 2, h * 2); c.restore();
+      // light that stays put while the metal turns under it: bright upper left, shade lower right
+      c.save(); c.beginPath(); c.arc(0, 0, R, 0, TAU); c.clip();
+      c.fillStyle = lg(c, -R, -R, R, R, gd.brass ? [[0, 'rgba(255,248,210,0.42)'], [0.45, 'rgba(255,230,160,0.06)'], [0.6, 'rgba(0,0,0,0)'], [1, 'rgba(40,20,0,0.24)']] : [[0, 'rgba(255,255,255,0.4)'], [0.45, 'rgba(255,255,255,0.05)'], [0.6, 'rgba(0,0,0,0)'], [1, 'rgba(0,10,25,0.28)']]);
+      c.fillRect(-R, -R, R * 2, R * 2);
+      c.restore();
+    });
+  });
+  // the polished brass catches a travelling band of light (only the brass gears, not the steel or the plate)
+  c.save(); c.beginPath();
+  GEARS.forEach(function (gd) { if (gd.brass) wrap(N, gd.x, gd.y, gd.r + GEARADD, function (px, py) { c.moveTo(px + gd.r + GEARADD, py); c.arc(px, py, gd.r + GEARADD, 0, TAU); }); });
+  c.clip(); c.globalCompositeOperation = 'lighter';
+  sweep(c, N, t * 24 - 6, 20, 10, 'rgba(255,226,140,0.22)'); sweep(c, N, t * 24 - 6, 20, 2.6, 'rgba(255,255,235,0.75)');
+  c.restore();
+  // glints winking on the brass where the light hits the teeth
+  c.globalCompositeOperation = 'lighter';
+  GEARS.forEach(function (gd, i) {
+    if (!gd.brass) return;
+    var k = Math.max(0, Math.sin(t * 2.4 + i * 2.1)), R = gd.r + GEARADD - 1;
+    if (k > 0.05) wrap(N, gd.x - R * 0.68, gd.y - R * 0.72, 8, function (px, py) { star4(c, px, py, 1.5 + 5.5 * k, 'rgba(255,250,225,' + (0.45 + 0.55 * k) + ')'); });
+  });
+  c.restore();
+};
+
 })(typeof window !== 'undefined' ? window : globalThis);
 
 /* ---- art-heads2.js ---- */
@@ -8373,6 +8516,80 @@ HEAD.goldie = function (c, t) {
   qline(c, 0.34, -0.5, 0.6, -0.9, 0.86, -0.5, 0.09, OUT);                                                              // gentle smile
   ci(c, -0.1, -0.7, 0.1, '#d8c68e', 0.06); ci(c, -0.1, -0.7, 0.045, '#b8780a', 0);
   for (k = 0; k < 5; k++) { var f = (t * 0.4 + k * 0.2) % 1; c.globalAlpha = Math.sin(f * Math.PI); star(c, -0.9 + k * 0.5 + Math.sin(f * 5 + k) * 0.15, 0.9 + f * 1.5, 0.1 + 0.05 * (k % 2), '#ffe27a'); } c.globalAlpha = 1;
+};
+
+/* a five-point star at (x, y), r to the tips, turned by ang. lw 0 = no outline */
+function star5(c, x, y, r, ang, fill, lw) {
+  var k, p = [];
+  for (k = 0; k < 10; k++) { var a = ang + Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * 0.42 : r; p.push(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+  po(c, p, fill, lw == null ? 0.06 : lw);
+}
+/* the flaming hoop the daredevil has just come through: an iron ring seen side on, centre (cx, 0.1), half of it at a time */
+function hoop(c, t, cx, front) {
+  var k, rx = 0.32, ry = 1.5, a0 = front ? -Math.PI / 2 : Math.PI / 2, a1 = front ? Math.PI / 2 : Math.PI * 1.5;
+  for (k = 0; k < 9; k++) {                                                                                         // flames licking off the ring, blown back
+    var a = a0 + (k + 0.5) * Math.PI / 9, x = cx + Math.cos(a) * rx, y = 0.1 + Math.sin(a) * ry, out = Math.atan2(Math.sin(a) / ry, Math.cos(a) / rx);
+    var dir = Math.atan2(Math.sin(out) * 0.8 + 0.25, Math.cos(out) * 0.6 - 0.8);
+    plume(c, x, y, dir, 0.42 + 0.14 * Math.sin(t * 5 + k * 1.9), 0.11, t, k * 1.7 + (front ? 0 : 3), ['#e8321a', '#ff8a1f', '#fff08a'], 0.06);
+  }
+  c.beginPath(); c.ellipse(cx, 0.1, rx, ry, 0, a0, a1); c.lineWidth = 0.2; c.strokeStyle = OUT; c.stroke();
+  c.lineWidth = 0.11; c.strokeStyle = '#ff9a2a'; c.stroke();
+  c.lineWidth = 0.04; c.strokeStyle = '#fff2a8'; c.stroke();
+}
+HEAD.daredevil = function (c, t) {
+  var k, pu = 0.5 + 0.5 * Math.sin(t * 2.2), sh = (t * 0.5) % 2.6 - 1.1;
+  glow(c, 0.1, 0.1, 3.0, 'rgb(255,205,110)', 0.5 + 0.12 * pu);
+  for (k = 0; k < 2; k++) {                                                                                        // two searchlights sweeping the night
+    var bx = k ? 1.5 : -1.3, ba = Math.PI / 2 + (k ? 0.35 : -0.3) + 0.35 * Math.sin(t * 0.8 + k * 2.4), bl2 = 4.2, bw = 0.28;
+    c.beginPath(); c.moveTo(bx, -2.2); c.lineTo(bx + Math.cos(ba - bw) * bl2, -2.2 + Math.sin(ba - bw) * bl2); c.lineTo(bx + Math.cos(ba + bw) * bl2, -2.2 + Math.sin(ba + bw) * bl2); c.closePath();
+    var bg = c.createLinearGradient(bx, -2.2, bx + Math.cos(ba) * bl2, -2.2 + Math.sin(ba) * bl2); bg.addColorStop(0, 'rgba(255,250,225,0.5)'); bg.addColorStop(1, 'rgba(255,250,225,0)');
+    c.fillStyle = bg; c.fill();
+  }
+  hoop(c, t, -1.5, false);
+  // the helmet: glossy white, a blue racing band full of stars over the crown edged in red, and a big star on the side
+  var g = c.createRadialGradient(0.25, 0.45, 0.08, 0, 0, 1.05); g.addColorStop(0, '#ffffff'); g.addColorStop(0.6, '#f3f1ec'); g.addColorStop(1, '#c9ccd4');
+  ci(c, 0, 0, 1, g);
+  c.save(); c.beginPath(); c.arc(0, 0, 0.95, 0, TAU); c.clip();
+  c.beginPath(); c.arc(-0.12, -0.12, 0.74, 0.5, 3.15); c.lineWidth = 0.46; c.strokeStyle = '#d3232e'; c.stroke();
+  c.lineWidth = 0.32; c.strokeStyle = '#1f4aa8'; c.stroke();
+  c.beginPath(); c.arc(-0.12, -0.12, 0.74, 0.5, 3.15); c.lineWidth = 0.03; c.strokeStyle = 'rgba(255,255,255,0.7)'; c.stroke();
+  for (k = 0; k < 5; k++) { var sa = 0.75 + k * 0.5; star5(c, -0.12 + Math.cos(sa) * 0.74, -0.12 + Math.sin(sa) * 0.74, 0.1, sa - Math.PI / 2, '#ffffff', 0); }
+  c.save(); c.translate(sh, 0); c.rotate(0.5); c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillRect(-0.1, -2, 0.22, 4); c.fillRect(0.2, -2, 0.06, 4); c.restore();     // travelling shine
+  c.restore();
+  arc(c, 0.9, 1.55, 2.5, 0.08, 'rgba(255,255,255,0.95)'); arc(c, 0.9, 3.9, 5.1, 0.1, 'rgba(60,70,100,0.3)');
+  star5(c, -0.32, -0.36, 0.36, -0.1, '#e8b030', 0.08); star5(c, -0.32, -0.36, 0.25, -0.1, '#d3232e', 0);                // the big star
+  ln(c, [-0.36, -0.2, -0.3, -0.12], 0.04, 'rgba(255,255,255,0.8)');
+  // face under the visor: sideburns, a big grin, the chin strap
+  bl(c, [0.2, 0.25, 0.95, 0.3, 1.12, -0.12, 1.02, -0.78, 0.56, -0.96, 0.18, -0.55], SKIN, 0.12);
+  bl(c, [0.2, 0.0, 0.42, 0.0, 0.46, -0.5, 0.3, -0.62, 0.2, -0.4], '#6a4228', 0.06);
+  ci(c, 1.08, -0.3, 0.12, '#dba27c', 0.09);
+  c.beginPath(); c.moveTo(0.5, -0.5); c.quadraticCurveTo(0.8, -0.56, 1.02, -0.44); c.quadraticCurveTo(0.96, -0.82, 0.72, -0.82); c.quadraticCurveTo(0.52, -0.76, 0.5, -0.5); c.closePath(); c.fillStyle = '#7a1a20'; c.fill();
+  c.save(); c.clip(); po(c, [0.4, -0.5, 1.1, -0.5, 1.1, -0.62, 0.4, -0.62], '#ffffff', 0); c.restore();
+  c.beginPath(); c.moveTo(0.5, -0.5); c.quadraticCurveTo(0.8, -0.56, 1.02, -0.44); c.quadraticCurveTo(0.96, -0.82, 0.72, -0.82); c.quadraticCurveTo(0.52, -0.76, 0.5, -0.5); c.closePath(); c.lineWidth = 0.07; c.strokeStyle = OUT; c.stroke();
+  ln(c, [0.22, -0.48, 0.58, -0.95], 0.08, '#2b2f38');
+  // the gold mirror visor: sky above the horizon, ground below, a shine sliding over it
+  var vp = [0.1, 0.56, 0.86, 0.6, 1.22, 0.32, 1.24, -0.1, 0.9, -0.2, 0.16, -0.06];
+  c.save(); c.beginPath(); c.moveTo(vp[0], vp[1]); for (k = 2; k < vp.length; k += 2) c.lineTo(vp[k], vp[k + 1]); c.closePath(); c.clip();
+  var vg = c.createLinearGradient(0, 0.6, 0, -0.2); vg.addColorStop(0, '#fff3b0'); vg.addColorStop(0.45, '#f4c43c'); vg.addColorStop(0.5, '#9a6408'); vg.addColorStop(1, '#d99a1e');
+  c.fillStyle = vg; c.fillRect(0, -0.3, 1.4, 1);
+  c.beginPath(); c.moveTo(0.1, 0.17); c.quadraticCurveTo(0.7, 0.26, 1.3, 0.12); c.lineWidth = 0.035; c.strokeStyle = 'rgba(255,250,220,0.9)'; c.stroke();
+  var vs = ((t * 0.45) % 1.8) - 0.4; c.save(); c.translate(vs, 0.2); c.rotate(-0.6); c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillRect(-0.06, -1, 0.14, 2); c.fillRect(0.14, -1, 0.04, 2); c.restore();
+  c.restore();
+  po(c, vp, null, 0.1);
+  ln(c, [0.3, 0.46, 0.8, 0.5], 0.05, 'rgba(255,255,255,0.85)');
+  ci(c, 0.14, 0.24, 0.1, '#d3232e', 0.06); ci(c, 0.14, 0.24, 0.04, '#ffffff', 0);                                 // visor snap
+  var tw = Math.max(0, Math.sin(t * 3.3)); if (tw > 0.05) star(c, 0.95, 0.36, 0.06 + 0.14 * tw, '#ffffff');           // a reflected flashbulb
+  hoop(c, t, -1.5, true);
+  // the jumpsuit's big seventies collar, a blue yoke with white stars, and a gold star buckle
+  po(c, [-0.35, -1.0, 0.45, -1.0, 0.35, -1.5, 0.05, -1.75, -0.25, -1.5], '#1f4aa8', 0.08);
+  star5(c, -0.12, -1.3, 0.09, 0.2, '#ffffff', 0); star5(c, 0.22, -1.25, 0.08, -0.3, '#ffffff', 0); star5(c, 0.06, -1.55, 0.07, 0, '#ffffff', 0);
+  po(c, [-0.3, -0.92, -0.85, -1.05, -0.62, -1.48, -0.25, -1.22], '#f8f6ef', 0.08); ln(c, [-0.8, -1.08, -0.62, -1.4], 0.06, '#d3232e');
+  po(c, [0.38, -0.92, 0.98, -1.0, 0.8, -1.46, 0.36, -1.22], '#f8f6ef', 0.08); ln(c, [0.92, -1.04, 0.79, -1.38], 0.06, '#d3232e');
+  star5(c, 0.06, -1.03, 0.16, 0, '#ffd23f', 0.06); ci(c, 0.06, -1.03, 0.04, '#fff7cf', 0);
+  for (k = 0; k < 4; k++) {                                                                                       // camera flashes going off in the crowd
+    var f = (t * 0.55 + k * 0.27) % 1, fx = [1.55, -0.7, 1.3, 0.4][k], fy = [1.25, 1.65, -0.8, 1.9][k], fk = Math.max(0, 1 - f * 3.2);
+    if (fk > 0) { c.globalAlpha = fk; star(c, fx, fy, 0.08 + 0.22 * fk, k % 2 ? '#fff7cf' : '#ffffff'); }
+  } c.globalAlpha = 1;
 };
 
 })(typeof window !== 'undefined' ? window : globalThis);
