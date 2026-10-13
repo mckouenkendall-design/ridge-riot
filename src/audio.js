@@ -111,7 +111,19 @@ var ENG = {
   vtwin: { pattern: [[0, 1], [0.4375, 0.8]], lo: 7, hi: 44, ring: 8.0, decay: 0.07, grit: 0.3, bright: 0.7, noise: 0.4, drive: 2.8 },
   twin:  { pattern: [[0, 1], [0.375, 0.95]], lo: 9, hi: 62, ring: 7.0, decay: 0.08, grit: 0.25, bright: 0.95, noise: 0.35, drive: 2.4 },
   four:  { pattern: [[0, 1], [0.25, 0.9], [0.5, 1], [0.75, 0.93]], lo: 10, hi: 104, ring: 9.0, decay: 0.045, grit: 0.2, bright: 1.4, noise: 0.3, drive: 2.2 },
-  drag:  { pattern: [[0, 1], [0.5, 0.9]], lo: 13, hi: 86, ring: 5.0, decay: 0.11, grit: 0.7, bright: 1.3, noise: 0.6, drive: 3.6 }
+  drag:  { pattern: [[0, 1], [0.5, 0.9]], lo: 13, hi: 86, ring: 5.0, decay: 0.11, grit: 0.7, bright: 1.3, noise: 0.6, drive: 3.6 },
+  /* phase 2. Optional extras: jit = how unevenly the cylinders fire, hp = low cut, level = trim,
+     hiss = [Hz, gain] a steady bed of air hiss, whine = [Hz at standstill, Hz at top speed, gain] a belt
+     whine that follows road speed, prop = [blade Hz at idle, at the limiter, gain] a propeller drone */
+  puffer:    { pattern: [[0, 1]], lo: 14, hi: 84, ring: 4.4, decay: 0.09, grit: 0.2, bright: 1.0, noise: 0.3, drive: 2.2, level: 1.2, hiss: [5200, 0.035] },
+  springer:  { pattern: [[0, 1]], lo: 26, hi: 128, ring: 7.0, decay: 0.06, grit: 0.45, bright: 1.6, noise: 0.25, drive: 3.0, hp: 170, level: 1.25 },
+  boxer:     { pattern: [[0, 1], [0.5, 0.72]], lo: 7.5, hi: 46, ring: 4.2, decay: 0.15, grit: 0.12, bright: 0.62, noise: 0.25, drive: 1.8, jit: 0.07, level: 0.8 },
+  gecko:     { pattern: [[0, 1]], lo: 19, hi: 70, ring: 3.2, decay: 0.2, grit: 0.08, bright: 0.65, noise: 0.15, drive: 1.5, hp: 90, level: 0.9, whine: [220, 1500, 0.05] },
+  paddle:    { pattern: [[0, 1], [0.07, 0.42]], lo: 8.5, hi: 58, ring: 2.6, decay: 0.13, grit: 0.45, bright: 0.85, noise: 0.55, drive: 3.4, level: 0.78 },
+  freestyle: { pattern: [[0, 1]], lo: 17, hi: 112, ring: 6.0, decay: 0.055, grit: 0.12, bright: 1.7, noise: 0.35, drive: 2.8, hp: 70, level: 1.3 },
+  ice:       { pattern: [[0, 1], [0.5, 0.96]], lo: 21, hi: 132, ring: 3.6, decay: 0.26, grit: 0.35, bright: 1.35, noise: 0.45, drive: 2.4, hp: 150, level: 0.6 },
+  ram:       { pattern: [[0, 1], [0.3333, 0.9], [0.6667, 0.95]], lo: 8, hi: 54, ring: 6.0, decay: 0.06, grit: 0.3, bright: 0.72, noise: 0.4, drive: 2.7 },
+  glider:    { pattern: [[0, 1], [0.5, 0.88]], lo: 12, hi: 84, ring: 5.5, decay: 0.07, grit: 0.18, bright: 1.05, noise: 0.25, drive: 2.2, level: 0.85, prop: [26, 105, 0.12] }
 };
 var F0 = 30;
 function engineBuffer(E, pitch) {
@@ -120,7 +132,7 @@ function engineBuffer(E, pitch) {
   function rnd() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }
   for (k = 0; k < K; k++) {
     for (c = 0; c < E.pattern.length; c++) {
-      var start = Math.round((k + E.pattern[c][0] + (rnd() - 0.5) * 0.012) * cyc);
+      var start = Math.round((k + E.pattern[c][0] + (rnd() - 0.5) * (E.jit || 0.012)) * cyc);
       var amp = E.pattern[c][1] * (0.9 + rnd() * 0.2);
       var len = Math.round(cyc * Math.min(0.98, E.decay * 5));
       var ph = rnd() * 0.3;
@@ -144,6 +156,54 @@ function shaper(amount) {
   for (var i = 0; i < n; i++) { var x = i / (n - 1) * 2 - 1; c[i] = Math.tanh(x * amount) / Math.tanh(amount); }
   var w = ac.createWaveShaper(); w.curve = c; w.oversample = '2x';
   return w;
+}
+
+/* the layers a few engines carry on top of their firing pulses */
+function engineExtras(e, E) {
+  if (E.hiss) {            // the air tank: a faint steady hiss under everything
+    e.hsrc = ac.createBufferSource(); e.hsrc.buffer = noiseBuf; e.hsrc.loop = true;
+    e.hf = ac.createBiquadFilter(); e.hf.type = 'bandpass'; e.hf.frequency.value = E.hiss[0]; e.hf.Q.value = 0.9;
+    e.hg = ac.createGain(); e.hg.gain.value = 0;
+    e.hsrc.connect(e.hf); e.hf.connect(e.hg); e.hg.connect(e.out); e.hsrc.start(0, Math.random());
+    e.nodes.push(e.hsrc, e.hf, e.hg);
+  }
+  if (E.whine) {           // the drive belt: a thin whine that climbs with road speed, not with the revs
+    e.wo = ac.createOscillator(); e.wo.type = 'triangle'; e.wo2 = ac.createOscillator(); e.wo2.type = 'sine';
+    e.wf = ac.createBiquadFilter(); e.wf.type = 'bandpass'; e.wf.Q.value = 2.5;
+    e.wg = ac.createGain(); e.wg.gain.value = 0;
+    e.wo.connect(e.wf); e.wo2.connect(e.wf); e.wf.connect(e.wg); e.wg.connect(e.out);
+    e.wo.frequency.value = E.whine[0]; e.wo2.frequency.value = E.whine[0] * 2.01; e.wo.start(); e.wo2.start();
+    e.nodes.push(e.wo, e.wo2, e.wf, e.wg);
+  }
+  if (E.prop) {            // the propeller: a buzzing blade tone, and air chopped at the same rate
+    e.po = ac.createOscillator(); e.po.type = 'sawtooth'; e.pf = ac.createBiquadFilter(); e.pf.type = 'lowpass'; e.pf.Q.value = 1.2;
+    e.pg = ac.createGain(); e.pg.gain.value = 0;
+    e.po.connect(e.pf); e.pf.connect(e.pg); e.pg.connect(e.out);
+    e.pn = ac.createBufferSource(); e.pn.buffer = noiseBuf; e.pn.loop = true; e.pnf = ac.createBiquadFilter(); e.pnf.type = 'bandpass'; e.pnf.frequency.value = 520; e.pnf.Q.value = 0.8;
+    e.pam = ac.createGain(); e.pam.gain.value = 0;
+    e.lfo = ac.createOscillator(); e.lfo.type = 'sine'; e.lfoG = ac.createGain(); e.lfoG.gain.value = 0;
+    e.lfo.connect(e.lfoG); e.lfoG.connect(e.pam.gain);
+    e.pn.connect(e.pnf); e.pnf.connect(e.pam); e.pam.connect(e.out);
+    e.po.frequency.value = E.prop[0]; e.lfo.frequency.value = E.prop[0];
+    e.po.start(); e.pn.start(0, Math.random()); e.lfo.start();
+    e.nodes.push(e.po, e.pf, e.pg, e.pn, e.pnf, e.pam, e.lfo, e.lfoG);
+  }
+}
+function engineExtrasUpdate(e, E, x, load, t) {
+  if (E.hiss) e.hg.gain.setTargetAtTime(E.hiss[1] * (0.8 + 0.4 * load), t, 0.05);
+  if (E.whine) {
+    var xs = Math.min(1.15, x), wf = (E.whine[0] + (E.whine[1] - E.whine[0]) * xs) * e.pitch;
+    e.wo.frequency.setTargetAtTime(wf, t, 0.03); e.wo2.frequency.setTargetAtTime(wf * 2.01, t, 0.03); e.wf.frequency.setTargetAtTime(wf * 1.4, t, 0.03);
+    e.wg.gain.setTargetAtTime(E.whine[2] * (0.35 + 0.65 * e.thr) * (0.15 + Math.min(1, xs * 1.4)), t, 0.04);
+  }
+  if (E.prop) {
+    var bf = (E.prop[0] + (E.prop[1] - E.prop[0]) * Math.min(1.1, e.rpm)) * e.pitch;
+    e.po.frequency.setTargetAtTime(bf, t, 0.03); e.lfo.frequency.setTargetAtTime(bf, t, 0.03);
+    e.pf.frequency.setTargetAtTime(bf * 5 + 200, t, 0.04);
+    var pl = E.prop[2] * (0.45 + 0.55 * load) * (0.6 + 0.5 * Math.min(1, e.rpm));
+    e.pg.gain.setTargetAtTime(pl * 0.7, t, 0.04); e.pam.gain.setTargetAtTime(pl, t, 0.04); e.lfoG.gain.setTargetAtTime(pl * 0.9, t, 0.04);
+    e.pnf.frequency.setTargetAtTime(380 + 900 * Math.min(1, e.rpm), t, 0.05);
+  }
 }
 
 var eng = null;
@@ -185,7 +245,7 @@ S.engineStart = function (def) {
     e.lp = ac.createBiquadFilter(); e.lp.type = 'lowpass'; e.lp.frequency.value = 900; e.lp.Q.value = 0.9;
     e.ws = shaper(E.drive);
     e.post = ac.createGain(); e.post.gain.value = 0.5;
-    e.hp = ac.createBiquadFilter(); e.hp.type = 'highpass'; e.hp.frequency.value = sd.type === 'mini' || sd.type === 'two' || sd.type === 'scoot' ? 140 : 45;
+    e.hp = ac.createBiquadFilter(); e.hp.type = 'highpass'; e.hp.frequency.value = E.hp || (sd.type === 'mini' || sd.type === 'two' || sd.type === 'scoot' ? 140 : 45);
     e.src.connect(e.pre); e.pre.connect(e.ws); e.ws.connect(e.lp); e.lp.connect(e.hp); e.hp.connect(e.post); e.post.connect(e.out);
     // intake / exhaust hiss that opens up with the throttle
     e.n1 = ac.createBufferSource(); e.n1.buffer = noiseBuf; e.n1.loop = true; e.nf = ac.createBiquadFilter(); e.nf.type = 'bandpass'; e.nf.Q.value = 1.2; e.ng = ac.createGain(); e.ng.gain.value = 0;
@@ -193,6 +253,7 @@ S.engineStart = function (def) {
     e.src.playbackRate.value = E.lo * sd.pitch / F0;
     e.src.start(); e.n1.start();
     e.nodes.push(e.src, e.pre, e.lp, e.ws, e.post, e.hp, e.n1, e.nf, e.ng);
+    engineExtras(e, E);
   }
   eng = e;
 };
@@ -250,6 +311,7 @@ S.engineUpdate = function (st) {
   e.post.gain.setTargetAtTime((0.4 + 0.22 * load + 0.1 * k) * (E.level || 1), t, 0.03);
   e.nf.frequency.setTargetAtTime(600 + 3200 * k, t, 0.03);
   e.ng.gain.setTargetAtTime(E.noise * load * (0.03 + 0.1 * k), t, 0.03);
+  engineExtrasUpdate(e, E, x, load, t);
   return e.rpm;
 };
 S.engineInfo = function () { return eng ? { rpm: eng.rpm, gear: eng.gear } : null; };
@@ -365,6 +427,50 @@ S.crunch = function () {
 /* the roll hoop doing its job */
 S.bonk = function () { if (!ok) return; tone('sine', 170, 520, 0.09, 0.4); tone('sine', 520, 150, 0.3, 0.3, 0.07); tone('triangle', 780, 760, 0.12, 0.1, 0.01); };
 S.knock = function (v) { if (!ok) return; var k = Math.min(1, v / 8); if (k < 0.12) return; tone('triangle', 260, 180, 0.06, 0.22 * k); noise(0.04, 'bandpass', 1400, 0, 2, 0.1 * k); };
+/* ---- the phase 2 bikes' tricks ---- */
+/* Puffin: one sharp blast of compressed air out of the bottom of the bike */
+S.hop = function () {
+  if (!ok) return;
+  noise(0.2, 'bandpass', 3400, 900, 0.9, 0.5, 0, null, false, 0.002);
+  noise(0.06, 'highpass', 6500, 4000, 0.7, 0.25, 0, null, false, 0.001);
+  tone('sine', 150, 55, 0.12, 0.42); tone('triangle', 900, 300, 0.05, 0.08);
+};
+/* Rhino: the bull bar going through something. mat is the log's material (RR.MAT) */
+S.smash = function (mat) {
+  if (!ok) return;
+  var i, f;
+  if (mat === 1) {                       // rock: a heavy crack and a rattle of gravel
+    tone('sine', 85, 32, 0.32, 0.6); noise(0.32, 'lowpass', 1600, 220, 0.8, 0.55, 0, null, true);
+    noise(0.05, 'highpass', 2500, 0, 0.7, 0.35);
+    for (i = 0; i < 9; i++) { f = 700 + Math.random() * 1800; noise(0.035, 'bandpass', f, 0, 4, 0.16, 0.05 + i * 0.045 + Math.random() * 0.03); tone('triangle', f * 0.6, f * 0.5, 0.03, 0.05, 0.05 + i * 0.05); }
+  } else if (mat === 2) {                // ice: a glassy crack and tinkling shards
+    noise(0.12, 'highpass', 4500, 7000, 0.7, 0.4); tone('sine', 120, 50, 0.2, 0.35);
+    for (i = 0; i < 12; i++) { f = 2200 + Math.random() * 3600; tone('sine', f, f * 0.98, 0.08 + Math.random() * 0.14, 0.07, 0.03 + Math.random() * 0.4); }
+  } else if (mat === 12) {               // a tyre: a fat rubber thump and a bounce
+    tone('sine', 95, 50, 0.22, 0.6); noise(0.1, 'lowpass', 500, 150, 0.8, 0.4);
+    tone('sine', 120, 210, 0.12, 0.3, 0.16); tone('sine', 210, 90, 0.18, 0.22, 0.27);
+    tone('sine', 110, 170, 0.08, 0.14, 0.48); tone('sine', 170, 85, 0.12, 0.1, 0.55);
+  } else {                               // wood: a splintering crack
+    noise(0.04, 'highpass', 2000, 0, 0.7, 0.6); tone('sine', 110, 45, 0.25, 0.5); tone('triangle', 260, 150, 0.12, 0.3, 0.005);
+    noise(0.35, 'bandpass', 1400, 600, 1.2, 0.3, 0.02, null, false, 0.01);
+    for (i = 0; i < 10; i++) noise(0.025, 'bandpass', 1800 + Math.random() * 3200, 0, 5, 0.2, 0.03 + i * 0.03 + Math.random() * 0.02);
+    for (i = 0; i < 4; i++) tone('triangle', 420 + Math.random() * 300, 300, 0.05, 0.08, 0.2 + i * 0.07);
+  }
+};
+/* Gecko: sticky tyres letting go of a wall, a wet suction pop */
+S.unstick = function () {
+  if (!ok) return;
+  noise(0.09, 'bandpass', 700, 1900, 4, 0.22, 0, null, false, 0.05);
+  tone('sine', 190, 820, 0.06, 0.4, 0.07); tone('sine', 380, 1500, 0.04, 0.12, 0.07);
+  noise(0.05, 'lowpass', 1500, 400, 0.8, 0.25, 0.08);
+};
+/* Whiplash: the hand brake grabbing the flywheel: a click and a short disc squeal */
+S.pivot = function () {
+  if (!ok) return;
+  noise(0.015, 'highpass', 3500, 0, 0.7, 0.4); tone('square', 2100, 1800, 0.018, 0.1);
+  tone('sine', 2950, 3050, 0.2, 0.08, 0.02, null, 0.015); tone('sine', 3010, 3110, 0.2, 0.07, 0.02, null, 0.015);
+  tone('triangle', 5900, 6100, 0.14, 0.025, 0.02, null, 0.015);
+};
 /* the crash animations: one small sound each */
 S.wipe = function (kind, v) {
   if (!ok) return;
@@ -391,6 +497,58 @@ S.wipe = function (kind, v) {
     case 'squeak': f = 900 + Math.random() * 500; tone('sine', f, f * 1.6, 0.06, 0.12); break;
     case 'whoosh': noise(0.4, 'bandpass', 400, 1800, 1, 0.5, 0, null, false, 0.08); break;
     case 'fwump': noise(0.3, 'lowpass', 500, 150, 0.7, 0.6, 0, null, true, 0.01); tone('sine', 110, 60, 0.25, 0.4); break;
+    /* phase 2 */
+    case 'vent':            // the air tank lets go, with a rubbery balloon raspberry on top
+      noise(1.3, 'highpass', 3200, 1400, 0.7, 0.3, 0, null, false, 0.01);
+      for (i = 0; i < 20; i++) { f = 230 + 110 * Math.sin(i * 1.3) + i * 6; tone('sawtooth', f, f * 0.92, 0.07, 0.07 * (1 - i / 26), i * 0.06); }
+      break;
+    case 'pfft': noise(0.16, 'bandpass', 1600, 500, 1, 0.45); tone('sawtooth', 150, 80, 0.14, 0.09); break;
+    case 'sproing':         // a coil spring bottoming out and firing back up
+      tone('sine', 85, 380, 0.13, 0.45); tone('triangle', 170, 760, 0.13, 0.08); tone('sine', 380, 300, 0.2, 0.12, 0.12); break;
+    case 'doing':           // the doorstop wobble
+      for (i = 0; i < 18; i++) tone('triangle', i % 2 ? 330 : 270, i % 2 ? 320 : 280, 0.045, 0.16 * Math.pow(0.88, i), i * 0.04);
+      tone('sine', 300, 290, 0.8, 0.08); break;
+    case 'honk':            // an old bulb horn, twice
+      for (i = 0; i < 2; i++) { tone('sawtooth', 360, 320, 0.13, 0.16, i * 0.2); tone('square', 180, 165, 0.13, 0.1, i * 0.2); noise(0.04, 'lowpass', 900, 0, 0.7, 0.2, i * 0.2); }
+      for (i = 0; i < 5; i++) noise(0.04, 'bandpass', 1200 + Math.random() * 2000, 0, 3, 0.1, 0.45 + i * 0.08);
+      break;
+    case 'yoohoo': tone('sine', 1250, 1700, 0.13, 0.12); tone('sine', 1500, 2300, 0.2, 0.12, 0.17); tone('sine', 2300, 2000, 0.12, 0.06, 0.37); break;
+    case 'splat':           // wet slap on glass
+      noise(0.2, 'lowpass', 1800, 260, 0.8, 0.65, 0, null, false, 0.002); tone('sine', 170, 55, 0.16, 0.5);
+      for (i = 0; i < 5; i++) { f = 300 + Math.random() * 500; tone('sine', f, f * 1.5, 0.04, 0.08, 0.06 + i * 0.05); }
+      break;
+    case 'peel': tone('sine', 220, 900, 0.055, 0.32); noise(0.05, 'bandpass', 1300, 2400, 3, 0.15); break;
+    case 'stretch':         // a long stretchy squeak as the last toe slides tone('sine', 600, 1150, 0.4, 0.07, 0, null, 0.08); tone('sine', 1200, 2300, 0.4, 0.02, 0, null, 0.08); break;
+    case 'swirl':           // a sand devil spinning up
+      for (i = 0; i < 4; i++) noise(0.55, 'bandpass', 300 + i * 120, 1500 + i * 200, 1.2, 0.28, i * 0.28, null, false, 0.2);
+      noise(1.4, 'highpass', 3500, 5000, 0.7, 0.1, 0.1, null, false, 0.2);
+      break;
+    case 'tada': [523.3, 659.3, 784].forEach(function (n, j) { tone('square', n, n, j === 2 ? 0.3 : 0.08, 0.05, j * 0.09); tone('triangle', n, n, j === 2 ? 0.3 : 0.08, 0.07, j * 0.09); }); break;
+    case 'whirr':           // a top spinning up
+      for (i = 0, k = 0; i < 18; i++) { k += 0.075 - i * 0.0032; tone('triangle', 420 + i * 45, 440 + i * 45, 0.05, 0.09, k); }
+      break;
+    case 'cuckoo':
+      tone('sine', 900, 380, 0.45, 0.1, 0, null, 0.02);
+      for (i = 0; i < 2; i++) { tone('sine', 784, 784, 0.14, 0.13, 0.5 + i * 0.36); tone('sine', 622.3, 622.3, 0.2, 0.13, 0.66 + i * 0.36); }
+      break;
+    case 'freeze':          // frost crackling over, then the ice settling
+      for (i = 0; i < 14; i++) noise(0.02, 'highpass', 4000 + Math.random() * 3000, 0, 0.7, 0.14, i * 0.03 + Math.random() * 0.02);
+      tone('sine', 1700, 3400, 0.4, 0.05, 0, null, 0.1); tone('sine', 140, 60, 0.18, 0.3, 0.42); noise(0.08, 'highpass', 3000, 1500, 0.7, 0.25, 0.42);
+      break;
+    case 'slide': noise(1.0, 'highpass', 2600, 1800, 0.7, 0.13, 0, null, false, 0.05); break;
+    case 'brr': for (i = 0; i < 10; i++) { tone('square', 820, 760, 0.018, 0.05, i * 0.04); noise(0.015, 'highpass', 3000, 0, 0.7, 0.06, i * 0.04); } break;
+    case 'gallop':          // hooves, a lot of them
+      noise(1.8, 'lowpass', 220, 120, 0.7, 0.45, 0, null, true, 0.15);
+      for (i = 0; i < 6; i++) [0, 0.08, 0.17].forEach(function (o, j) { tone('sine', 125 - j * 15, 50, 0.08, 0.32, i * 0.27 + o + Math.random() * 0.015); noise(0.05, 'lowpass', 700, 200, 0.7, 0.16, i * 0.27 + o); });
+      noise(0.25, 'bandpass', 800, 260, 1.4, 0.3, 1.6, null, false, 0.01); noise(0.2, 'bandpass', 600, 200, 1.4, 0.24, 1.82, null, false, 0.01);
+      break;
+    case 'flap': for (i = 0; i < 6; i++) noise(0.09, 'bandpass', 800, 380, 1.3, 0.55, i * 0.13, null, false, 0.02); break;
+    case 'dive': tone('sine', 1900, 520, 0.5, 0.1, 0, null, 0.03); break;
+    case 'plant':           // face first into the ground, and a pillow's worth of feathers
+      tone('sine', 95, 38, 0.24, 0.6); noise(0.18, 'lowpass', 900, 200, 0.8, 0.5);
+      noise(0.5, 'highpass', 2600, 4500, 0.7, 0.1, 0.05, null, false, 0.05);
+      tone('sawtooth', 950, 760, 0.07, 0.05, 0.25); tone('sawtooth', 900, 700, 0.09, 0.05, 0.36);
+      break;
   }
 };
 /* nuggets and crates */
