@@ -13882,6 +13882,9 @@ UI.garage = function () {
   $('gpanel').className = 'gright plate tab-' + tab;
   var tl = $('tiles');
   if (tl) {
+    // the tiles get their height first: until then the list is too short to hold the old scroll position,
+    // and the browser would quietly snap it back to the top
+    sizeTiles();
     if (tileScroll < 0) { var c0 = tl.querySelector('.tile.cur'); tl.scrollTop = c0 ? Math.max(0, c0.offsetTop - tl.clientHeight / 2 + c0.offsetHeight / 2) : 0; tileScroll = tl.scrollTop; }
     else tl.scrollTop = tileScroll;
     tl.addEventListener('scroll', function () { tileScroll = tl.scrollTop; paintTiles(false); }, { passive: true });
