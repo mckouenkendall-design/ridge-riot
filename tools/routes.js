@@ -23,7 +23,7 @@ function ride(t, id, P, fk) {
   return { ok: s.finished, t: s.finishTime, seg: tout - tin, route };
 }
 for (let t = t0; t <= (isNaN(t1) ? t0 : t1); t++) {
-  const tr = RR.getTrack(t), fk = tr.feats.find(f => f.t === 'fork'); if (!fk) continue;
+  const tr = RR.getTrack(t), fk = tr.feats.find(f => f.t === 'fork' && !f.ledge); if (!fk) continue;
   console.log(`#${t + 1} ${tr.name}`);
   for (const id of bikes) {
     const cal = S.calibrate(t, id), best = { high: null, low: null };

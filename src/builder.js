@@ -194,6 +194,7 @@ P.fork = function (o) {
   var H = y0 + (o.H || 4.2), th = o.th || 0.8, rampLen = o.rampLen || 16, exitLen = o.exitLen || 16;
   var a0 = x0 + rampLen, s1 = [a0, a0 + (o.slab1 || 10)], s2 = [s1[1] + (o.slot || 5), 0];
   s2[1] = s2[0] + (o.slab2 || 10);
+  if (o.one) s2 = [s1[1], s1[1]];          // a side ledge: one slab, then straight back down
   var J = s2[1] + exitLen;
   this.sign('fork');
   // the low road
@@ -220,7 +221,7 @@ P.fork = function (o) {
   }
   var up = ramp(this, x0, y0, a0, H);
   slab(this, s1[0], s1[1], H, H, { len: 2.6, h: o.kickH == null ? 0.6 : o.kickH });
-  slab(this, s2[0], s2[1], H - (o.stepH || 0.8), H, null);
+  if (!o.one) slab(this, s2[0], s2[1], H - (o.stepH || 0.8), H, null);
   var down = ramp(this, s2[1], H, J, y0);
   this.forks.push({ x: x0, g: g });
   this.feats.push({ t: 'fork', x0: x0, a0: a0, xe: s2[1], j: J, y0: y0, top: H, slot: [s1[1], s2[0]], gate: g, up: up, down: down });

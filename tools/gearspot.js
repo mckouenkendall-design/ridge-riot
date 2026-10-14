@@ -49,6 +49,7 @@ if (args.includes('--write')) {
   let old = {}; try { old = Object.assign({}, require('../src/gearspots.js').GEAR_AT || {}); } catch (e) {}
   for (let t = t0; t <= t1; t++) {
     const tr = RR.getTrack(t), h = tr.feats.find(f => f.t === 'gearhint');
+    if (!h && tr.feats.some(f => f.t === 'gear' && !(old[RR.trackId(t)] && f.x === old[RR.trackId(t)][0]))) { delete old[RR.trackId(t)]; console.log(`#${t + 1} ${tr.name}: places its own gear`); continue; }
     if (!h) { console.log(`#${t + 1} ${tr.name}: no gear hint`); continue; }
     const c = find(t, h.x0, h.x1, h.below, h.minh, 1.4)[0];
     if (!c || c.n < 2) { console.log(`#${t + 1} ${tr.name}: NO GOOD SPOT in ${h.x0.toFixed(0)}-${h.x1.toFixed(0)}`); delete old[RR.trackId(t)]; continue; }

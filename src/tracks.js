@@ -83,8 +83,10 @@ var PC = RR.PIECES = {
   double: function (b, deg, gap, H2, landDeg, landLen, o) {
     o = o || {}; var D = Math.PI / 180, y0 = b.y, px0 = b.x;
     b.kicker(deg, o.R || 7, o.lip == null ? 0.8 : o.lip);
-    var xl = b.x, face = o.face || 30, back = o.back || 34;
-    b.to(-back, 1.2).line(Math.max(0.3, (b.y - y0 - 0.25) / Math.sin(back * D))); b.to(0, 1.2);
+    var xl = b.x, face = o.face || (o.deep ? 22 : 30), back = o.back || (o.deep ? 26 : 34);     // a pit has gentler walls, so a slow rider can roll in and climb out
+    // o.deep: the dip between the two goes this far below the ground the piece started on: a pit with a floor,
+    // too deep to see the bottom of from the bike at speed (that is where a gear can hide)
+    b.to(-back, 1.2).line(Math.max(0.3, (b.y - y0 - 0.25 + (o.deep || 0)) / Math.sin(back * D))); b.to(0, 1.2);
     var upRun = (y0 + H2 - b.y) / Math.tan(face * D), trough = Math.max(1, xl + gap - b.x - upRun);
     if (o.gear === 'trough') b.gear(trough * 0.5, 0.75);
     b.line(trough);
@@ -100,6 +102,17 @@ var PC = RR.PIECES = {
   /* Rollers: rounded humps. At the right speed you skim from the top of one onto the back of the next;
      slower and you roll every one, faster and you fly the lot and land flat. */
   rollers: function (b, n, len, h, gap) { var x0 = b.x; for (var i = 0; i < n; i++) { b.hill(h, len); if (gap) b.flat(gap); } b.feats.push({ t: 'piece', kind: 'rollers', x0: x0, x1: b.x }); return b; },
+  /* Side ledge: a short high road with one rock slab (lean back at the sign to take it). Off the ordinary line,
+     so it is a place for a gear. The ramps are gentle and the slab is flat, so either way is safe. H must leave
+     head room underneath: the slab is 0.6 thick and a rider stands about 1.8 tall, so 3.7 or more. */
+  ledge: function (b, H, len, o) {
+    o = o || {}; var x0 = b.x;
+    b.fork({ one: true, H: H, th: 0.6, slab1: len, rampLen: o.rampLen || 14, exitLen: o.exitLen || 14, kickH: 0, low: o.low });
+    var f = b.feats.filter(function (q) { return q.t === 'fork'; }).pop();
+    f.ledge = true;
+    if (o.gear !== false) b.gearAt(f.a0 + len * (o.at == null ? 0.6 : o.at), f.top + 0.95);
+    return b;
+  },
   /* two routes: see TB.fork in builder.js. lowFloor builds the cave floor (default: flat) */
   fork: function (b, o) { return b.fork(o || {}); },
   /* A jump inside a tunnel: the roof is why you cannot take it flat out */
@@ -125,8 +138,9 @@ var T = [
 }, { t: 'wheelie', sec: 2 }],
 ['Rolling Dunes', 'Front wheel coming up on a climb? Lean forward, or ease off the gas.', function (b) {
   b.flat(14).waves(3, 24, 1.15).flat(8).ease(34, -6).flat(8).surface('sand').flat(14).surface();
-  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
-  b.flat(8).up(15, 12, 13).flat(12, 16).gearHint({ len: 30 });   // past the mesa: roll off it slowly
+  b.gearHint({ len: 16 });        // down in the pit between the jump and the mound: come in slow and drop into it
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1, deep: 1.6 });
+  b.flat(8).up(15, 12, 13).flat(12, 16);
   jump(b, 16, 5, 14, 12, { rise: -3, lip: 1.6 });
   b.flat(10).hill(2.0, 22).flat(14);
 }, { t: 'flip', dir: 'b', n: 1, at: 'last', where: 'off the last jump' }],
@@ -136,11 +150,13 @@ var T = [
   b.flat(14);
   PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
   b.flat(12);
-  b.hill(1.6, 20).flat(10).gearHint({ len: 26, minh: 1.5 });     // in mid-air over a landing, at one speed
+  b.hill(1.6, 20).flat(10);
   jump(b, 17, 6, 15, 10, { rise: -2.2, lip: 1.6 });
   b.flat(4);
   jump(b, 19, 7, 17, 11, { rise: -3, lip: 1.4 });
-  b.flat(14);
+  b.flat(12);
+  PC.ledge(b, 3.7, 8);            // the gear sits on a side ledge: lean back at the sign to ride up onto it
+  b.flat(10);
 }, { t: 'combo', seq: ['b', 'f'] }],
 ['Loop de Dust', 'Loops need speed. Hold the gas all the way round and do not lean.', function (b) {
   b.flat(34).sign('loop').loop(3.6).flat(18);
@@ -203,12 +219,14 @@ var T = [
 
 /* ----------------------------- PINEWOOD ----------------------------- */
 ['Log Jam', 'Logs kick the bike up. Hit them straight and stay loose.', function (b) {
-  b.flat(16).logs(3, 6, 0.22).flat(10).hill(2, 18).flat(8).logs(3, 6, 0.22).flat(10).ease(20, -3)
-   .flat(8).logs(3, 6.5, 0.2).flat(12).table(17, 1.8, 5, 8).flat(8).logs(2, 6, 0.22).flat(10);
-  kick(b, 17, 6, 15, 8, { rise: -0.8, R: 6.5 });
+  b.flat(16).logs(3, 6, 0.22).flat(10).hill(2, 18).flat(8).logs(3, 6, 0.22).flat(10).ease(20, -3).flat(10);
+  b.gearHint({ len: 16 });        // down in the pit between the jump and the mound: come in slow and drop in
+  PC.double(b, 20, 6.5, 1.3, 20, 6, { next: [2, 12], gapAfter: 1, deep: 1.5 });
+  b.flat(8).logs(3, 6.5, 0.2).flat(12).table(17, 1.8, 5, 8).flat(8).logs(2, 6, 0.22).flat(10).sign('jump');
+  kick(b, 18, 7, 16, 10, { rise: -1.6, R: 6.5 });
   b.flat(14);
-}],
-['Creek Hop', '', function (b) {
+}, { t: 'wheelie', sec: 3 }],
+['Creek Hop', 'Too slow into a double and you case the second hump. Too fast and you land flat past it.', function (b) {
   b.flat(24);
   jump(b, 16, 6, 14, 7, { rise: -0.6 });
   b.flat(10);
@@ -216,70 +234,102 @@ var T = [
   b.flat(10).hill(2.4, 18).flat(10);
   hop(b, 18, 6, { rise: -0.4 }).flat(9);
   hop(b, 18, 6.5, { rise: -0.4 }).land(14, 7);
+  b.flat(8);
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
   b.flat(8).logs(3, 5, 0.24).flat(10);
   PC.box(b, 8, 3, 3, 7, 3.2);
-  b.flat(12);
-  kick(b, 20, 9.5, 18, 9, { rise: -1.2, R: 6 });
+  b.flat(12).gearHint({ len: 34, minh: 1.3 });   // mid-air over the last creek's landing
+  kick(b, 20, 9.5, 18, 11, { rise: -2.2, R: 6 });
   b.flat(14);
-}],
-['Root Rage', '', function (b) {
+}, { t: 'flip', dir: 'f', n: 1, at: 'last', where: 'over the last creek' }],
+['Root Rage', 'Rollers: skim from the top of one onto the back of the next. Too fast and you fly the lot.', function (b) {
   b.flat(12).bumps(6, 3, 0.3).logs(3, 4.5, 0.24).flat(6).ease(26, -5).flat(10);
   PC.tunnel(b, 9, 3.3, [[1.1, 10], [1.0, 9]]);
-  b.flat(6).waves(3, 14, 1.0).flat(6).logs(4, 4, 0.24).flat(8).up(22, 12, 9).flat(8, 10).down(20, 12, 9).flat(8);
+  b.flat(8);
+  PC.rollers(b, 4, 6, 1.0, 2);
+  b.flat(8).logs(4, 4, 0.24).flat(8).up(22, 12, 9).flat(8, 10).down(20, 12, 9).flat(8);
   PC.cavejump(b, 9, 3.4, 16, 4.5);
-  b.flat(6).bumps(8, 2.6, 0.26).flat(6).logs(2, 5, 0.25).flat(14);
-}],
+  b.flat(10).gearHint({ len: 16 });   // in the dip between the jump and the mound
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1, deep: 1.2 });
+  b.flat(8).bumps(8, 2.6, 0.26).flat(8).logs(2, 5, 0.25).flat(12).sign('jump');
+  jump(b, 19, 8, 17, 11, { rise: -2.2, lip: 1.4 });
+  b.flat(14);
+}, { t: 'combo', seq: ['b', 'b'], text: 'Two backflips in one run' }],
 ['Timber Table', 'A dead tree hangs over the last jump. Go under it, not through it.', function (b) {
   b.flat(22).to(20, 6.5).line(2.2).to(0, 1.6).line(7).to(-20, 1.6).line(2.2).to(0, 8).flat(14);
   b.kicker(20, 8, 1.2).gap(4.5, { rise: 1.0 }).flat(14);               // step-up over water
-  b.drop(2.2).flat(16).to(22, 6.5).line(3.4).to(0, 1.6).line(6).to(-22, 1.6).line(3.4).to(0, 8).flat(12);
-  b.kicker(22, 8, 1.2).gap(4.5, { rise: 1.2 }).flat(12).down(18, 12, 9).flat(12).sign('slow').flat(10);
+  b.drop(2.2).flat(12);
+  PC.ledge(b, 3.8, 8);            // the gear sits on a side ledge: lean back at the sign to ride up onto it
+  b.flat(10);
+  PC.rollers(b, 3, 6.5, 1.1, 2);
+  b.flat(10).to(22, 6.5).line(3.4).to(0, 1.6).line(6).to(-22, 1.6).line(3.4).to(0, 8).flat(12);
+  b.kicker(22, 8, 1.2).gap(4.5, { rise: 1.2 }).flat(12).down(18, 12, 9).flat(12);
+  jump(b, 18, 7, 16, 10, { rise: -1.8, lip: 1.4 });
+  b.flat(10).sign('slow').flat(10);
   PC.limbo(b, 9, 22, 4.5, 4, 3.2);
   b.flat(14);
-}],
-['Mossy Loop', '', function (b) {
+}, { t: 'nobrake' }],
+['Mossy Loop', 'Loops need speed. Hold the gas all the way round and do not lean.', function (b) {
   b.flat(34).loop(4.1).flat(14);
   kick(b, 18, 8, 16, 9, { rise: -1, R: 6 });
+  b.flat(10);
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
   b.flat(8).logs(3, 5, 0.24).flat(6).ease(24, -4.5).flat(14).loop(4.4).flat(8).logs(2, 5, 0.24).flat(6)
-   .table(20, 2.4, 5, 8).flat(14);
-}],
-['Sawmill', '', function (b) {
+   .table(20, 2.4, 5, 8).flat(12).gearHint({ len: 32, minh: 1.3 });   // mid-air over the last landing: come in slow
+  jump(b, 20, 9, 18, 11, { rise: -2.4, lip: 1.4 });
+  b.flat(14);
+}, { t: 'flip', dir: 'b', n: 1, at: 'last', where: 'off the last jump' }],
+['Sawmill', 'Two roads. Hold lean back as you pass the fork sign to ride the high road over the mill.', function (b) {
   b.flat(14).steps(5, 5.5, 0.85).flat(18).sign('slow').flat(10);
   PC.tunnel(b, 9, 3.4, [[1.1, 10]]);
-  b.flat(8).up(24, 14, 10).flat(10, 12).drop(2.4).flat(18).surface('wood').flat(12);
-  b.kicker(19, 7, 0.6).gap(7, { rise: -0.6 }).surface().land(16, 8);
+  b.flat(14);
+  b.fork({ H: 3.4, rampLen: 16, slab1: 10, slot: 6, slab2: 10, stepH: 1.6, kickH: 0.7, exitLen: 16,
+    low: function (b) { b.ease(9, -1.6).flat(2); PC.rollers(b, 3, 9, 0.5); b.ease(9, 1.6); } });
+  (function () { var f = b.feats.filter(function (q) { return q.t === 'fork'; }).pop(); b.gearAt((f.slot[1] + f.xe) / 2, f.top + 0.95); })();   // on top of the mill: the high road only
+  b.flat(14).surface('wood').flat(12);
+  b.kicker(19, 7, 0.6).gap(7, { rise: -1.2 }).surface().land(16, 9);
+  b.flat(8);
+  PC.rollers(b, 3, 6, 1.0, 2);
   b.flat(8).logs(3, 5.5, 0.22).flat(10).sign('slow').flat(8);
   PC.limbo(b, 9, 22, 4.5, 4, 3.0);
   b.flat(10).up(24, 12, 10).flat(10, 13).drop(3).flat(18);
-}],
-['Beaver Dam', '', function (b) {
+}, { t: 'flip', dir: 'b', n: 1, text: 'A backflip anywhere' }],
+['Beaver Dam', 'A big gap over the dam. Plenty of air for a double flip, if you dare.', function (b) {
   b.flat(16).ease(30, -6).flat(8);
-  jump(b, 21, 13, 19, 11, { rise: -1.8 });
+  jump(b, 21, 13, 19, 12, { rise: -1.8 });
   b.flat(10).logs(3, 5, 0.24).flat(6).up(20, 14, 10).flat(10, 12).down(22, 16, 10).flat(8);
   PC.tunnel(b, 9, 3.2, [[1.1, 10], [-0.9, 9], [1.1, 10]]);
-  b.flat(7);
+  b.flat(10).gearHint({ len: 22, minh: 1.3 });   // high over the double: only a slow rider's arc goes up there
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
+  b.flat(8);
   kick(b, 21, 11, 20, 12, { rise: -2.0, R: 6.5 });
   b.flat(12);
   PC.limbo(b, 9, 22, 4.5, 4, 3.0);
   b.flat(8);
+  PC.rollers(b, 3, 6, 1.0, 2);
+  b.flat(6);
   hop(b, 19, 6, { rise: -0.5 }).flat(8);
   hop(b, 19, 6.5, { rise: -0.5 }).land(16, 8);
   b.flat(14);
-}],
-['Old Growth', '', function (b) {
+}, { t: 'flip', dir: 'b', n: 1, at: 'biggest', where: 'over the dam' }],
+['Old Growth', 'Everything Pinewood has, in one run. Pick your speed for each piece.', function (b) {
   b.flat(20).logs(3, 5, 0.24).flat(8).table(20, 2.4, 6, 8).flat(10);
   PC.limbo(b, 9, 25, 4.5, 4, 3.1);
-  b.flat(18).loop(4).flat(12).up(24, 14, 9).flat(8, 9).drop(2.6).flat(12);
+  b.flat(14);
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
+  b.flat(10).loop(4).flat(12).up(24, 14, 9).flat(8, 9).drop(2.6).flat(12);
   PC.tunnel(b, 9, 3.2, [[1.1, 10], [1.1, 9]]);
-  b.flat(4).ease(28, -6).flat(6);
+  b.flat(4).ease(28, -6).flat(6).gearHint({ len: 36, minh: 1.3 });   // mid-air over the big gap's landing
   jump(b, 22, 13, 20, 12, { rise: -2 });
   b.flat(12);
   PC.box(b, 8, 3, 3, 7, 3.2);
   b.flat(6);
-  b.kicker(21, 8).gap(4.5, { rise: 1.1 }).flat(10).drop(2).flat(12);
+  b.kicker(21, 8).gap(4.5, { rise: 1.1 }).flat(10).drop(2).flat(10);
+  PC.rollers(b, 4, 6, 1.0, 2);
+  b.flat(8);
   PC.cavejump(b, 9, 3.2, 14, 4);
   b.flat(14);
-}],
+}, { t: 'combo', seq: ['f', 'b', 'f'], text: 'Frontflip, backflip, frontflip, in one run' }],
 
 /* ----------------------------- RACEWAY ------------------------------ */
 ['Green Flag', 'Yellow arrows on the road are boost strips. Ride over them with the gas open. There is a bus to clear at the end.', function (b) {
@@ -683,7 +733,12 @@ RR.getTrack = function (i) {
   // the measured speed for each slow zone replaces the rough figure in the recipe (see startimes.js)
   // a challenge that says "at: 'last'" means taking off from the last jump on the track
   var ch = T[i][3] ? JSON.parse(JSON.stringify(T[i][3])) : null;
-  if (ch && ch.at === 'last') { var gaps = tr.feats.filter(function (f) { return f.t === 'gap'; }), lg = gaps[gaps.length - 1]; ch.at = lg ? [lg.x0 - 14, lg.x0 + 3] : null; }
+  // "at: 'biggest'" means the widest gap on the track
+  if (ch && (ch.at === 'last' || ch.at === 'biggest')) {
+    var gaps = tr.feats.filter(function (f) { return f.t === 'gap'; }), lg = gaps[gaps.length - 1];
+    if (ch.at === 'biggest') gaps.forEach(function (g) { if (g.x1 - g.x0 > lg.x1 - lg.x0) lg = g; });
+    ch.at = lg ? [lg.x0 - 14, lg.x0 + 3] : null;
+  }
   tr.chal = ch;
   var gp = RR.GEAR_AT && RR.GEAR_AT[id];
   if (gp && !tr.feats.some(function (f) { return f.t === 'gear'; })) tr.feats.push({ t: 'gear', x: gp[0], y: gp[1] });

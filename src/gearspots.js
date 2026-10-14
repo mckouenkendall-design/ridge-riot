@@ -4,12 +4,17 @@
 var RR = root.RR || (root.RR = {});
 RR.GEAR_AT = {
   'first-gear': [217.6, -3.6],
-  'rolling-dunes': [244.3, -6.2],
-  'hop-skip': [153.3, -4.5],
+  'rolling-dunes': [169.1, -6.8],
   'loop-de-dust': [180.2, -6.6],
   'washboard': [374.6, -8.2],
   'gulch-gap': [238, -14.7],
-  'canyon-run': [395.1, -20]
+  'canyon-run': [395.1, -20],
+  'log-jam': [152.1, -3.2],
+  'mossy-loop': [268.4, -11.2],
+  'root-rage': [316, -5.8],
+  'creek-hop': [284.1, -11.5],
+  'old-growth': [320.8, -5.5],
+  'beaver-dam': [270.4, -11.4]
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);

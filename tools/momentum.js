@@ -30,9 +30,10 @@ function ride(tr, bikeId, v, opts) {
   let t0 = null, lastX = s.x, lastT = 0;
   for (let k = 0; k < 120 * 120; k++) {
     RR.botInput(s, P, out);
-    // inside the piece: gas, unless the lean control says otherwise
+    // inside the piece: gas all the way, except that the robot lifts off when the front wheel is coming up too far
+    // (a person would too: holding the gas into a wheelie until you flip over is not a speed choice)
     const inPiece = s.x >= tr.mx0;
-    RR.tick(s, { lean: out.lean, gas: inPiece ? true : out.gas, brake: inPiece ? !!out.trick : (out.brake || !!out.trick) });
+    RR.tick(s, { lean: out.lean, gas: inPiece ? !(s.gnd[0] && !s.gnd[1] && s.a > 0.75) : out.gas, brake: inPiece ? !!out.trick : (out.brake || !!out.trick) });
     s.events.length = 0;
     if (t0 === null && s.x >= tr.mx0) t0 = s.time;
     if (s.x > lastX + 2) { lastX = s.x; lastT = s.time; }
