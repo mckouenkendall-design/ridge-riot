@@ -26,7 +26,13 @@ RR.GEAR_AT = {
   'aurora': [307.5, -13.3],
   'powder-keg': [284.4, -12.1],
   'avalanche': [336.6, -39.6],
-  'glacier-loop': [233, -5.8]
+  'glacier-loop': [233, -5.8],
+  'hot-start': [210.2, -8.1],
+  'fire-walk': [288.5, -17],
+  'ash-loop': [276.2, -9.4],
+  'eruption': [358.7, -14],
+  'the-chimney': [187.6, -3.1],
+  'ember-steps': [262.1, -2.7]
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);

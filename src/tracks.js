@@ -572,28 +572,37 @@ var T = [
 ['Hot Start', 'Lava ends the run. Jump too short and that is where you land.', function (b) {
   b.flat(22);
   kick(b, 17, 6.5, 15, 8, { rise: -0.8, R: 7 });
-  b.flat(10).hill(2.0, 18).flat(12);
-  jump(b, 18, 7, 16, 10, { rise: -1, lip: 1.5 });
-  b.flat(8).waves(2, 16, 1.0).flat(12);
-  jump(b, 19, 8.5, 17, 11, { rise: -1.3, lip: 1.4 });
-  b.flat(10).table(20, 2.4, 5, 8).flat(14);
-}],
-['Ember Steps', '', function (b) {
-  b.flat(20);
-  b.kicker(20, 8).gap(4, { rise: 0.8 }).flat(12);
-  b.kicker(21, 8).gap(4.5, { rise: 1.0 }).flat(12);
-  b.kicker(22, 8).gap(4.5, { rise: 1.2 }).flat(12);
-  PC.box(b, 8, 3, 3, 7, 3.2);
-  b.flat(6).steps(3, 6, 1.1).flat(14);
-  PC.tunnel(b, 9, 3.2, [[1.1, 10], [1.1, 10]]);
-  b.flat(7);
-  kick(b, 20, 9, 18, 10, { rise: -1.4, R: 6 });
   b.flat(10);
-  PC.limbo(b, 9, 25, 4.5, 4, 3.1);
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
+  b.flat(8).hill(2.0, 18).flat(12);
+  jump(b, 18, 7, 16, 10, { rise: -1, lip: 1.5 });
   b.flat(8);
-  PC.cavejump(b, 9, 3.2, 14, 4);
+  PC.rollers(b, 4, 6, 1.0, 2);
+  b.flat(10).gearHint({ len: 16 });   // down in the pit between the jump and the mound
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1, deep: 1.4 });
+  b.flat(10);
+  jump(b, 19, 8.5, 17, 12, { rise: -2.2, lip: 1.4 });
+  b.flat(10).table(20, 2.4, 5, 8).flat(14);
+}, { t: 'wheelie', sec: 3 }],
+['Caldera', 'Two roads. Hold lean back at the fork sign to ride the crater rim; ride on to cross the crater floor.', function (b) {
+  b.flat(16).down(24, 22, 12).flat(12, 12).up(24, 22, 12).flat(12, 14);
+  b.drop(2).flat(18);
+  kick(b, 21, 8.5, 18, 10, { rise: -1.2, R: 5.5 });
   b.flat(14);
-}],
+  b.fork({ H: 3.4, rampLen: 16, slab1: 10, slot: 6, slab2: 10, stepH: 1.6, kickH: 0.7, exitLen: 16,
+    low: function (b) { b.ease(9, -1.6).flat(2); PC.rollers(b, 3, 9, 0.7); b.ease(9, 1.6); } });
+  (function () { var f = b.feats.filter(function (q) { return q.t === 'fork'; }).pop(); b.gearAt((f.slot[1] + f.xe) / 2, f.top + 0.95); })();   // on the rim: the high road only
+  b.flat(24);
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
+  b.flat(8);
+  hop(b, 18, 6, { rise: -0.4 }).flat(8);
+  hop(b, 18, 6, { rise: -0.4 }).land(15, 8);
+  b.flat(8).down(26, 20, 12).flat(10, 10).hill(1.4, 14).flat(8);
+  PC.rollers(b, 3, 6, 1.0, 2);
+  b.flat(6).up(26, 20, 11).flat(10, 12);
+  b.gap(5, { rise: -2.4 }).land(18, 11);
+  b.flat(16);
+}, { t: 'flip', dir: 'b', n: 1, text: 'A backflip anywhere' }],
 ['Magma Hop', 'Stalactites hang over some jumps. Clear the lava, not the ceiling.', function (b) {
   b.flat(24);
   hop(b, 17, 5.5, { rise: -0.3 }).flat(8);
@@ -603,67 +612,108 @@ var T = [
   b.flat(10).hill(2, 16).flat(8).sign('slow').flat(8);
   PC.limbo(b, 9, 22, 4.5, 4, 3.2);
   b.flat(10);
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
+  b.flat(10);
+  PC.ledge(b, 3.8, 8);            // the gear sits on a side ledge: lean back at the sign to ride up onto it
+  b.flat(10);
+  PC.rollers(b, 4, 6, 1.0, 2);
+  b.flat(10);
   hop(b, 19, 7, { rise: -0.4 }).flat(9);
   hop(b, 19, 7.5, { rise: -0.5 }).land(16, 8);
+  b.flat(8);
+  jump(b, 19, 8, 17, 12, { rise: -2.4, lip: 1.4 });
   b.flat(14);
-}],
+}, { t: 'combo', seq: ['b', 'f'] }],
 ['The Chimney', 'Low rock roofs. Brake before a hump or you will hit your head.', function (b) {
   b.flat(18).slow(9).roofStart(3.4).flat(10).bumps(4, 4.4, 0.3).flat(10).hill(1.1, 12).flat(10).ease(18, -2).flat(8)
    .roofEnd().go().flat(10);
   kick(b, 18, 8, 16, 9, { rise: -1, R: 6 });
+  b.flat(10).gearHint({ len: 40, minh: 2, below: false });   // high over the double: a slower rider's arc goes up there
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
   b.flat(8).slow(9).roofStart(3.3).flat(8).ease(16, 2).flat(8).hill(1.3, 12).flat(8).hill(-1.2, 12).flat(8).hill(1.0, 10).flat(10)
    .roofEnd().go().flat(12);
-  kick(b, 20, 9, 18, 10, { rise: -1.4, R: 5.5 });
-  b.flat(14);
-}],
-['Ash Loop', '', function (b) {
-  b.flat(34).loop(4.2).flat(10);
-  kick(b, 18, 8, 16, 9, { rise: -1, R: 6 });
+  PC.rollers(b, 4, 6, 1.0, 2);
   b.flat(10);
-  PC.tunnel(b, 9, 3.2, [[1.1, 10]]);
-  b.flat(9).loop(3.8).flat(6).loop(3.8).flat(14).ease(24, -4.5).flat(6);
-  jump(b, 21, 12, 19, 11, { rise: -1.8 });
-  b.flat(8);
-  PC.cavejump(b, 9, 3.4, 16, 4.5);
-  b.flat(8);
-  hop(b, 18, 6, { rise: -0.4 }).flat(9);
-  hop(b, 18, 6.5, { rise: -0.4 }).land(15, 8);
+  kick(b, 20, 9, 18, 12, { rise: -2.4, R: 5.5 });
   b.flat(14);
-}],
-['Fire Walk', '', function (b) {
+}, { t: 'flip', dir: 'f', n: 1, at: 'last', where: 'out of the chimney' }],
+['Fire Walk', 'Doubles over lava country. Too slow cases the second hump; too fast lands you flat.', function (b) {
   b.flat(14).ease(30, -6.5).flat(6);
   jump(b, 22, 15, 20, 12, { rise: -2.4 });
+  b.flat(10);
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
   b.flat(8).slow(9).roofStart(3.4).flat(8).bumps(6, 3.4, 0.28).flat(8).hill(1.1, 12).flat(10).roofEnd().go().flat(6);
   hop(b, 19, 7, { rise: -0.4 }).flat(10.5);
   hop(b, 19, 7, { rise: -0.4 }).flat(10.5);
   b.kicker(20, 5.5, 0).gap(8, { rise: -0.6 }).land(16, 9);
+  b.flat(10).gearHint({ len: 16 });   // down in the pit between the jump and the mound
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1, deep: 1.4 });
   b.flat(8);
   PC.box(b, 8, 3, 3, 7, 3.2);
   b.flat(7);
   PC.limbo(b, 9, 25, 4.5, 4, 3.1);
   b.flat(8);
+  PC.rollers(b, 4, 6, 1.0, 2);
+  b.flat(8);
   PC.tunnel(b, 9, 3.2, [[1.1, 10], [-1.0, 10], [1.1, 10]]);
   b.flat(14);
-}],
-['Caldera', '', function (b) {
-  b.flat(16).down(24, 22, 12).flat(12, 12).up(24, 22, 12).flat(12, 14);
-  b.drop(2).flat(18);
-  kick(b, 21, 8.5, 18, 10, { rise: -1.2, R: 5.5 });
+}, { t: 'flip', dir: 'b', n: 1, at: 'biggest', where: 'over the big lava gap' }],
+['Ash Loop', 'Loops, doubles and a roof. Full gas only where it pays.', function (b) {
+  b.flat(34).loop(4.2).flat(10);
+  kick(b, 18, 8, 16, 9, { rise: -1, R: 6 });
+  b.flat(14);
+  PC.rollers(b, 3, 6.5, 1.1, 2);
+  b.flat(10);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10]]);
+  b.flat(9).loop(3.8).flat(6).loop(3.8).flat(14);
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
+  b.flat(8).ease(24, -4.5).flat(6).gearHint({ len: 36, minh: 1.3 });   // mid-air over the big gap's landing
+  jump(b, 21, 12, 19, 11, { rise: -1.8 });
+  b.flat(14);
+  PC.cavejump(b, 9, 3.4, 16, 4.5);
+  b.flat(10);
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
   b.flat(8);
-  hop(b, 18, 6, { rise: -0.4 }).flat(8);
-  hop(b, 18, 6, { rise: -0.4 }).land(15, 8);
-  b.flat(8).down(26, 20, 12).flat(10, 10).hill(1.4, 14).flat(8).up(26, 20, 11).flat(10, 12);
-  b.gap(5, { rise: -1.8 }).land(18, 9);
-  b.flat(16);
-}],
-['Eruption', '', function (b) {
+  hop(b, 18, 6, { rise: -0.4 }).flat(9);
+  hop(b, 18, 6.5, { rise: -0.4 }).land(15, 8);
+  b.flat(14);
+}, { t: 'combo', seq: ['f', 'f'], text: 'Two frontflips in one run' }],
+['Ember Steps', 'Step-ups over lava: they want speed. The roofs after them do not.', function (b) {
+  b.flat(20);
+  b.kicker(20, 8).gap(4, { rise: 0.8 }).flat(12);
+  b.kicker(21, 8).gap(4.5, { rise: 1.0 }).flat(12);
+  b.kicker(22, 8).gap(4.5, { rise: 1.2 }).flat(12);
+  PC.box(b, 8, 3, 3, 7, 3.2);
+  b.flat(10);
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
+  b.flat(6).steps(3, 6, 1.1).flat(14);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10], [1.1, 10]]);
+  b.flat(16).gearHint({ len: 16 });   // down in the pit between the jump and the mound
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1, deep: 1.4 });
+  b.flat(8);
+  PC.rollers(b, 4, 6, 1.0, 2);
+  b.flat(8);
+  kick(b, 20, 9, 18, 12, { rise: -2.4, R: 6 });
+  b.flat(10);
+  PC.limbo(b, 9, 25, 4.5, 4, 3.1);
+  b.flat(8);
+  PC.cavejump(b, 9, 3.2, 14, 4);
+  b.flat(14);
+}, { t: 'flip', dir: 'f', n: 1, at: 'biggest', where: 'over the big gap' }],
+['Eruption', 'The whole mountain at once. Every piece wants its own speed.', function (b) {
   b.flat(18);
   b.kicker(21, 8).gap(4.5, { rise: 1.0 }).flat(12).kicker(21, 8).gap(4.5, { rise: 1.1 }).flat(12);
   PC.tunnel(b, 9, 3.2, [[1.1, 10], [-1.0, 10], [1.1, 10]]);
+  b.flat(10);
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
   b.flat(9).loop(4).flat(12).drop(2.6).flat(8).ease(26, -5).flat(6);
   jump(b, 22, 13.5, 20, 12, { rise: -2 });
   b.flat(8);
   PC.box(b, 8, 3, 3, 7, 3.2);
+  b.flat(10);
+  PC.rollers(b, 4, 6, 1.0, 2);
+  b.flat(8).gearHint({ len: 16 });   // down in the pit between the jump and the mound
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1, deep: 1.6 });
   b.flat(8);
   hop(b, 18, 6.5, { rise: -0.4 }).flat(8);
   hop(b, 18, 6.5, { rise: -0.4 }).land(15, 8);
@@ -672,9 +722,9 @@ var T = [
   b.flat(7);
   PC.cavejump(b, 9, 3.2, 14, 4);
   b.flat(7);
-  kick(b, 21, 9, 19, 10, { rise: -1.4, R: 5.5 });
+  kick(b, 21, 9, 19, 12, { rise: -2.2, R: 5.5 });
   b.flat(14);
-}],
+}, { t: 'combo', seq: ['b', 'f', 'b'], text: 'Backflip, frontflip, backflip, in one run' }],
 
 /* ----------------------------- LOW ORBIT ---------------------------- */
 ['One Small Hop', 'A third of the gravity. Jumps go three times as far and flips come easy.', function (b) {
