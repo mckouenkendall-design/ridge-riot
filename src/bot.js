@@ -90,6 +90,11 @@ function finishGas(s, P, out, air) {
     var allow = dz > 0 ? Math.sqrt(zv * zv + 2 * dec * dz) : zv;
     if (allow < cap) cap = allow;
   }
+  // the test tools can also ask for one stretch ridden at a set speed: P.hold = [x0, x1, v]
+  if (P.hold && s.x < P.hold[1] && s.x > P.hold[0] - 90) {
+    var hd = P.hold[0] - s.x - 1, ha = hd > 0 ? Math.sqrt(P.hold[2] * P.hold[2] + 2 * dec * hd) : P.hold[2];
+    if (ha < cap) cap = ha;
+  }
   out.cap = cap;
   out.brake = sp > cap + (cap < 1e8 ? 0.5 : 0) && !air;
   // throttle: held open, but eased off when the front wheel climbs too high, the way a rider would

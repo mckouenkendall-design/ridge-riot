@@ -333,75 +333,107 @@ var T = [
 
 /* ----------------------------- RACEWAY ------------------------------ */
 ['Green Flag', 'Yellow arrows on the road are boost strips. Ride over them with the gas open. There is a bus to clear at the end.', function (b) {
-  b.flat(18).kerb(6).flat(8).boost(6).flat(22).table(12, 1.4, 7, 10).flat(14).ease(24, -3).flat(8)
-   .kerb(5).flat(6).boost(6).flat(16).hill(1.6, 20).flat(12);
-  ramp(b, 13, 9, 1.6); b.buses(1, { rise: -0.5 }).land(11, 8).flat(18);
-}],
+  b.flat(18).kerb(6).flat(8).boost(6).flat(22).table(12, 1.4, 7, 10).flat(14);
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
+  b.flat(10).ease(24, -3).flat(8).kerb(5).flat(6).boost(6).flat(16).hill(1.6, 20).flat(10);
+  PC.rollers(b, 3, 6, 1.0, 2);
+  b.flat(10).gearHint({ len: 30, minh: 1.3 });   // mid-air over the bus landing: only a slow arc goes there
+  ramp(b, 16, 9, 1.4); b.buses(2, { rise: -1.4 }).land(14, 10).flat(18);
+}, { t: 'wheelie', sec: 3 }],
+['Rumble Strip', 'Kerbs shake the bike. Stay loose and keep the gas on.', function (b) {
+  b.flat(14).kerb(10).flat(6).bumps(4, 4.4, 0.26).flat(8).kerb(8).flat(6);
+  ramp(b, 14, 8, 1.2); b.drop(0.9).flat(12);
+  ramp(b, 14, 8, 1.2); b.drop(0.9).flat(10);
+  b.gearHint({ len: 16 });        // down in the pit between the jump and the mound
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1, deep: 1.6 });
+  b.flat(8);
+  ramp(b, 16, 8, 1.2); b.drop(1.2).flat(10).logs(3, 6, 0.2).flat(8).ease(22, -3.5).flat(6).kerb(8).flat(6).boost(6).flat(10)
+   .table(18, 2.0, 5, 8).flat(8).logs(2, 6, 0.2).flat(12);
+  ramp(b, 18, 8, 1.4); b.buses(2, { rise: -2.2 }).land(16, 10).flat(14);
+}, { t: 'flip', dir: 'f', n: 1, at: 'last', where: 'over the buses' }],
+['Oil Slick', 'Oil is as slippery as ice. Get your speed first, then coast across it. And a boost strip is not always your friend.', function (b) {
+  b.flat(20).oil(8).flat(10).hill(1.6, 18).flat(6).oil(8).flat(4).ease(20, -2.5).flat(10).boost(6).flat(10).sign('slow').flat(10);
+  PC.tunnel(b, 9, 3.4, [[1.1, 10]]);
+  b.flat(4).oil(10).flat(10);
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
+  b.flat(10);
+  ramp(b, 16, 9, 1.4); b.buses(2, { rise: -0.9 }).land(14, 9).flat(8).oil(8).flat(10).waves(2, 18, 1.0).flat(6).oil(6).flat(10);
+  PC.ledge(b, 3.8, 8);            // the gear sits on a side ledge: lean back at the sign to ride up onto it
+  b.flat(8).table(16, 1.7, 6, 9).flat(14);
+}, { t: 'combo', seq: ['b', 'f'] }],
 ['Bus Stop', 'Clear the buses, but not by too much. The gantries are lower than they look.', function (b) {
   b.flat(22);
   ramp(b, 15, 9, 1.5); b.buses(1, { rise: -0.6 }).land(13, 8).flat(14).boost(6).flat(10).sign('slow').flat(10);
   gantry(b, 9, 22, 1, 4, 3.0);
-  b.flat(16).kerb(6).flat(8).hill(1.8, 18).flat(10);
+  b.flat(14);
+  PC.rollers(b, 4, 6, 1.0, 2);
+  b.flat(10).kerb(6).flat(8).hill(1.8, 18).flat(10);
   gantry(b, 9, 22, 1, 4, 3.0);
-  b.flat(8).boost(7).flat(10);
+  b.flat(10);
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
+  b.flat(8).boost(7).flat(10).gearHint({ len: 34, minh: 1.3 });   // mid-air over the last landing
   ramp(b, 18, 9, 1.4); b.buses(3, { rise: -1.4 }).land(17, 11).flat(18);
-}],
-['Rumble Strip', 'Kerbs shake the bike. Stay loose and keep the gas on.', function (b) {
-  b.flat(14).kerb(10).flat(6).bumps(4, 4.4, 0.26).flat(8).kerb(8).flat(6);
-  ramp(b, 14, 8, 1.2); b.drop(0.9).flat(12);
-  ramp(b, 14, 8, 1.2); b.drop(0.9).flat(12);
-  ramp(b, 16, 8, 1.2); b.drop(1.2).flat(10).logs(3, 6, 0.2).flat(8).ease(22, -3.5).flat(6).kerb(8).flat(6).boost(6).flat(10)
-   .table(18, 2.0, 5, 8).flat(8).logs(2, 6, 0.2).flat(14);
-}],
-['Oil Slick', 'Oil is as slippery as ice. Get your speed first, then coast across it. And a boost strip is not always your friend.', function (b) {
-  b.flat(20).oil(8).flat(10).hill(1.6, 18).flat(6).oil(8).flat(4).ease(20, -2.5).flat(10).boost(6).flat(10).sign('slow').flat(10);
-  PC.tunnel(b, 9, 3.4, [[1.1, 10]]);
-  b.flat(4).oil(10).flat(8);
-  ramp(b, 16, 9, 1.4); b.buses(2, { rise: -0.9 }).land(14, 9).flat(8).oil(8).flat(10).waves(2, 18, 1.0).flat(6).oil(6).flat(12)
-   .table(16, 1.7, 6, 9).flat(14);
-}],
-['Stunt Show', 'A boost strip straight into a loop. Hold the gas all the way round. Then stop holding it.', function (b) {
-  b.flat(20).boost(7).flat(14).loop(4.6).flat(20);
-  gantry(b, 9, 22, 1, 4, 3.0);
-  b.flat(4).kerb(6).flat(4).boost(6).flat(8).loop(4.0).flat(6).loop(4.0).flat(12);
-  PC.tunnel(b, 9, 3.2, [[1.1, 10], [-1.0, 10], [1.1, 10]]);
-  b.flat(8);
-  ramp(b, 19, 8, 1.2); b.buses(3, { rise: -1.3 }).land(17, 10).flat(10);
-  PC.box(b, 8, 3, 3, 7, 3.2);
-  b.flat(16);
-}],
-['Pit Lane', '', function (b) {
+}, { t: 'combo', seq: ['f', 'f'], text: 'Two frontflips in one run' }],
+['Pit Lane', 'Two roads. Hold lean back at the fork sign to take the flyover; ride on for the pit lane underneath.', function (b) {
   b.flat(14).steps(3, 7, 0.8).flat(8).logs(3, 5.5, 0.22).flat(8).oil(7).flat(8);
   PC.tunnel(b, 9, 3.2, [[1.1, 10], [1.0, 9]]);
-  b.flat(6).up(18, 12, 10).flat(10, 13).drop(2.4).flat(14).kerb(8).flat(4).boost(6).flat(8);
+  b.flat(14);
+  b.fork({ H: 3.4, rampLen: 16, slab1: 10, slot: 6, slab2: 10, stepH: 1.6, kickH: 0.7, exitLen: 16,
+    low: function (b) { b.ease(9, -1.6).kerb(2); PC.rollers(b, 3, 9, 0.5); b.ease(9, 1.6); } });   // stays low until past the second slab
+  (function () { var f = b.feats.filter(function (q) { return q.t === 'fork'; }).pop(); b.gearAt((f.slot[1] + f.xe) / 2, f.top + 0.95); })();   // on the flyover: the high road only
+  b.flat(12);
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
+  b.flat(8).kerb(8).flat(4).boost(6).flat(8);
   b.surface('steel').kicker(18, 6.5, 0).surface(); b.buses(2, { rise: -1 }).land(16, 9);
   b.flat(6).boost(6).flat(12);
   PC.box(b, 8, 3, 3, 7, 3.2);
   b.flat(8).oil(6).flat(8);
   ramp(b, 19, 8, 1.2); b.buses(2, { rise: -1.1 }).land(17, 9).flat(14);
-}],
+}, { t: 'flip', dir: 'f', n: 1, text: 'A frontflip anywhere' }],
 ['Seven Buses', 'Slow for the gantry and the underpass, then everything you have got for the big one.', function (b) {
   b.flat(16).kerb(6).flat(8).table(16, 1.8, 6, 9).flat(14);
   gantry(b, 9, 25, 1, 4, 3.1);
   b.flat(10).oil(6).flat(8).hill(2, 18).flat(8);
   PC.tunnel(b, 9, 3.2, [[1.1, 10], [1.1, 10]]);
-  b.flat(4).boost(8).flat(14).down(14, 30, 16).flat(6, 14).boost(9).flat(8);
+  b.flat(10);
+  PC.rollers(b, 4, 6, 1.0, 2);
+  b.flat(8).gearHint({ len: 16 });   // down in the pit between the jump and the mound
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1, deep: 1.4 });
+  b.flat(6).boost(8).flat(14).down(14, 30, 16).flat(6, 14).boost(9).flat(8);
   ramp(b, 21, 10, 1.6); b.buses(7, { rise: -4.6 }).land(22, 15, 10).flat(24);
-}],
-['Chequered Flag', '', function (b) {
+}, { t: 'flip', dir: 'b', n: 1, at: 'biggest', where: 'over the seven buses' }],
+['Stunt Show', 'A boost strip straight into a loop. Hold the gas all the way round. Then stop holding it.', function (b) {
+  b.flat(20).boost(7).flat(14).loop(4.6).flat(20);
+  gantry(b, 9, 22, 1, 4, 3.0);
+  b.flat(10).gearHint({ len: 16 });   // down in the pit between the jump and the mound
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1, deep: 1.6 });
+  b.flat(4).kerb(6).flat(4).boost(6).flat(8).loop(4.0).flat(6).loop(4.0).flat(12);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10], [-1.0, 10], [1.1, 10]]);
+  b.flat(10);
+  PC.rollers(b, 3, 6, 1.0, 2);
+  b.flat(8);
+  ramp(b, 19, 8, 1.2); b.buses(3, { rise: -2.8 }).land(18, 12).flat(10);
+  PC.box(b, 8, 3, 3, 7, 3.2);
+  b.flat(16);
+}, { t: 'flip', dir: 'b', n: 1, at: 'biggest', where: 'over the buses' }],
+['Chequered Flag', 'Every trick Raceway knows, one after another. Last bus jump wins it.', function (b) {
   b.flat(18).boost(7).flat(12).loop(4.4).flat(18);
   gantry(b, 9, 25, 1, 4, 3.1);
   b.flat(8).oil(8).flat(10);
   PC.tunnel(b, 9, 3.2, [[1.1, 10], [-1.0, 10], [1.1, 10]]);
+  b.flat(10);
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
   b.flat(6).boost(7).flat(10);
   gantry(b, 10, 28, 2, 6, 3.8, { rise: -0.9, landLen: 9 });
   b.flat(4).kerb(6).flat(14);
   PC.box(b, 8, 3, 3, 7, 3.2);
   b.flat(10);
   PC.cavejump(b, 9, 3.2, 14, 4);
-  b.flat(4).boost(7).flat(8);
+  b.flat(8);
+  PC.rollers(b, 4, 6, 1.0, 2);
+  b.flat(4).boost(7).flat(8).gearHint({ len: 34, minh: 1.3 });   // mid-air over the last bus landing
   ramp(b, 20, 9, 1.3); b.buses(4, { rise: -2 }).land(18, 11).flat(16);
-}],
+}, { t: 'combo', seq: ['b', 'b', 'b'], text: 'Three backflips in one run' }],
 
 /* ----------------------------- FROSTBITE ---------------------------- */
 ['Black Ice', 'Blue ice has no grip. Build your speed before you reach it.', function (b) {

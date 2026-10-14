@@ -14,7 +14,13 @@ RR.GEAR_AT = {
   'root-rage': [316, -5.8],
   'creek-hop': [284.1, -11.5],
   'old-growth': [320.8, -5.5],
-  'beaver-dam': [270.4, -11.4]
+  'beaver-dam': [270.4, -11.4],
+  'green-flag': [292.3, -4.2],
+  'rumble-strip': [115.5, -1.2],
+  'bus-stop': [320.9, -8],
+  'chequered-flag': [442.8, -11.7],
+  'seven-buses': [249.6, -3.3],
+  'stunt-show': [116.2, -3.3]
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);

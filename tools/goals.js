@@ -41,6 +41,10 @@ function policies(cal, id, tr) {
     out.push({ name: (route ? route + ' road, ' : '') + (fl ? 'flips ' + fl.dir + (fl.max > 1 ? ' up to ' + fl.max : '') : 'no flips') + (vc < 1e8 ? ', held to ' + vc + ' m/s' : ''),
       P: { caps: caps.slice(), vcap: vc < 1e8 ? Math.min(vc, cal.G) : cal.G, flips: fl, route } });
   }
+  // slowing down for just the stretch where the gear is (a rider who has spotted it), then riding on as normal
+  const h = tr.feats.find(f => f.t === 'gearhint') || (RR.gearOf(tr) && { x0: RR.gearOf(tr).x - 20, x1: RR.gearOf(tr).x + 4 });
+  if (h) for (const v of [5, 6, 7, 8, 9, 10, 11, 12]) for (const fl of [null, { dir: 'b', max: 1 }])
+    out.push({ name: 'slow to ' + v + ' m/s just for the gear' + (fl ? ', flips b' : ''), P: { caps: caps.slice(), vcap: cal.G, flips: fl, hold: [h.x0 - 6, h.x1, v] } });
   return out;
 }
 module.exports = { ride, policies };
