@@ -391,7 +391,7 @@ UI.garage = function () {
   h = '';
   if (tab === 'bikes') {
     RR.BIKES.forEach(function (b) { if (P.bikeOpen(b)) own++; });
-    h += '<div class="tiles t5">';
+    h += '<div class="tiles scroll t6 bk" id="tiles">';      // 24 bikes: a list that scrolls, in tiles big enough to tap
     RR.BIKES.forEach(function (b, n) { h += '<button class="tile' + (P.bikeOpen(b) ? '' : ' locked') + (b.id === Store.data.bike ? ' sel' : '') + (n === UI.gi ? ' cur' : '') + '" data-act="gdot" data-i="' + n + '" aria-label="' + esc(b.name) + '"><canvas data-bike="' + n + '"></canvas></button>'; });
     h += '</div><div class="info"><div class="nm"><h3>' + esc(d.name) + '</h3></div><div class="bars">';
     var st = RR.bikeStats(d);
@@ -451,7 +451,11 @@ UI.garage = function () {
     // the tiles get their height first: until then the list is too short to hold the old scroll position,
     // and the browser would quietly snap it back to the top
     sizeTiles();
-    if (tileScroll < 0) { var c0 = tl.querySelector('.tile.cur'); tl.scrollTop = c0 ? Math.max(0, c0.offsetTop - tl.clientHeight / 2 + c0.offsetHeight / 2) : 0; tileScroll = tl.scrollTop; }
+    if (tileScroll < 0) {
+      // open with the chosen tile in the middle of the list (measured on screen: offsetTop counts from the panel, not the list)
+      var c0 = tl.querySelector('.tile.cur'), dy = c0 ? c0.getBoundingClientRect().top - tl.getBoundingClientRect().top : 0;
+      tl.scrollTop = c0 ? Math.max(0, dy - tl.clientHeight / 2 + c0.offsetHeight / 2) : 0; tileScroll = tl.scrollTop;
+    }
     else tl.scrollTop = tileScroll;
     tl.addEventListener('scroll', function () { tileScroll = tl.scrollTop; paintTiles(false); }, { passive: true });
   }
@@ -465,7 +469,7 @@ function sizeTiles() {
   var tl = $('tiles'); if (!tl || !tl.clientWidth) return;
   var cols = tl.classList.contains('t9') ? 9 : tl.classList.contains('t7') ? 7 : 6, cs = root.getComputedStyle(tl);
   var w = (tl.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0) - (parseFloat(cs.columnGap) || 0) * (cols - 1)) / cols;
-  tl.style.setProperty('--th', (w * (cols === 9 ? 0.92 : 1)).toFixed(2) + 'px');
+  tl.style.setProperty('--th', (w * (tl.classList.contains('bk') ? 0.7 : cols === 9 ? 0.92 : 1)).toFixed(2) + 'px');
 }
 /* a trophy has been earned and not looked at yet */
 function trophyNew() { var n = false; RR.TROPHIES.forEach(function (it) { if (Store.data.fresh[it.id] && P.reallyOwns(it)) n = true; }); return n; }

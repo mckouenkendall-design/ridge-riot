@@ -137,6 +137,7 @@ h3 { margin: 0; font-size: 1.5rem; font-weight: 900; font-style: italic; line-he
 /* a tile's height is set by the script (--th, from the width of a column) because a grid will not count aspect-ratio when it works out how tall each row is */
 .tiles.scroll .tile { aspect-ratio: 1 / 0.92; min-height: auto; height: var(--th, auto); touch-action: pan-y; }
 .t7.scroll .tile, .t6.scroll .tile { aspect-ratio: 1 / 1; }
+.t6.scroll.bk .tile { aspect-ratio: 1 / 0.7; }
 .t6 { grid-template-columns: repeat(6, 1fr); } .t7 { grid-template-columns: repeat(7, 1fr); } .t9 { grid-template-columns: repeat(9, 1fr); }
 .sep { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 0.5rem; padding: 0.05rem 0.2rem 0; border-bottom: 0.12rem solid var(--tc, var(--ink)); font-size: 0.8rem; line-height: 1.15; }
 .sep b { font-weight: 900; font-style: italic; } .sep i { font-style: normal; font-weight: 700; opacity: 0.7; }
@@ -247,7 +248,7 @@ input[type=range]::-moz-range-thumb { width: 1.3rem; height: 1.3rem; background:
 .center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; }
 #s-pause .center { display: flex; flex-direction: column; gap: 0.7rem; width: 15rem; }
 #s-pause h2 { margin-bottom: 0.4rem; font-size: 2.4rem; }
-.res { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -51%); width: min(38rem, calc(100% - 2rem - var(--safe-l) - var(--safe-r))); max-height: calc(100% - 1.4rem - var(--safe-b)); padding: 0.55rem 1.1rem 0.8rem; text-align: center; }
+.res { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -51%); width: min(38rem, calc(100% - 2rem - var(--safe-l) - var(--safe-r))); max-height: calc(100% - 1.4rem - var(--safe-b)); padding: 0.45rem 1.1rem 0.65rem; text-align: center; }
 .res .tn { font-size: 0.95rem; font-weight: 800; font-style: italic; opacity: 0.75; }
 .res .time { font-size: 3.5rem; font-weight: 900; font-style: italic; line-height: 0.95; font-variant-numeric: tabular-nums; }
 .res .big { font-size: 2.6rem; display: flex; justify-content: center; gap: 0.5rem; margin: 0.1rem 0 0.15rem; color: rgba(23, 26, 34, 0.16); }
@@ -261,7 +262,7 @@ input[type=range]::-moz-range-thumb { width: 1.3rem; height: 1.3rem; background:
 .res .pay span { font-weight: 500; opacity: 0.75; font-size: 0.84rem; }
 .res .unl { margin-top: 0.15rem; font-size: 0.95rem; font-weight: 800; color: var(--blue); line-height: 1.15; }
 .res .unl.gold { color: #b9801a; }
-.res .btns { display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; row-gap: 0.45rem; }
+.res .btns { display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 0.35rem; flex-wrap: wrap; row-gap: 0.35rem; }
 .res .btns .btn { font-size: 1.15rem; padding: 0.3rem 0.9rem; min-height: 2.5rem; }
 .res .btns .btn.small { font-size: 0.95rem; padding: 0.2rem 0.7rem; min-height: 2.45rem; }
 #toast { position: absolute; left: 50%; top: calc(4.6rem + var(--safe-t)); max-width: calc(100% - 2rem - var(--safe-l) - var(--safe-r)); transform: translate(-50%, -9rem) skewX(-8deg); transition: transform 0.25s cubic-bezier(0.2, 1.2, 0.4, 1); padding: 0.3rem 1rem; font-weight: 900; font-style: italic; font-size: 1.05rem; line-height: 1.15; text-align: center; background: var(--yellow); pointer-events: none; z-index: 5; }
@@ -1596,7 +1597,7 @@ RR.BIKES = [
   {
     id: 'turbo', name: 'Spool 600', kind: 'turbo', tag: 'Hold the gas and it keeps pulling', wipe: 'blowoff',
     blurb: 'A street tracker with a turbocharger the size of a melon bolted to the side.',
-    trick: 'Turbo: the longer you hold the gas, the harder it pulls, up to half as much again after two seconds. Let off for a moment and the boost is gone.',
+    trick: 'Turbo: hold the gas and it pulls harder, up to half as much again after two seconds. Let off and the boost is gone.',
     mass: 205, kgyr: 0.47, wb: 1.45, rr: 0.32, rf: 0.32, com: [0.68, 0.76], wheelMass: [12, 10], rake: 26, swing: 9,
     sus: [{ travel: 0.18, freq: 2.3, sag: 0.3, zc: 0.46, zr: 1.0 }, { travel: 0.19, freq: 2.25, sag: 0.3, zc: 0.44, zr: 0.95 }],
     accel: 0.64, vp: 10, vmax: 16.6, grip: 1.04, brake: 0.95, leanAcc: 13.5, spin: 5.8, cda: 0.5, turbo: { build: 2.2, power: 0.5, top: 0.16 },
@@ -1620,7 +1621,7 @@ RR.BIKES = [
   {
     id: 'gecko', name: 'Gecko', kind: 'gecko', tag: 'Sticks to walls for a moment', wipe: 'splat',
     blurb: 'Soft, tacky tyres that suck onto whatever they touch. Lands like it is glued down.',
-    trick: 'Tacky tyres hold you onto walls, steep faces and loop tops for about a second, then let go until you reach gentle ground.',
+    trick: 'Sticky tyres hold onto walls, steep faces and loop tops for about a second, then need gentle ground to grip again.',
     mass: 178, kgyr: 0.45, wb: 1.36, rr: 0.30, rf: 0.31, com: [0.62, 0.72], wheelMass: [10, 9], rake: 26, swing: 9,
     sus: [{ travel: 0.22, freq: 2.1, sag: 0.3, zc: 0.45, zr: 0.95 }, { travel: 0.23, freq: 2.05, sag: 0.3, zc: 0.42, zr: 0.9 }],
     accel: 0.68, vp: 9, vmax: 16.2, grip: 1.18, brake: 0.9, leanAcc: 15.5, spin: 6.0, cda: 0.5, stick: { f: 1.2, t: 1.2 },
@@ -2226,16 +2227,13 @@ var T = [
 ['Hop Skip', 'In the air, lean forward drops the nose and lean back lifts it.', function (b) {
   b.flat(24).sign('jump');
   jump(b, 13, 4, 11, 8, { rise: -0.8, lip: 1.6 });
+  b.flat(24);
+  PC.double(b, 14, 8, 1.6, 18, 7, { next: [2.2, 14], gapAfter: 1.5, face: 26 });
   b.flat(14);
-  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
-  b.flat(12);
-  b.hill(1.6, 20).flat(10);
-  jump(b, 17, 6, 15, 10, { rise: -2.2, lip: 1.6 });
-  b.flat(4);
-  jump(b, 19, 7, 17, 11, { rise: -3, lip: 1.4 });
-  b.flat(12);
   PC.ledge(b, 3.7, 8);            // the gear sits on a side ledge: lean back at the sign to ride up onto it
-  b.flat(10);
+  b.flat(10).hill(1.3, 24).flat(14);
+  jump(b, 19, 7, 17, 14, { rise: -4, lip: 1.4 });
+  b.flat(16);
 }, { t: 'combo', seq: ['b', 'f'] }],
 ['Loop de Dust', 'Loops need speed. Hold the gas all the way round and do not lean.', function (b) {
   b.flat(34).sign('loop').loop(3.6).flat(18);
@@ -2381,7 +2379,7 @@ var T = [
   PC.tunnel(b, 9, 3.2, [[1.1, 10], [-0.9, 9], [1.1, 10]]);
   b.flat(10).gearHint({ len: 22, minh: 1.3 });   // high over the double: only a slow rider's arc goes up there
   PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
-  b.flat(8);
+  b.flat(10).ease(20, -2.5).flat(10);
   kick(b, 21, 11, 20, 12, { rise: -2.0, R: 6.5 });
   b.flat(12);
   PC.limbo(b, 9, 22, 4.5, 4, 3.0);
@@ -2415,19 +2413,20 @@ var T = [
 ['Green Flag', 'Yellow arrows on the road are boost strips. Ride over them with the gas open. There is a bus to clear at the end.', function (b) {
   b.flat(18).kerb(6).flat(8).boost(6).flat(22).table(12, 1.4, 7, 10).flat(14);
   PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
-  b.flat(10).ease(24, -3).flat(8).kerb(5).flat(6).boost(6).flat(16).hill(1.6, 20).flat(10);
+  b.flat(12);
   PC.rollers(b, 3, 6, 1.0, 2);
+  b.flat(10).ease(24, -3).flat(8).kerb(5).flat(6).boost(6).flat(16).hill(1.6, 20).flat(10);
   b.flat(10).gearHint({ len: 30, minh: 1.3 });   // mid-air over the bus landing: only a slow arc goes there
   ramp(b, 16, 9, 1.4); b.buses(2, { rise: -1.4 }).land(14, 10).flat(18);
-}, { t: 'wheelie', sec: 3 }],
+}, { t: 'wheelie', sec: 2.5 }],
 ['Rumble Strip', 'Kerbs shake the bike. Stay loose and keep the gas on.', function (b) {
   b.flat(14).kerb(10).flat(6).bumps(4, 4.4, 0.26).flat(8).kerb(8).flat(6);
-  ramp(b, 14, 8, 1.2); b.drop(0.9).flat(12);
-  ramp(b, 14, 8, 1.2); b.drop(0.9).flat(10);
+  ramp(b, 14, 8, 1.2); b.land(12, 4.3).flat(12);
+  ramp(b, 14, 8, 1.2); b.land(12, 4.3).flat(22);
   b.gearHint({ len: 16 });        // down in the pit between the jump and the mound
   PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1, deep: 1.6 });
   b.flat(8);
-  ramp(b, 16, 8, 1.2); b.drop(1.2).flat(10).logs(3, 6, 0.2).flat(8).ease(22, -3.5).flat(6).kerb(8).flat(6).boost(6).flat(10)
+  ramp(b, 16, 8, 1.2); b.land(14, 5).flat(10).logs(3, 6, 0.2).flat(8).ease(22, -3.5).flat(6).kerb(8).flat(6).boost(6).flat(10)
    .table(18, 2.0, 5, 8).flat(8).logs(2, 6, 0.2).flat(12);
   ramp(b, 18, 8, 1.4); b.buses(2, { rise: -2.2 }).land(16, 10).flat(14);
 }, { t: 'flip', dir: 'f', n: 1, at: 'last', where: 'over the buses' }],
@@ -3132,55 +3131,55 @@ if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 var RR = root.RR || (root.RR = {});
 RR.STAR_TIMES = [
   [21.2, 1],   //  1 First Gear: robot 19.6s with 2 flips (flips b up to 1), careful run without flips 19.8s
-  [25.1, 2],   //  2 Rolling Dunes: robot 23.2s with 3 flips (flips b up to 1), careful run without flips 23.5s
-  [18.6, 2],   //  3 Hop Skip: robot 17.2s with 3 flips (flips f up to 1), careful run without flips 17.5s
+  [25.0, 2],   //  2 Rolling Dunes: robot 23.1s with 3 flips (flips alt up to 1), careful run without flips 23.5s
+  [22.0, 1],   //  3 Hop Skip: robot 20.4s with 2 flips (low road, flips f up to 1), careful run without flips 20.4s
   [22.1, 1],   //  4 Loop de Dust: robot 20.5s with 2 flips (flips b up to 1), careful run without flips 20.8s
   [23.2, 1],   //  5 Mesa Drop: robot 21.5s with 1 flip (high road, flips f up to 1), careful run without flips 21.8s
-  [36.1, 3],   //  6 Washboard: robot 33.4s with 4 flips (flips f up to 1), careful run without flips 33.6s
+  [37.5, 3],   //  6 Washboard: robot 34.7s with 4 flips (flips f up to 1), careful run without flips 35.5s
   [28.8, 2],   //  7 Gulch Gap: robot 26.6s with 3 flips (flips alt up to 1), careful run without flips 27.6s
   [41.2, 3],   //  8 Canyon Run: robot 38.1s with 4 flips (flips b up to 1), careful run without flips 38.6s
-  [21.5, 1],   //  9 Log Jam: robot 20.3s with 0 flips (flips b up to 1), careful run without flips 20.3s
-  [20.6, 1],   // 10 Mossy Loop: robot 19.4s with 1 flip (flips f up to 1), careful run without flips 19.5s
-  [19.9, 1],   // 11 Timber Table: robot 18.8s with 2 flips (flips alt up to 1), careful run without flips 18.9s
-  [29.3, 1],   // 12 Sawmill: robot 27.6s with 1 flip (flips f up to 1), careful run without flips 27.7s
-  [36.6, 1],   // 13 Root Rage: robot 34.5s with 0 flips (flips b up to 1), careful run without flips 34.5s
-  [24.2, 1],   // 14 Creek Hop: robot 22.9s with 0 flips (flips b up to 1), careful run without flips 22.9s
-  [34.8, 1],   // 15 Beaver Dam: robot 32.8s with 2 flips (flips alt up to 1), careful run without flips 33.2s
-  [40.8, 2],   // 16 Old Growth: robot 38.5s with 3 flips (flips alt up to 1), careful run without flips 38.7s
-  [17.0, 1],   // 17 Green Flag: robot 16.2s with 0 flips (flips b up to 1), careful run without flips 16.2s
-  [21.0, 1],   // 18 Rumble Strip: robot 20.0s with 1 flip (flips f up to 1), careful run without flips 20.2s
-  [26.4, 1],   // 19 Oil Slick: robot 25.2s with 2 flips (flips f up to 1), careful run without flips 26.1s
-  [22.8, 1],   // 20 Bus Stop: robot 21.7s with 1 flip (flips b up to 1), careful run without flips 21.8s
-  [29.2, 1],   // 21 Pit Lane: robot 27.8s with 1 flip (flips b up to 1), careful run without flips 27.8s
-  [28.2, 1],   // 22 Seven Buses: robot 26.9s with 2 flips (flips b up to 1), careful run without flips 27.1s
-  [32.3, 1],   // 23 Stunt Show: robot 30.8s with 1 flip (flips b up to 1), careful run without flips 30.8s
-  [37.6, 2],   // 24 Chequered Flag: robot 35.8s with 3 flips (flips alt up to 1), careful run without flips 36.0s
-  [20.3, 1],   // 25 Black Ice: robot 19.5s with 0 flips (flips b up to 1), careful run without flips 19.5s
-  [23.1, 1],   // 26 Glacier Loop: robot 22.2s with 1 flip (flips f up to 1), careful run without flips 22.3s
-  [24.8, 1],   // 27 Slip Road: robot 23.8s with 1 flip (flips b up to 1), careful run without flips 24.0s
-  [33.2, 1],   // 28 Whiteout: robot 31.9s with 1 flip (flips f up to 1), careful run without flips 32.3s
-  [37.6, 1],   // 29 Aurora: robot 36.1s with 2 flips (flips f up to 1), careful run without flips 36.2s
-  [32.9, 1],   // 30 Powder Keg: robot 31.6s with 1 flip (flips b up to 1), careful run without flips 31.8s
-  [28.5, 1],   // 31 Crevasse: robot 27.4s with 2 flips (flips f up to 1), careful run without flips 27.4s
-  [40.0, 2],   // 32 Avalanche: robot 38.4s with 3 flips (flips alt up to 1), careful run without flips 39.1s
-  [19.2, 2],   // 33 Hot Start: robot 18.7s with 3 flips (flips b up to 1), careful run without flips 19.4s
-  [25.6, 1],   // 34 Caldera: robot 24.8s with 2 flips (flips f up to 1), careful run without flips 24.9s
-  [20.3, 1],   // 35 Magma Hop: robot 19.7s with 2 flips (flips f up to 1), careful run without flips 19.9s
-  [30.7, 1],   // 36 The Chimney: robot 29.8s with 0 flips (flips b up to 1), careful run without flips 29.8s
-  [35.8, 1],   // 37 Fire Walk: robot 34.8s with 2 flips (flips b up to 1), careful run without flips 34.8s
-  [30.8, 1],   // 38 Ash Loop: robot 29.9s with 2 flips (flips alt up to 1), careful run without flips 30.0s
-  [30.6, 1],   // 39 Ember Steps: robot 29.7s with 1 flip (flips b up to 1), careful run without flips 29.7s
-  [40.4, 3],   // 40 Eruption: robot 39.2s with 4 flips (flips f up to 1), careful run without flips 39.4s
+  [26.0, 1],   //  9 Log Jam: robot 24.5s with 1 flip (flips f up to 1), careful run without flips 24.5s
+  [27.8, 2],   // 10 Mossy Loop: robot 26.2s with 3 flips (flips alt up to 1), careful run without flips 27.1s
+  [29.6, 2],   // 11 Timber Table: robot 27.9s with 3 flips (low road, flips b up to 1), careful run without flips 28.0s
+  [35.2, 1],   // 12 Sawmill: robot 33.2s with 1 flip (low road, flips b up to 1), careful run without flips 33.2s
+  [44.3, 1],   // 13 Root Rage: robot 41.8s with 2 flips (flips f up to 1), careful run without flips 41.9s
+  [28.3, 1],   // 14 Creek Hop: robot 26.7s with 2 flips (flips f up to 1), careful run without flips 26.8s
+  [45.7, 3],   // 15 Beaver Dam: robot 43.1s with 4 flips (flips alt up to 1), careful run without flips 43.8s
+  [50.1, 4],   // 16 Old Growth: robot 47.3s with 6 flips (flips alt up to 1), careful run without flips 47.5s
+  [27.2, 2],   // 17 Green Flag: robot 25.9s with 3 flips (flips alt up to 1), careful run without flips 26.4s
+  [28.4, 2],   // 18 Rumble Strip: robot 27.1s with 3 flips (flips f up to 1), careful run without flips 27.8s
+  [34.8, 1],   // 19 Oil Slick: robot 33.1s with 1 flip (low road, flips b up to 1), careful run without flips 33.2s
+  [33.6, 2],   // 20 Bus Stop: robot 32.0s with 3 flips (flips f up to 1), careful run without flips 32.2s
+  [35.8, 1],   // 21 Pit Lane: robot 34.1s with 2 flips (high road, flips b up to 1), careful run without flips 34.4s
+  [38.8, 3],   // 22 Seven Buses: robot 36.9s with 4 flips (flips alt up to 1), careful run without flips 37.2s
+  [40.9, 2],   // 23 Stunt Show: robot 38.9s with 3 flips (flips alt up to 1), careful run without flips 39.3s
+  [48.3, 3],   // 24 Chequered Flag: robot 46.0s with 5 flips (flips f up to 1), careful run without flips 46.6s
+  [27.8, 2],   // 25 Black Ice: robot 26.7s with 3 flips (flips alt up to 1), careful run without flips 26.8s
+  [32.8, 2],   // 26 Glacier Loop: robot 31.6s with 3 flips (flips f up to 1), careful run without flips 32.1s
+  [32.7, 1],   // 27 Slip Road: robot 31.4s with 2 flips (low road, flips b up to 1), careful run without flips 31.7s
+  [44.3, 1],   // 28 Whiteout: robot 42.6s with 2 flips (flips f up to 1), careful run without flips 43.1s
+  [46.1, 2],   // 29 Aurora: robot 44.3s with 3 flips (flips f up to 1), careful run without flips 44.3s
+  [43.3, 2],   // 30 Powder Keg: robot 41.6s with 3 flips (flips f up to 1), careful run without flips 42.0s
+  [36.0, 3],   // 31 Crevasse: robot 34.6s with 4 flips (low road, flips f up to 1), careful run without flips 34.8s
+  [49.4, 3],   // 32 Avalanche: robot 47.5s with 5 flips (flips alt up to 1), careful run without flips 48.1s
+  [29.5, 4],   // 33 Hot Start: robot 28.7s with 6 flips (flips b up to 1), careful run without flips 30.1s
+  [38.0, 4],   // 34 Caldera: robot 36.9s with 6 flips (high road, flips f up to 1), careful run without flips 38.9s
+  [36.0, 3],   // 35 Magma Hop: robot 35.0s with 5 flips (low road, flips f up to 1), careful run without flips 35.5s
+  [38.7, 1],   // 36 The Chimney: robot 37.6s with 2 flips (flips alt up to 1), careful run without flips 37.9s
+  [50.7, 3],   // 37 Fire Walk: robot 49.2s with 5 flips (flips f up to 1), careful run without flips 48.4s
+  [45.3, 4],   // 38 Ash Loop: robot 43.9s with 6 flips (flips f up to 1), careful run without flips 44.2s
+  [45.2, 3],   // 39 Ember Steps: robot 43.8s with 5 flips (flips f up to 1), careful run without flips 43.9s
+  [55.6, 3],   // 40 Eruption: robot 54.0s with 5 flips (flips f up to 1), careful run without flips 54.4s
   [22.1, 3],   // 41 One Small Hop: robot 21.7s with 5 flips (flips alt up to 1, safe), careful run without flips 22.2s
   [23.4, 2],   // 42 Double Loop: robot 22.9s with 3 flips (flips f up to 2), careful run without flips 23.3s
-  [30.6, 3],   // 43 Crater Maker: robot 30.0s with 5 flips (flips b up to 1), careful run without flips 30.1s
-  [31.8, 6],   // 44 Slow Float: robot 31.2s with 9 flips (flips b up to 2), careful run without flips 31.3s
-  [36.1, 4],   // 45 Regolith: robot 35.4s with 6 flips (flips alt up to 1), careful run without flips 35.6s
+  [37.7, 6],   // 43 Crater Maker: robot 37.0s with 8 flips (flips f up to 2), careful run without flips 36.5s
+  [35.5, 8],   // 44 Slow Float: robot 34.8s with 11 flips (high road, flips b up to 2), careful run without flips 34.5s
+  [46.5, 7],   // 45 Regolith: robot 45.6s with 10 flips (low road, flips alt up to 1), careful run without flips 45.9s
   [40.9, 5],   // 46 Dark Side: robot 40.1s with 7 flips (flips f up to 1), careful run without flips 40.6s
   [36.6, 9],   // 47 Escape Velocity: robot 35.9s with 12 flips (flips alt up to 2), careful run without flips 39.0s
-  [50.3, 6]    // 48 Riot Run: robot 49.3s with 9 flips (flips b up to 2), careful run without flips 49.4s
+  [56.6, 8]    // 48 Riot Run: robot 55.5s with 11 flips (flips b up to 2), careful run without flips 55.5s
 ];
-RR.ZONE_V = [[], [], [], [], [], [9.5], [11], [8, 10.5], [], [], [10.5], [8.5, 10], [8, 11], [10, 10], [7, 10], [9, 7, 9.5, 10.5], [], [], [9.5], [10, 10], [8.5, 10], [9, 8.5], [10, 8.5, 10], [9, 8.5, 11, 10, 11], [], [], [8], [10, 8], [8, 10, 8], [9, 10.5], [9.5, 9, 9], [8, 9, 9, 8.5], [], [], [10.5], [9, 8], [9, 9, 9, 8.5], [8, 11], [8.5, 8, 9, 10.5], [7, 9, 9, 10.5], [], [], [8.5], [11, 10.5], [7.5, 8, 11], [8, 8.5, 10], [8.5, 8.5], [9, 7.5, 10, 10.5]];
+RR.ZONE_V = [[], [], [], [], [], [8.5], [11], [8, 10.5], [], [], [10.5], [8.5, 10], [8, 10.5], [10, 10], [7, 10], [9, 7, 10, 10], [], [], [9.5], [10, 10], [8.5, 10], [9, 8.5], [10, 8.5, 10], [9, 8.5, 11, 10, 11], [], [], [8.5], [10, 7.5], [8, 10, 8.5], [9, 10.5], [9.5, 9, 10], [8, 9, 9.5, 8], [], [], [10.5], [9, 8], [9, 9.5, 9, 7.5], [7.5, 10.5], [8.5, 7.5, 9, 10.5], [7, 8.5, 9, 9.5], [], [], [8.5], [11, 10.5], [7.5, 8, 11], [8, 8.5, 10], [8.5, 8.5], [9, 7.5, 10, 10.5]];
 if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -3201,9 +3200,9 @@ RR.GEAR_AT = {
   'root-rage': [316, -5.8],
   'creek-hop': [284.1, -11.5],
   'old-growth': [320.8, -5.5],
-  'beaver-dam': [270.4, -11.4],
-  'green-flag': [292.3, -4.2],
-  'rumble-strip': [115.5, -1.2],
+  'beaver-dam': [267.3, -10.5],
+  'green-flag': [304.3, -4.2],
+  'rumble-strip': [140.6, -1.9],
   'bus-stop': [320.9, -8],
   'chequered-flag': [442.8, -11.7],
   'seven-buses': [249.6, -3.3],
@@ -3244,35 +3243,44 @@ RR.REBUILT = {
   'washboard': [2, 28.1, 35.5],
   'gulch-gap': [2, 25.8, 32.6],
   'canyon-run': [2, 34.9, 44],
-  'timber-table': [1, 17.9, 22.6],
-  'sawmill': [1, 21.4, 27.1],
-  'root-rage': [1, 26.6, 33.6],
-  'creek-hop': [1, 18.9, 23.8],
-  'beaver-dam': [1, 24.9, 31.4],
-  'old-growth': [1, 34.2, 43.2],
-  'oil-slick': [1, 21.4, 26.9],
-  'bus-stop': [1, 16.4, 20.5],
-  'pit-lane': [1, 21.3, 26.7],
-  'seven-buses': [1, 20.7, 25.9],
-  'stunt-show': [1, 19.6, 24.6],
-  'chequered-flag': [1, 28.9, 36.2],
-  'slip-road': [1, 19.3, 24.2],
-  'whiteout': [1, 22.5, 28.1],
-  'aurora': [1, 30.6, 38.3],
-  'powder-keg': [1, 24.2, 30.3],
-  'crevasse': [1, 20.4, 25.5],
-  'avalanche': [1, 20.2, 25.3],
-  'magma-hop': [1, 15.4, 19.4],
-  'fire-walk': [1, 20.1, 25.3],
-  'ash-loop': [1, 21.9, 27.5],
-  'ember-steps': [1, 21.1, 26.5],
-  'eruption': [1, 28.9, 36.3],
-  'crater-maker': [1, 23.2, 29.2],
-  'slow-float': [1, 26.4, 33.4],
-  'regolith': [1, 25.9, 32.8],
+  'log-jam': [1, 20.9, 26.4],
+  'mossy-loop': [1, 20.1, 25.4],
+  'timber-table': [2, 19.5, 24.6],
+  'sawmill': [2, 28.5, 36],
+  'root-rage': [2, 35.5, 44.9],
+  'creek-hop': [2, 23.5, 29.7],
+  'beaver-dam': [2, 34.2, 43.1],
+  'old-growth': [2, 39.8, 50.3],
+  'green-flag': [1, 16.5, 20.7],
+  'rumble-strip': [1, 20.6, 25.9],
+  'oil-slick': [2, 26.7, 33.5],
+  'bus-stop': [2, 22.2, 27.9],
+  'pit-lane': [2, 28.4, 35.6],
+  'seven-buses': [2, 27.6, 34.6],
+  'stunt-show': [2, 31.4, 39.4],
+  'chequered-flag': [2, 36.7, 46.1],
+  'black-ice': [1, 19.5, 24.4],
+  'glacier-loop': [1, 22.3, 27.9],
+  'slip-road': [2, 24, 30],
+  'whiteout': [2, 32.3, 40.4],
+  'aurora': [2, 36.2, 45.3],
+  'powder-keg': [2, 31.8, 39.8],
+  'crevasse': [2, 27.4, 34.3],
+  'avalanche': [2, 39.1, 48.8],
+  'hot-start': [1, 18.8, 23.7],
+  'caldera': [1, 24.2, 30.4],
+  'magma-hop': [2, 19.3, 24.2],
+  'the-chimney': [1, 28.5, 35.9],
+  'fire-walk': [2, 33.8, 42.5],
+  'ash-loop': [2, 29.1, 36.6],
+  'ember-steps': [2, 28.8, 36.3],
+  'eruption': [2, 38.2, 48.1],
+  'crater-maker': [2, 28.6, 36.1],
+  'slow-float': [2, 29.7, 37.6],
+  'regolith': [2, 33.8, 42.7],
   'dark-side': [1, 29, 36.6],
   'escape-velocity': [1, 26.4, 33.4],
-  'riot-run': [1, 44.9, 56.7]
+  'riot-run': [2, 46.9, 59.3]
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -12895,6 +12903,7 @@ var Store = RR.Store = {
   del: function (k) { delete mem[k]; try { root.localStorage.removeItem(k); } catch (e) {} },
   load: function () {
     var raw = Store.get(KEY), d = JSON.parse(JSON.stringify(DEF)), k, i, old = false, revs = {}, o = null;
+    if (!raw) d.news = 4;          // a new player has nothing to be told is new
     Store.rebuilt = 0;
     Store.other = {};
     if (raw) {
@@ -14044,7 +14053,7 @@ UI.garage = function () {
   h = '';
   if (tab === 'bikes') {
     RR.BIKES.forEach(function (b) { if (P.bikeOpen(b)) own++; });
-    h += '<div class="tiles t5">';
+    h += '<div class="tiles scroll t6 bk" id="tiles">';      // 24 bikes: a list that scrolls, in tiles big enough to tap
     RR.BIKES.forEach(function (b, n) { h += '<button class="tile' + (P.bikeOpen(b) ? '' : ' locked') + (b.id === Store.data.bike ? ' sel' : '') + (n === UI.gi ? ' cur' : '') + '" data-act="gdot" data-i="' + n + '" aria-label="' + esc(b.name) + '"><canvas data-bike="' + n + '"></canvas></button>'; });
     h += '</div><div class="info"><div class="nm"><h3>' + esc(d.name) + '</h3></div><div class="bars">';
     var st = RR.bikeStats(d);
@@ -14104,7 +14113,11 @@ UI.garage = function () {
     // the tiles get their height first: until then the list is too short to hold the old scroll position,
     // and the browser would quietly snap it back to the top
     sizeTiles();
-    if (tileScroll < 0) { var c0 = tl.querySelector('.tile.cur'); tl.scrollTop = c0 ? Math.max(0, c0.offsetTop - tl.clientHeight / 2 + c0.offsetHeight / 2) : 0; tileScroll = tl.scrollTop; }
+    if (tileScroll < 0) {
+      // open with the chosen tile in the middle of the list (measured on screen: offsetTop counts from the panel, not the list)
+      var c0 = tl.querySelector('.tile.cur'), dy = c0 ? c0.getBoundingClientRect().top - tl.getBoundingClientRect().top : 0;
+      tl.scrollTop = c0 ? Math.max(0, dy - tl.clientHeight / 2 + c0.offsetHeight / 2) : 0; tileScroll = tl.scrollTop;
+    }
     else tl.scrollTop = tileScroll;
     tl.addEventListener('scroll', function () { tileScroll = tl.scrollTop; paintTiles(false); }, { passive: true });
   }
@@ -14118,7 +14131,7 @@ function sizeTiles() {
   var tl = $('tiles'); if (!tl || !tl.clientWidth) return;
   var cols = tl.classList.contains('t9') ? 9 : tl.classList.contains('t7') ? 7 : 6, cs = root.getComputedStyle(tl);
   var w = (tl.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0) - (parseFloat(cs.columnGap) || 0) * (cols - 1)) / cols;
-  tl.style.setProperty('--th', (w * (cols === 9 ? 0.92 : 1)).toFixed(2) + 'px');
+  tl.style.setProperty('--th', (w * (tl.classList.contains('bk') ? 0.7 : cols === 9 ? 0.92 : 1)).toFixed(2) + 'px');
 }
 /* a trophy has been earned and not looked at yet */
 function trophyNew() { var n = false; RR.TROPHIES.forEach(function (it) { if (Store.data.fresh[it.id] && P.reallyOwns(it)) n = true; }); return n; }

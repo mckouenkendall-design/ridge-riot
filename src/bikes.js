@@ -202,7 +202,7 @@ RR.BIKES = [
   {
     id: 'turbo', name: 'Spool 600', kind: 'turbo', tag: 'Hold the gas and it keeps pulling', wipe: 'blowoff',
     blurb: 'A street tracker with a turbocharger the size of a melon bolted to the side.',
-    trick: 'Turbo: the longer you hold the gas, the harder it pulls, up to half as much again after two seconds. Let off for a moment and the boost is gone.',
+    trick: 'Turbo: hold the gas and it pulls harder, up to half as much again after two seconds. Let off and the boost is gone.',
     mass: 205, kgyr: 0.47, wb: 1.45, rr: 0.32, rf: 0.32, com: [0.68, 0.76], wheelMass: [12, 10], rake: 26, swing: 9,
     sus: [{ travel: 0.18, freq: 2.3, sag: 0.3, zc: 0.46, zr: 1.0 }, { travel: 0.19, freq: 2.25, sag: 0.3, zc: 0.44, zr: 0.95 }],
     accel: 0.64, vp: 10, vmax: 16.6, grip: 1.04, brake: 0.95, leanAcc: 13.5, spin: 5.8, cda: 0.5, turbo: { build: 2.2, power: 0.5, top: 0.16 },
@@ -226,7 +226,7 @@ RR.BIKES = [
   {
     id: 'gecko', name: 'Gecko', kind: 'gecko', tag: 'Sticks to walls for a moment', wipe: 'splat',
     blurb: 'Soft, tacky tyres that suck onto whatever they touch. Lands like it is glued down.',
-    trick: 'Tacky tyres hold you onto walls, steep faces and loop tops for about a second, then let go until you reach gentle ground.',
+    trick: 'Sticky tyres hold onto walls, steep faces and loop tops for about a second, then need gentle ground to grip again.',
     mass: 178, kgyr: 0.45, wb: 1.36, rr: 0.30, rf: 0.31, com: [0.62, 0.72], wheelMass: [10, 9], rake: 26, swing: 9,
     sus: [{ travel: 0.22, freq: 2.1, sag: 0.3, zc: 0.45, zr: 0.95 }, { travel: 0.23, freq: 2.05, sag: 0.3, zc: 0.42, zr: 0.9 }],
     accel: 0.68, vp: 9, vmax: 16.2, grip: 1.18, brake: 0.9, leanAcc: 15.5, spin: 6.0, cda: 0.5, stick: { f: 1.2, t: 1.2 },

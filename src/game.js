@@ -34,6 +34,7 @@ var Store = RR.Store = {
   del: function (k) { delete mem[k]; try { root.localStorage.removeItem(k); } catch (e) {} },
   load: function () {
     var raw = Store.get(KEY), d = JSON.parse(JSON.stringify(DEF)), k, i, old = false, revs = {}, o = null;
+    if (!raw) d.news = 4;          // a new player has nothing to be told is new
     Store.rebuilt = 0;
     Store.other = {};
     if (raw) {

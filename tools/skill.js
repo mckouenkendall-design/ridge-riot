@@ -192,7 +192,8 @@ if (require.main === module) {
   const runs = +arg("--runs", 30), quiet = args.includes('--quiet'), table = {};
   if (arg('--from')) {
     // join up result files from runs that were split across processes, then write the star times from them
-    const all = {}; arg('--from').split(',').forEach(f => Object.assign(all, JSON.parse(require('fs').readFileSync(f, 'utf8'))));
+    // results may be split by bikes or by tracks: merge them track by track
+    const all = {}; arg('--from').split(',').forEach(f => { const j = JSON.parse(require('fs').readFileSync(f, 'utf8')); for (const t in j) all[t] = Object.assign(all[t] || {}, j[t]); });
     writeStars(all); return;
   }
   const top = w => Object.entries(w).sort((a, b) => b[1] - a[1]).slice(0, 3).map(e => e[0] + 'm:' + e[1]).join(' ');

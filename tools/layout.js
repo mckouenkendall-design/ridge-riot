@@ -71,6 +71,7 @@ async function check(t, name, size) {
       return out;
     });
     all = all.concat(fits.map(f => size.n + ' / garage: ' + f));
+    await t.ev(() => { const e = document.querySelector('.tile[data-i="0"]'); if (e) e.scrollIntoView({ block: 'center' }); }); await t.wait(250);
     await t.tapSel('.tile[data-i="0"]'); await t.wait(150);
     await t.tapSel('.gtab[data-t=paint]'); await t.wait(250); await run('garage-paint');
     await t.tapSel('.tile[data-id=whiteopal]'); await t.wait(250); await run('garage-paint-pick');
@@ -87,7 +88,8 @@ async function check(t, name, size) {
     // the showroom at every garage level, with every bike owned and dressed
     await t.ev(() => { const D = RR.Store.data, P = RR.PAINTS, R = RR.RIDERS; RR.BIKES.forEach((b, i) => { D.owned[b.id] = 1; D.fit[b.id] = { p: P[(i * 5 + 7) % P.length].id, r: R[(i * 4 + 3) % R.length].id }; D.paints[D.fit[b.id].p] = 1; D.riders[D.fit[b.id].r] = 1; }); D.nuggets = 9000; RR.Store.save(); });
     await t.tapSel('.gtab[data-t=show]'); await t.wait(700); await run('show-L0');
-    for (let lv = 1; lv < 5; lv++) {
+    const RR_GARAGES = await t.ev(() => RR.GARAGES.length);
+    for (let lv = 1; lv < RR_GARAGES; lv++) {
       await t.tapText('Upgrade'); await t.wait(1500);       // the flash and the note fade
       await run('show-L' + lv);
     }

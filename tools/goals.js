@@ -2,7 +2,7 @@
    GEAR       which ways of riding pick up the hidden gear and still finish, and whether an ordinary careful ride
               (the learned rider's line, no flips) or a flat-out ride picks it up by accident (it should not).
    CHALLENGE  whether a robot can pull off the track's challenge on the bike and still finish, and how.
-   usage: node tools/goals.js [--tracks 0-7] [--bike scrapper]
+   usage: node tools/goals.js [--tracks 0-47] [--bike scrapper]
    Ways of riding tried: the careful line (zone speeds from skill.js), held to an overall speed limit from 6 m/s
    up, with flips (backward, forward, alternating, up to double) or none, and on two-route tracks each road. */
 const RR = require('../src/physics.js');
@@ -51,7 +51,7 @@ module.exports = { ride, policies };
 
 if (require.main === module) {
   const args = process.argv.slice(2), arg = (n, d) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : d; };
-  const [t0, t1] = arg('--tracks', '0-7').split('-').map(Number), id = arg('--bike', 'scrapper');
+  const [t0, t1] = arg('--tracks', '0-47').split('-').map(Number), id = arg('--bike', 'scrapper');
   for (let t = t0; t <= (isNaN(t1) ? t0 : t1); t++) {
     const tr = RR.getTrack(t), cal = S.calibrate(t, id), g = RR.gearOf(tr);
     const base = ride(t, id, { caps: cal.win.map(w => w ? w.aim : 1e9), vcap: cal.G }), flat = ride(t, id, { flat: true });

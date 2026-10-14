@@ -147,16 +147,13 @@ var T = [
 ['Hop Skip', 'In the air, lean forward drops the nose and lean back lifts it.', function (b) {
   b.flat(24).sign('jump');
   jump(b, 13, 4, 11, 8, { rise: -0.8, lip: 1.6 });
+  b.flat(24);
+  PC.double(b, 14, 8, 1.6, 18, 7, { next: [2.2, 14], gapAfter: 1.5, face: 26 });
   b.flat(14);
-  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
-  b.flat(12);
-  b.hill(1.6, 20).flat(10);
-  jump(b, 17, 6, 15, 10, { rise: -2.2, lip: 1.6 });
-  b.flat(4);
-  jump(b, 19, 7, 17, 11, { rise: -3, lip: 1.4 });
-  b.flat(12);
   PC.ledge(b, 3.7, 8);            // the gear sits on a side ledge: lean back at the sign to ride up onto it
-  b.flat(10);
+  b.flat(10).hill(1.3, 24).flat(14);
+  jump(b, 19, 7, 17, 14, { rise: -4, lip: 1.4 });
+  b.flat(16);
 }, { t: 'combo', seq: ['b', 'f'] }],
 ['Loop de Dust', 'Loops need speed. Hold the gas all the way round and do not lean.', function (b) {
   b.flat(34).sign('loop').loop(3.6).flat(18);
@@ -302,7 +299,7 @@ var T = [
   PC.tunnel(b, 9, 3.2, [[1.1, 10], [-0.9, 9], [1.1, 10]]);
   b.flat(10).gearHint({ len: 22, minh: 1.3 });   // high over the double: only a slow rider's arc goes up there
   PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
-  b.flat(8);
+  b.flat(10).ease(20, -2.5).flat(10);
   kick(b, 21, 11, 20, 12, { rise: -2.0, R: 6.5 });
   b.flat(12);
   PC.limbo(b, 9, 22, 4.5, 4, 3.0);
@@ -336,19 +333,20 @@ var T = [
 ['Green Flag', 'Yellow arrows on the road are boost strips. Ride over them with the gas open. There is a bus to clear at the end.', function (b) {
   b.flat(18).kerb(6).flat(8).boost(6).flat(22).table(12, 1.4, 7, 10).flat(14);
   PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
-  b.flat(10).ease(24, -3).flat(8).kerb(5).flat(6).boost(6).flat(16).hill(1.6, 20).flat(10);
+  b.flat(12);
   PC.rollers(b, 3, 6, 1.0, 2);
+  b.flat(10).ease(24, -3).flat(8).kerb(5).flat(6).boost(6).flat(16).hill(1.6, 20).flat(10);
   b.flat(10).gearHint({ len: 30, minh: 1.3 });   // mid-air over the bus landing: only a slow arc goes there
   ramp(b, 16, 9, 1.4); b.buses(2, { rise: -1.4 }).land(14, 10).flat(18);
-}, { t: 'wheelie', sec: 3 }],
+}, { t: 'wheelie', sec: 2.5 }],
 ['Rumble Strip', 'Kerbs shake the bike. Stay loose and keep the gas on.', function (b) {
   b.flat(14).kerb(10).flat(6).bumps(4, 4.4, 0.26).flat(8).kerb(8).flat(6);
-  ramp(b, 14, 8, 1.2); b.drop(0.9).flat(12);
-  ramp(b, 14, 8, 1.2); b.drop(0.9).flat(10);
+  ramp(b, 14, 8, 1.2); b.land(12, 4.3).flat(12);
+  ramp(b, 14, 8, 1.2); b.land(12, 4.3).flat(22);
   b.gearHint({ len: 16 });        // down in the pit between the jump and the mound
   PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1, deep: 1.6 });
   b.flat(8);
-  ramp(b, 16, 8, 1.2); b.drop(1.2).flat(10).logs(3, 6, 0.2).flat(8).ease(22, -3.5).flat(6).kerb(8).flat(6).boost(6).flat(10)
+  ramp(b, 16, 8, 1.2); b.land(14, 5).flat(10).logs(3, 6, 0.2).flat(8).ease(22, -3.5).flat(6).kerb(8).flat(6).boost(6).flat(10)
    .table(18, 2.0, 5, 8).flat(8).logs(2, 6, 0.2).flat(12);
   ramp(b, 18, 8, 1.4); b.buses(2, { rise: -2.2 }).land(16, 10).flat(14);
 }, { t: 'flip', dir: 'f', n: 1, at: 'last', where: 'over the buses' }],

@@ -13,7 +13,10 @@ const V1 = { best: { 0: 19.5, 1: 22.0, 2: 23.0, 8: 21, 16: 20.4, 39: 60 }, bike:
   await t.ev(v1 => { localStorage.clear(); localStorage.setItem('ridgeRiot.v1', JSON.stringify(v1)); localStorage.setItem('ridgeRiot.v1.ghost.16', 'scrapper|AAAA'); }, V1);
   await t.page.reload(); await t.wait(500);
   let d = await t.ev(() => { const D = RR.Store.data, o = {}; for (const k in D.best) o[RR.trackInfo(+k).name] = D.best[k]; return { best: o, last: RR.trackInfo(D.last).name, bike: D.bike, owned: Object.keys(D.owned), nug: D.nuggets, stars: RR.Progress.total(), sens: D.settings.tiltSens, flip: D.settings.tiltFlip, sfx: D.settings.sfx, crashes: D.stats.crashes, ghostNew: !!localStorage.getItem('ridgeRiot.v1.ghost.black-ice'), ghostOld: !!localStorage.getItem('ridgeRiot.v1.ghost.16'), raw: JSON.parse(localStorage.getItem('ridgeRiot.v1')) }; });
-  ok(d.best['First Gear'] === 19.5 && d.best['Log Jam'] === 21 && d.best['Black Ice'] === 20.4, 'old best times land on the same tracks by name', d.best);
+  // a time is kept on its track by name, unless that track has been rebuilt since (then the time goes and the stars stay)
+  const reb = await t.ev(() => ({ fg: !!RR.REBUILT['first-gear'], lj: !!RR.REBUILT['log-jam'], bi: !!RR.REBUILT['black-ice'] }));
+  ok((reb.fg ? !('First Gear' in d.best) : d.best['First Gear'] === 19.5) && (reb.lj ? !('Log Jam' in d.best) : d.best['Log Jam'] === 21) && (reb.bi ? !('Black Ice' in d.best) : d.best['Black Ice'] === 20.4),
+    'old best times land on the same tracks by name, or go if that track was rebuilt', { best: d.best, rebuilt: reb });
   // Washboard and Riot Run have been rebuilt since: the old times go, the stars they earned stay
   const kept = await t.ev(() => ({ wash: RR.Progress.starsFor(RR.trackIndex('washboard')), riot: RR.Progress.starsFor(RR.trackIndex('riot-run')), kept: RR.Store.data.kept, rebuilt: RR.Store.rebuilt, ghost: localStorage.getItem('ridgeRiot.v1.ghost.riot-run') }));
   ok(!('Washboard' in d.best) && !('Riot Run' in d.best), 'best times set on a rebuilt track are dropped', Object.keys(d.best));
@@ -23,7 +26,7 @@ const V1 = { best: { 0: 19.5, 1: 22.0, 2: 23.0, 8: 21, 16: 20.4, 39: 60 }, bike:
   ok(d.nug === d.stars * 30 && d.stars > 0, 'old stars are paid in nuggets (30 each)', { stars: d.stars, nuggets: d.nug });
   ok(d.sens === 0.8 && d.flip === true && d.sfx === 0.5, 'settings carry over, tilt gets the calmer default');
   ok(d.ghostNew && !d.ghostOld, 'ghost recording moved to its new name');
-  ok(d.raw.times && d.raw.times['black-ice'] === 20.4 && !d.raw.best && !d.raw.times['riot-run'], 'save is rewritten in the new form');
+  ok(d.raw.times && (reb.bi ? !('black-ice' in d.raw.times) : d.raw.times['black-ice'] === 20.4) && !d.raw.best && !d.raw.times['riot-run'] && d.raw.v === 4 && d.raw.st, 'save is rewritten in the new form (version 4, stars as three goals)');
   ok(d.owned.includes('marsh') === false && d.crashes === 99, 'not yet 100 crashes: no Marshmallow');
   // crash once more: that makes 100
   await t.ev(() => { RR.UI.show('hud'); RR.Game.play(0); const k = RR.Game.input; k.kG = true; k.kL = true; });
@@ -59,7 +62,7 @@ const V1 = { best: { 0: 19.5, 1: 22.0, 2: 23.0, 8: 21, 16: 20.4, 39: 60 }, bike:
   ok(['scrapper', 'mosquito', 'dune'].every(b => d.owned.includes(b)) && d.paints.length === 6 && d.riders.length === 6 && d.count === 12, 'every owned bike, paint job and rider is still owned', { owned: d.owned.length, paints: d.paints.length, riders: d.riders.length });
   ok(d.tiers.every(([id, tier]) => tier === NEW_TIER[OLD_TIER[id]]), 'owned items keep their place on the new tiers (ruby to common, emerald to uncommon, gold to rare, diamond to epic, opal to legendary)', d.tiers.map(x => x.join(':')).join(' '));
   ok(d.look.paint && d.look.paint.id === 'whiteopal' && d.look.rider.id === 'prism' && d.fit.mosquito.p === 'ice', 'paint and rider worn on each bike carry over');
-  ok(/crates/.test(d.toast) && d.news === 3, 'a one-time note tells the player what is new', d.toast);
+  ok(/three goals/.test(d.toast) && d.news === 4, 'a one-time note tells the player what is new', d.toast);
   ok(d.garage.level === 0, 'the garage starts as a shed', d.garage);
   await t.tapText('Garage'); await t.wait(250); await t.tapSel('.gtab[data-t=crates]'); await t.wait(200);
   const btn = await t.ev(() => document.querySelector('#gpanel > .btn').textContent);
@@ -76,14 +79,15 @@ const V1 = { best: { 0: 19.5, 1: 22.0, 2: 23.0, 8: 21, 16: 20.4, 39: 60 }, bike:
 
   // ---- 2. a fresh player: finish, get paid, open crates ----
   t = await lib.open({});
-  await t.ev(() => { localStorage.clear(); }); await t.page.reload(); await t.wait(500);
+  await t.ev(() => { localStorage.clear(); }); await t.page.reload(); await t.wait(1500);
+  ok(!/New:/.test(await t.ev(() => document.getElementById('toast').textContent)), 'a brand-new player is not told what is new');
   await t.tapText('Ride'); await t.wait(200);
   await t.tapSel('.card[data-i="0"]'); await t.wait(300);
   await t.bot();
   await t.page.waitForFunction(() => RR.UI.cur === 'results', null, { timeout: 60000 });
   await t.botOff(); await t.wait(1500);
   d = await t.ev(() => ({ r: RR.Game.result, nug: RR.Store.data.nuggets, text: document.querySelector('#res .pay').textContent, dist: RR.Store.data.stats.dist, top: RR.Store.data.stats.topSpeed }));
-  ok(d.r.stars === 3 && d.r.pay.total === 8 + 90 + d.r.pay.flips && d.nug === d.r.pay.total, 'first finish pays 8 plus 30 a star', d.text);
+  ok(d.r.stars >= 2 && (d.r.bits & 3) === 3 && d.r.pay.total === 8 + 30 * d.r.stars + d.r.pay.flips && d.nug === d.r.pay.total, 'first finish pays 8 plus 30 a star', d.text);
   ok(d.dist > 200 && d.top > 10, 'distance and top speed are being counted', { dist: d.dist, top: d.top });
   // again: no new stars, so only the finish money (and maybe a best-time bonus)
   await t.tapText('Ride it again'); await t.wait(300); await t.bot();
@@ -188,7 +192,7 @@ const V1 = { best: { 0: 19.5, 1: 22.0, 2: 23.0, 8: 21, 16: 20.4, 39: 60 }, bike:
   await t.ev(() => { localStorage.clear(); }); await t.page.reload(); await t.wait(500);
   await t.tapText('Garage'); await t.wait(250); await t.tapSel('.gtab[data-t=trophies]'); await t.wait(250);
   const ids = await t.ev(() => RR.TROPHIES.map(x => x.id));
-  ok(ids.length === 6 && (await t.ev(() => document.querySelectorAll('#tiles .tile.item').length)) === 6, 'the Trophies tab lists all six', ids.join(', '));
+  ok(ids.length === 8 && (await t.ev(() => document.querySelectorAll('#tiles .tile.item').length)) === 8, 'the Trophies tab lists all eight', ids.join(', '));
   const shownNeeds = [];
   for (const id of ids) { await t.ev(i => document.querySelector('.tile[data-id=' + i + ']').scrollIntoView({ block: 'center' }), id); await t.tapSel('.tile[data-id=' + id + ']'); await t.wait(120); shownNeeds.push(await t.ev(() => ({ name: document.querySelector('#gpanel h3').textContent, need: (document.querySelector('#gpanel .need') || {}).textContent || '', bar: !!document.querySelector('#gpanel .need .bar i'), btn: document.querySelector('#gpanel > .info .btn, #gpanel .btn').textContent }))); }
   ok(shownNeeds.every(x => x.need.length > 10 && x.bar), 'each trophy shows its condition and a progress bar', shownNeeds.map(x => x.name + ': ' + x.need).join(' | '));
@@ -205,7 +209,7 @@ const V1 = { best: { 0: 19.5, 1: 22.0, 2: 23.0, 8: 21, 16: 20.4, 39: 60 }, bike:
   ok(d.f.join() === 'goldie', '500 crashes earns the Goldie', JSON.stringify(d.f));
   // finishing every track, then three-starring every track (this also pays the world prizes, once)
   d = await t.ev(() => { const D = RR.Store.data, P = RR.Progress, out = {}; for (let i = 0; i < RR.TRACK_COUNT; i++) D.best[i] = 9999; out.a = P.claim().filter(x => x.tier === 'trophy').map(x => x.id); const s1 = P.settle(); out.rare1 = D.crates.rare; out.epic1 = D.crates.epic; out.nug1 = s1.nuggets;
-    for (let i = 0; i < RR.TRACK_COUNT; i++) D.best[i] = 1; out.b = P.claim().filter(x => x.tier === 'trophy').map(x => x.id); const s2 = P.settle(); out.rare2 = D.crates.rare; out.epic2 = D.crates.epic; const s3 = P.settle(); out.again = s3.crates.length + s3.nuggets; out.worlds = RR.WORLDS.length; return out; });
+    for (let i = 0; i < RR.TRACK_COUNT; i++) { D.best[i] = 1; D.st[RR.trackId(i)] = 7; } out.b = P.claim().filter(x => x.tier === 'trophy').map(x => x.id); const s2 = P.settle(); out.rare2 = D.crates.rare; out.epic2 = D.crates.epic; const s3 = P.settle(); out.again = s3.crates.length + s3.nuggets; out.worlds = RR.WORLDS.length; return out; });
   ok(d.a.join() === 'grandtour', 'finishing every track earns the Grand Tour', JSON.stringify(d.a));
   ok(d.rare1 === d.worlds && d.epic1 === 0, 'finishing a world gives one rare crate each', JSON.stringify({ rare: d.rare1, worlds: d.worlds }));
   ok(d.b.join() === 'champ' && d.epic2 === d.worlds && d.rare2 === d.worlds, 'three stars on every track earns the Champ, and an epic crate per world', JSON.stringify({ b: d.b, epic: d.epic2 }));
@@ -242,10 +246,10 @@ const V1 = { best: { 0: 19.5, 1: 22.0, 2: 23.0, 8: 21, 16: 20.4, 39: 60 }, bike:
   d = await t.ev(() => ({ lvl: RR.Store.data.garage.level, toast: document.getElementById('toast').textContent }));
   ok(d.lvl === 0 && /300/.test(d.toast), 'the upgrade says what it costs and does nothing without the nuggets', d.toast);
   // own everything, wear different looks, buy all four upgrades
-  await t.ev(() => { const D = RR.Store.data, P = RR.PAINTS, R = RR.RIDERS; RR.BIKES.forEach((b, i) => { D.owned[b.id] = 1; D.fit[b.id] = { p: P[(i * 5 + 7) % P.length].id, r: R[(i * 4 + 3) % R.length].id }; D.paints[D.fit[b.id].p] = 1; D.riders[D.fit[b.id].r] = 1; }); D.nuggets = 4500 + 123; RR.Store.save(); });
+  await t.ev(() => { const D = RR.Store.data, P = RR.PAINTS, R = RR.RIDERS; RR.BIKES.forEach((b, i) => { D.owned[b.id] = 1; D.fit[b.id] = { p: P[(i * 5 + 7) % P.length].id, r: R[(i * 4 + 3) % R.length].id }; D.paints[D.fit[b.id].p] = 1; D.riders[D.fit[b.id].r] = 1; }); D.nuggets = 8000 + 123; RR.Store.save(); });
   const dir = process.argv[2] || '/tmp';
-  const names = ['The Shed', 'Workshop', 'Garage', 'Dealership', 'Showroom'], want = [3, 6, 9, 12, 15];
-  for (let lv = 0; lv < 5; lv++) {
+  const names = ['The Shed', 'Workshop', 'Garage', 'Dealership', 'Showroom', 'Hall of Fame'], want = [3, 6, 9, 12, 15, 24];
+  for (let lv = 0; lv < 6; lv++) {
     if (lv > 0) { await t.tapText('Upgrade'); await t.wait(500); }
     d = await t.ev(() => {
       const D = RR.Store.data, cells = [...document.querySelectorAll('.slotb')].map(b => b.getBoundingClientRect()), slots = RR.Progress.garageFill();
@@ -262,22 +266,24 @@ const V1 = { best: { 0: 19.5, 1: 22.0, 2: 23.0, 8: 21, 16: 20.4, 39: 60 }, bike:
     ok(d.lvl === lv && d.name === names[lv] && d.cells === want[lv], names[lv] + ': ' + want[lv] + ' spots', JSON.stringify(d));
     ok(d.overlap === 0 && d.inside && d.hit === d.cells, names[lv] + ': spots do not overlap, sit on the screen, and each answers to a tap in its middle');
     ok(d.sd > 25, names[lv] + ': the room is drawn', d.sd);
-    ok(d.slots === Math.min(want[lv], 15) && d.uniq === d.slots, names[lv] + ': every spot has a different bike, each in its own paint and rider', d.slots);
+    ok(d.slots === Math.min(want[lv], 24) && d.uniq === d.slots, names[lv] + ': every spot has a different bike, each in its own paint and rider', d.slots);
     await t.shot(dir + '/flow-showroom-L' + lv + '.png');
   }
   d = await t.ev(() => ({ lvl: RR.Store.data.garage.level, nug: RR.Store.data.nuggets, up: getComputedStyle(document.getElementById('showup')).display }));
-  ok(d.lvl === 4 && d.nug === 123 && d.up === 'none', 'the four upgrades cost 300 + 700 + 1300 + 2200 and the button goes away at the top', JSON.stringify(d));
+  ok(d.lvl === 5 && d.nug === 123 && d.up === 'none', 'the five upgrades cost 300 + 700 + 1300 + 2200 + 3500 and the button goes away at the top', JSON.stringify(d));
   // tapping a bike on show makes it your ride
   const slot3 = await t.ev(() => RR.Store.data.garage.slots[3]);
+  await t.wait(800);
+  await t.page.waitForSelector('.slotb[data-i="3"]', { state: 'visible', timeout: 5000 });
   await t.tapSel('.slotb[data-i="3"]'); await t.wait(200);
   ok(await t.ev(() => RR.Store.data.bike) === slot3, 'tapping a bike on show makes it your ride', slot3);
   // arrange: choose who stands where; a bike already on show swaps places
-  const arr0 = await t.ev(() => RR.Store.data.garage.slots.slice(0, 15));
+  const arr0 = await t.ev(() => RR.Store.data.garage.slots.slice(0, 24));
   await t.tapText('Arrange'); await t.tapSel('.slotb[data-i="0"]'); await t.wait(300);
   ok(await t.ev(() => document.getElementById('showpick').classList.contains('on')), 'in Arrange mode a tap opens the list of your bikes');
   await t.tapSel('.pk[data-id="' + arr0[5] + '"]'); await t.wait(200);
-  let after = await t.ev(() => RR.Store.data.garage.slots.slice(0, 15));
-  ok(after[0] === arr0[5] && after[5] === arr0[0] && after.filter(Boolean).length === 15, 'choosing a bike that is already on show swaps the two', after.slice(0, 6).join());
+  let after = await t.ev(() => RR.Store.data.garage.slots.slice(0, 24));
+  ok(after[0] === arr0[5] && after[5] === arr0[0] && after.filter(Boolean).length === 24, 'choosing a bike that is already on show swaps the two', after.slice(0, 6).join());
   ok(await t.ev(() => RR.Store.data.bike) === slot3, 'arranging does not change which bike you ride');
   await t.tapSel('.slotb[data-i="2"]'); await t.wait(300); await t.tapText('Leave it empty'); await t.wait(200);
   after = await t.ev(() => RR.Progress.garageFill());
@@ -288,12 +294,12 @@ const V1 = { best: { 0: 19.5, 1: 22.0, 2: 23.0, 8: 21, 16: 20.4, 39: 60 }, bike:
   ok(await t.ev(() => document.getElementById('showpick').classList.contains('on')), 'tapping an empty spot offers the list of bikes');
   await t.tapText('Cancel'); await t.wait(150);
   await t.page.reload(); await t.wait(600);
-  after = await t.ev(() => ({ s: RR.Store.data.garage.slots.slice(0, 15), lvl: RR.Store.data.garage.level }));
-  ok(after.lvl === 4 && after.s[2] === '' && after.s[0] === arr0[5], 'the arrangement and the garage level survive a reload', after.s.slice(0, 4).join());
+  after = await t.ev(() => ({ s: RR.Store.data.garage.slots.slice(0, 24), lvl: RR.Store.data.garage.level }));
+  ok(after.lvl === 5 && after.s[2] === '' && after.s[0] === arr0[5], 'the arrangement and the garage level survive a reload', after.s.slice(0, 4).join());
   // every bike you own is still rideable from the normal list, shown or not
   await t.tapText('Garage'); await t.wait(250);
   await t.ev(() => { RR.UI.gi = RR.BIKES.findIndex(b => b.id === RR.Store.data.garage.slots[0]); RR.UI.garage(); });
-  const hid = await t.ev(() => { const on = new Set(RR.Store.data.garage.slots.slice(0, 15)); return RR.BIKES.map(b => b.id).filter(id => !on.has(id)); });
+  const hid = await t.ev(() => { const on = new Set(RR.Store.data.garage.slots.slice(0, 24)); return RR.BIKES.map(b => b.id).filter(id => !on.has(id)); });
   ok(hid.length >= 1, 'one bike is not on show (the empty spot left one out)', hid.join());
   await t.ev(id => { RR.UI.gi = RR.BIKES.findIndex(b => b.id === id); RR.UI.garage(); }, hid[0]);
   await t.tapText('Ride this one'); await t.wait(200);
@@ -304,6 +310,97 @@ const V1 = { best: { 0: 19.5, 1: 22.0, 2: 23.0, 8: 21, 16: 20.4, 39: 60 }, bike:
   ok(g1 === g0 && await t.ev(() => RR.UI.cur) === 'garage', 'leaving the showroom stops its drawing and returns to the garage', g1 - g0);
   ok(t.errs.length === 0, 'no page errors in the showroom', t.errs.slice(0, 2));
   await t.close();
+  // ---- 7. Phase 2: three goal stars, old saves, challenges, hidden gears, rewards, new bikes ----
+  // a version 3 save: three time stars per track become goal stars, one for one, and nothing locks again
+  t = await lib.open({});
+  const V3 = await t.ev(() => {
+    const leg = id => { const rb = RR.REBUILT && RR.REBUILT[id]; return rb ? [rb[1], rb[2]] : RR.LEGACY_STARS[id]; };
+    const a = leg('first-gear'), b = leg('rolling-dunes'), c = leg('hop-skip');
+    return { v: 3, times: { 'first-gear': a[0] - 0.5, 'rolling-dunes': (a && b) ? b[1] - 0.1 : 0, 'hop-skip': c[1] + 3 }, kept: { 'log-jam': 2, 'green-flag': 3 }, revs: {}, lastId: 'hop-skip', bike: 'scrapper', owned: { scrapper: 1 }, nuggets: 0, seenHow: true, news: 3,
+      paints: {}, riders: {}, fit: {}, crates: { rare: 0, epic: 0 }, opened: 0, pity: 0, paid: {}, got: {}, fresh: {}, garage: { level: 0, slots: [] },
+      settings: { sfx: 0.5, engine: 0.6, music: 0, tilt: false, tiltSens: 0.8, tiltFlip: false, hints: true, ghost: true, unlockAll: false, quality: 'auto', buzz: true },
+      stats: { flips: 0, bestAir: 0, crashes: 0, runs: 10, finishes: 5, bestJump: 0, bestFlips: 0, dist: 0, topSpeed: 0 } };
+  });
+  await t.ev(v => { localStorage.clear(); localStorage.setItem('ridgeRiot.v1', JSON.stringify(v)); }, V3);
+  await t.page.reload(); await t.wait(800);
+  d = await t.ev(() => { const P = RR.Progress, b = id => P.starBits(RR.trackIndex(id)); return { fg: b('first-gear'), rd: b('rolling-dunes'), hs: b('hop-skip'), lj: b('log-jam'), gf: b('green-flag'), tot: P.total(), v: JSON.parse(localStorage.getItem('ridgeRiot.v1')).v, kept: RR.Store.data.kept, nug: RR.Store.data.nuggets }; });
+  ok(d.fg === 7 && d.rd === 3 && d.hs === 1 && d.lj === 3 && d.gf === 7, 'old stars become goal stars: 3 old stars give all three, 2 give finish and time, 1 gives finish', d);
+  ok(d.tot === 3 + 2 + 1 + 2 + 3 && d.v === 4 && Object.keys(d.kept).length === 0, 'the star total is the same as before, and the save is now version 4', d);
+  ok(d.nug === d.tot * 30, 'converted stars are paid once, like any other star', d.nug);
+  await t.page.reload(); await t.wait(500);
+  d = await t.ev(() => ({ tot: RR.Progress.total(), nug: RR.Store.data.nuggets }));
+  ok(d.tot === 11 && d.nug === 330, 'converting does not happen twice, and pays nothing twice', d);
+  ok(t.errs.length === 0, 'no page errors with a version 3 save', t.errs.slice(0, 2));
+  await t.close();
+
+  // star bits come from the run: time and flips each count on their own, in any run
+  t = await lib.open({});
+  await t.ev(() => { localStorage.clear(); }); await t.page.reload(); await t.wait(500);
+  d = await t.ev(() => { const P = RR.Progress, st = RR.STAR_TIMES[0]; return { slowNoFlips: P.runBits(0, st[0] + 5, 0), fastNoFlips: P.runBits(0, st[0] - 0.1, 0), slowFlips: P.runBits(0, st[0] + 5, st[1]), all: P.runBits(0, st[0] - 0.1, st[1]) }; });
+  ok(d.slowNoFlips === 1 && d.fastNoFlips === 3 && d.slowFlips === 5 && d.all === 7, 'finish, time and flips are three separate stars, and one run can earn all three', d);
+
+  // gears and challenges: rewards at every 6, an epic crate for one you already own, a trophy at all 48
+  d = await t.ev(() => {
+    const D = RR.Store.data, P = RR.Progress, R = RR.GOAL_REWARDS, out = {}, ids = []; for (let i = 0; i < RR.TRACK_COUNT; i++) ids.push(RR.trackId(i));
+    for (let i = 0; i < 5; i++) D.gears[ids[i]] = 1; out.five = P.claimGoals().length;
+    D.gears[ids[5]] = 1; out.six = P.claimGoals().map(g => g.item ? g.item.id : g.crate);
+    D.paints[R.gears[1]] = 1;                       // already owns the 12-gear prize
+    for (let i = 6; i < 12; i++) D.gears[ids[i]] = 1; out.twelve = P.claimGoals().map(g => g.item ? g.item.id : g.crate); out.epic = D.crates.epic;
+    for (let i = 0; i < 6; i++) D.chal[ids[i]] = 1; out.chal6 = P.claimGoals().map(g => g.item ? g.item.id : g.crate);
+    for (let i = 0; i < 48; i++) D.gears[ids[i]] = 1; out.g48 = P.claimGoals().map(g => g.item ? g.item.id : g.crate);
+    for (let i = 0; i < 48; i++) D.chal[ids[i]] = 1; out.c48 = P.claimGoals().map(g => g.item ? g.item.id : g.crate);
+    out.again = P.claimGoals().length; out.gc = P.gearCount(); out.cc = P.chalCount(); out.trophies = RR.TROPHIES.filter(x => P.reallyOwns(x)).map(x => x.id);
+    out.want = { g1: R.gears[0], c1: R.chal[0] };
+    return out;
+  });
+  ok(d.five === 0 && d.six.join() === d.want.g1, 'the sixth gear hands over a paint job, five do not', d);
+  ok(d.twelve.join() === 'epic' && d.epic === 1, 'a gear prize you already own becomes an epic crate', d.twelve);
+  ok(d.chal6.join() === d.want.c1, 'the sixth challenge hands over a rider', d.chal6);
+  ok(d.g48.includes('gearhead') && d.g48.length === 7, 'all 48 gears: the rest of the gear prizes and the Gearhead trophy', d.g48);
+  ok(d.c48.includes('daredevil') && d.c48.length === 8, 'all 48 challenges: the rest of the challenge prizes and the Daredevil trophy', d.c48);
+  ok(d.again === 0 && d.gc === 48 && d.cc === 48, 'nothing is handed over twice', d.again);
+
+  // the nine new bikes: each unlocks by its own rule, and none for nuggets
+  d = await t.ev(() => {
+    const D = RR.Store.data, P = RR.Progress, out = {}, ids = []; for (let i = 0; i < RR.TRACK_COUNT; i++) ids.push(RR.trackId(i));
+    const fresh = () => { D.gears = {}; D.chal = {}; D.st = {}; D.owned = { scrapper: 1 }; D.stats.bestJump = 0; D.stats.finishes = 0; };
+    const news = ['turbo', 'couple', 'gecko', 'sandpiper', 'whiplash', 'icepick', 'rhino', 'albatross', 'puffin'];
+    news.forEach(id => {
+      fresh(); const u = RR.BIKE[id].unlock, before = P.claim().map(x => x.id).includes(id);
+      if (u.type === 'jump') D.stats.bestJump = u.n;
+      if (u.type === 'finishes') D.stats.finishes = u.n;
+      if (u.type === 'gears') for (let i = 0; i < u.n; i++) D.gears[ids[i]] = 1;
+      if (u.type === 'worldgears') { const w = RR.WORLD[u.w].index; for (let i = 0; i < 8; i++) D.gears[ids[w * 8 + i]] = 1; }
+      if (u.type === 'challenges') for (let i = 0; i < u.n; i++) D.chal[ids[i]] = 1;
+      if (u.type === 'flipstars') for (let i = 0; i < u.n; i++) D.st[ids[i]] = 5;
+      out[id] = { type: u.type, before, after: P.claim().map(x => x.id).includes(id), price: !!RR.BIKE[id].price };
+    });
+    fresh(); return out;
+  });
+  ok(Object.values(d).every(x => !x.before && x.after && !x.price), 'each new bike stays locked until its own rule is met, then unlocks (none are bought)', d);
+
+  // in the game: the track list marks found gears and done challenges; a gear touched in a run is kept at once
+  await t.ev(() => { const D = RR.Store.data; D.gears = {}; D.chal = {}; D.chal['first-gear'] = 1; RR.Store.save(); });
+  await t.tapText('Ride'); await t.wait(300);
+  d = await t.ev(() => ({ g: document.querySelector('.card[data-i="0"] .gm .g').classList.contains('on'), c: document.querySelector('.card[data-i="0"] .gm .c').classList.contains('on'), locked1: !document.querySelector('.card[data-i="1"] .gm'), line: (document.querySelector('.wsub') || {}).textContent }));
+  ok(!d.g && d.c, 'the track list shows which challenges are done and which gears are found', d);
+  await t.tapSel('.card[data-i="0"]'); await t.wait(400);
+  d = await t.ev(() => document.querySelector('.screen.on') && document.querySelector('.screen.on').textContent);
+  ok(/Wheelie/i.test(d), 'the challenge is explained before the run', (d || '').slice(0, 160));
+  await t.ev(() => { RR.Game.input.kG = true; }); await t.wait(400); await t.ev(() => { RR.Game.input.kG = false; });
+  await t.ev(() => { const s = RR.Game.sim, g = RR.gearOf(RR.Game.track); const dx = g.x - s.x, dy = g.y - s.y; s.x += dx; s.y += dy; for (let i = 0; i < 2; i++) { s.wx[i] += dx; s.wy[i] += dy; } });
+  await t.wait(300);
+  d = await t.ev(() => ({ have: RR.Progress.gearHave(0), saved: JSON.parse(localStorage.getItem('ridgeRiot.v1')).gears }));
+  ok(d.have && d.saved['first-gear'] === 1, 'a gear touched in a run is kept straight away', d);
+  await t.ev(() => { RR.Game.quit ? RR.Game.quit() : RR.UI.title(); });
+  // the first ride on a bike with a trick says what the trick is, once
+  await t.ev(() => { const D = RR.Store.data; D.owned.turbo = 1; D.bike = 'turbo'; delete D.got['trick:turbo']; RR.Store.save(); RR.UI.show('hud'); RR.Game.play(0); });
+  await t.wait(1200);
+  d = await t.ev(() => ({ toast: document.getElementById('toast').textContent, got: !!RR.Store.data.got['trick:turbo'] }));
+  ok(/Spool 600/.test(d.toast) && d.got, 'the first ride on a new bike explains its trick', d.toast);
+  ok(t.errs.length === 0, 'no page errors with the new goals', t.errs.slice(0, 2));
+  await t.close();
+
   console.log(fails ? fails + ' CHECKS FAILED' : 'all flow checks passed');
   process.exit(fails ? 1 : 0);
 })();
