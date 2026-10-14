@@ -138,7 +138,16 @@ var TROPHY_RULES = {
   pinwheel:  { type: 'flips',    n: 500, text: 'Land 500 flips' },
   longhaul:  { type: 'dist',     n: 100000, text: 'Ride 100 km' },
   goldie:    { type: 'crashes',  n: 500, text: 'Crash 500 times' },
-  curator:   { type: 'collect',  text: 'Collect every paint job and rider from crates' }
+  curator:   { type: 'collect',  text: 'Collect every paint job and rider from crates' },
+  gearhead:  { type: 'gears',    text: 'Find all 48 hidden gears' },
+  daredevil: { type: 'chal',     text: 'Pull off all 48 track challenges' }
+};
+/* What gears and challenges pay: a paint job every 6 gears and a rider every 6 challenges (rare and up), and the two trophies above at 48.
+   If you already own the item, it becomes an epic crate instead. */
+RR.GOAL_REWARDS = {
+  every: 6,
+  gears: ['goldleaf', 'tiger', 'rosegold', 'ice', 'candy', 'amethyst', 'blackdia', 'whiteopal'],
+  chal: ['clanks', 'rex', 'baron', 'merl', 'ember', 'kraken', 'snowqueen', 'helios']
 };
 RR.TROPHIES.forEach(function (it) { it.trophy = TROPHY_RULES[it.id] || null; });
 
@@ -180,9 +189,10 @@ RR.GARAGES = [
   { id: 'workshop', name: 'Workshop',   slots: 6,  price: 300,  blurb: 'Brick walls, a workbench and a pegboard of tools.' },
   { id: 'garage',   name: 'Garage',     slots: 9,  price: 700,  blurb: 'Painted walls, a roller door and proper lighting.' },
   { id: 'dealer',   name: 'Dealership', slots: 12, price: 1300, blurb: 'Glass front, shiny floor, a bike on every stand.' },
-  { id: 'showroom', name: 'Showroom',   slots: 15, price: 2200, blurb: 'Marble, spotlights and a turntable under every bike.' }
+  { id: 'showroom', name: 'Showroom',   slots: 15, price: 2200, blurb: 'Marble, spotlights and a turntable under every bike.' },
+  { id: 'hall',     name: 'Hall of Fame', slots: 24, price: 3500, blurb: 'Stone arches, banners and three oak tiers: room for every bike there is.' }
 ];
-RR.GARAGE_MAX_SLOTS = 15;
+RR.GARAGE_MAX_SLOTS = 24;
 
 if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);

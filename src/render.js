@@ -952,6 +952,37 @@ function drawRoofs(c, G, T, xl, xr, yt) {
   }
 }
 
+/* Two-route tracks: rock shelves you can ride on top of and under, and the bridge that brings the high route down. */
+function drawShelves(c, G, T, xl, xr) {
+  var ch = G.track.chains, i, k;
+  for (i = 1; i < ch.length; i++) {
+    var p = ch[i].pts;
+    if (ch[i].kind === 'shelf') {
+      var mn = 1e9, mx = -1e9; for (k = 0; k < p.length; k += 2) { if (p[k] < mn) mn = p[k]; if (p[k] > mx) mx = p[k]; }
+      if (mx < xl || mn > xr) continue;
+      c.beginPath(); c.moveTo(p[0], p[1]); for (k = 2; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]); c.closePath();
+      c.fillStyle = T.ground[1]; c.fill();
+      c.save(); c.clip(); c.fillStyle = T.ground[2] || T.ground[1];
+      for (k = 0; k < 7; k++) { var sx = mn + (mx - mn) * hash(k * 3.1 + mn), sy = p[3] - 0.25 - hash(k * 7.7 + mn) * 0.4; c.beginPath(); c.ellipse(sx, sy, 0.35 + hash(k + mn) * 0.4, 0.09, 0, 0, TAU); c.fill(); }
+      c.restore();
+      c.lineWidth = 0.055; c.strokeStyle = OUT; c.stroke();
+      // the crust on top
+      c.beginPath(); var n = p.length / 2; c.moveTo(p[2], p[3]); for (k = 2; k < n && p[k * 2] > p[k * 2 - 2]; k++) c.lineTo(p[k * 2], p[k * 2 + 1]);
+      c.lineWidth = 0.2; c.strokeStyle = T.crust; c.stroke();
+    } else if (ch[i].kind === 'bridge') {
+      if (p[p.length - 2] < xl || p[0] > xr) continue;
+      // trestle legs down to the ground, then the deck and a rail
+      c.lineWidth = 0.08; c.strokeStyle = '#6b4a2a';
+      for (k = 2; k < p.length - 2; k += 4) { var gy = RR.groundY(G.track, p[k]); if (gy < p[k + 1] - 0.4) { c.beginPath(); c.moveTo(p[k], p[k + 1]); c.lineTo(p[k] + 0.2, gy); c.moveTo(p[k], p[k + 1]); c.lineTo(p[k] - 0.2, gy); c.stroke(); } }
+      c.beginPath(); c.moveTo(p[0], p[1]); for (k = 2; k < p.length; k += 2) c.lineTo(p[k], p[k + 1]);
+      c.lineWidth = 0.26; c.strokeStyle = OUT; c.stroke(); c.lineWidth = 0.18; c.strokeStyle = '#a5763f'; c.stroke();
+      c.beginPath(); c.moveTo(p[0], p[1] + 0.7); for (k = 2; k < p.length; k += 2) c.lineTo(p[k], p[k + 1] + 0.7);
+      c.lineWidth = 0.05; c.strokeStyle = '#6b4a2a'; c.stroke();
+      for (k = 0; k < p.length; k += 4) { c.beginPath(); c.moveTo(p[k], p[k + 1]); c.lineTo(p[k], p[k + 1] + 0.7); c.stroke(); }
+    }
+  }
+}
+
 /* Something hanging over a jump. The solid part is the plain column from y0 upward; the drawing
    stays inside it at the bottom so what you see is what you hit. */
 function drawBeams(c, G, T, xl, xr, yt) {
@@ -996,12 +1027,47 @@ function drawBeams(c, G, T, xl, xr, yt) {
   }
 }
 
+/* what is left of a log the Rhino went through: a few flat splinters over the bump in the ground */
+function drawStump(c, ft, m, T) {
+  var col = m === 4 ? '#9b6a3e' : m === 12 ? '#1c1d22' : m === 2 ? '#bfeeff' : T.speck[0], r = ft.r, i;
+  for (i = 0; i < 4; i++) {
+    var x = ft.x + (i - 1.5) * r * 0.6, h = r * (0.25 + 0.2 * hash(ft.x + i));
+    A.shape(c, [x - r * 0.32, ft.y - r * 0.05, x - r * 0.2, ft.y + r * 0.62 + h * 0.3, x + r * 0.05, ft.y + r * 0.5 + h * 0.4, x + r * 0.3, ft.y - r * 0.05], col, 0.035);
+  }
+}
+/* the fork sign: two arrows, the upper one with a lean-back symbol */
+function drawForkSign(c, ft) {
+  c.save(); c.translate(ft.x - 1.2, ft.y);
+  A.line(c, [0, 0, 0, 2.6], 0.08, '#4a3a2a');
+  A.shape(c, [0.05, 2.7, 1.3, 2.7, 1.55, 2.95, 1.3, 3.2, 0.05, 3.2], '#f2c230', 0.04);
+  A.shape(c, [0.05, 2.05, 1.3, 2.05, 1.55, 1.8, 1.3, 1.55, 0.05, 1.55], '#f5f1e6', 0.04);
+  A.line(c, [0.35, 2.82, 0.95, 3.08], 0.07, '#15171d'); A.line(c, [0.35, 1.8, 1.0, 1.8], 0.07, '#15171d');
+  c.restore();
+}
+/* the hidden gear: a brass cog that turns and bobs. Already found: a faint outline. Picked up this run: gone. */
+function drawGear(c, G, ft) {
+  if (G.gearGot || G.attract) return;
+  var had = RR.Progress && RR.Progress.gearHave(G.track.index), t = G.t, r = 0.42, n = 10, k;
+  c.save(); c.translate(ft.x, ft.y + Math.sin(t * 2.2) * 0.06); c.rotate(t * 1.4);
+  c.globalAlpha = had ? 0.35 : 1;
+  if (!had) { c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.25 + 0.15 * Math.sin(t * 4); A.circ(c, 0, 0, r * 1.6, '#ffd27a', 0); c.restore(); }
+  c.beginPath();
+  for (k = 0; k < n * 2; k++) { var a0 = k / (n * 2) * TAU, rr = k % 2 ? r * 0.78 : r; c.lineTo(Math.cos(a0 - 0.12) * rr, Math.sin(a0 - 0.12) * rr); c.lineTo(Math.cos(a0 + 0.12) * rr, Math.sin(a0 + 0.12) * rr); }
+  c.closePath(); c.fillStyle = had ? '#9aa0a8' : '#d9a83a'; c.fill(); c.lineWidth = 0.05; c.strokeStyle = OUT; c.stroke();
+  A.circ(c, 0, 0, r * 0.5, had ? '#c8ccd2' : '#ffe08a', 0.04);
+  A.circ(c, 0, 0, r * 0.2, '#2b2f38', 0.03);
+  c.lineWidth = 0.05; c.strokeStyle = 'rgba(255,255,255,0.6)'; c.beginPath(); c.arc(0, 0, r * 0.66, 3.6, 4.6); c.stroke();
+  c.restore(); c.globalAlpha = 1;
+}
 function drawFeats(c, G, T, xl, xr, behind) {
   var f = G.track.feats, i, tr = G.track;
   for (i = 0; i < f.length; i++) {
     var ft = f[i];
+    if (ft.t === 'gear' && !behind) { if (ft.x > xl - 1 && ft.x < xr + 1) drawGear(c, G, ft); continue; }
+    if (ft.t === 'sign' && ft.kind === 'fork' && behind && ft.x > xl - 2 && ft.x < xr + 2) { drawForkSign(c, ft); continue; }
     if (ft.t === 'log' && !behind) {
       if (ft.x < xl - 1 || ft.x > xr + 1) continue;
+      if (G.sim && G.sim.smash && G.sim.smash[ft.id]) { drawStump(c, ft, RR.WORLDS[tr.worldIndex].logMat, T); continue; }
       var m = RR.WORLDS[tr.worldIndex].logMat;
       if (m === 12) {      // a tyre lying in the road
         A.circ(c, ft.x, ft.y, ft.r, '#1c1d22', 0.05);
@@ -1124,7 +1190,9 @@ function bikeView(G, v, def) {
     RA: [W0.ax + cm[0] + W0.ux * v.comp[0], W0.ay + cm[1] + W0.uy * v.comp[0]],
     FA: [W1.ax + cm[0] + W1.ux * v.comp[1], W1.ay + cm[1] + W1.uy * v.comp[1]],
     spinR: v.wa[0], spinF: v.wa[1], rateR: v.ww[0], rateF: v.ww[1],
-    lp: v.lp, stand: v.stand, crouch: v.crouch, rider: !v.noRider, headTilt: v.headTilt, look: G.look, t: G.t, wrecked: !!G.wipe
+    lp: v.lp, stand: v.stand, crouch: v.crouch, rider: !v.noRider, headTilt: v.headTilt, look: G.look, t: G.t, wrecked: !!G.wipe,
+    puff: v.puff || 0, stick: v.stick == null ? null : v.stick, lift: v.lift || 0,
+    turbo: v.turbo != null ? v.turbo : (G.sim && G.sim.turbo) || 0
   };
 }
 
@@ -1182,6 +1250,7 @@ R.frame = function (G, dt) {
   for (i = 0; i < tr.loops.length; i++) if (tr.loops[i].cx + tr.loops[i].R + 2 > xl && tr.loops[i].cx - tr.loops[i].R - 2 < xr) drawLoop(c, tr.loops[i], T);
   drawGround(c, G, T, xl, xr, yb);
   drawRoofs(c, G, T, xl, xr, yt);
+  drawShelves(c, G, T, xl, xr);
   drawBeams(c, G, T, xl, xr, yt);
   drawFeats(c, G, T, xl, xr, false);
 

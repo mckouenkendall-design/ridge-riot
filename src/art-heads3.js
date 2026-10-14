@@ -531,4 +531,78 @@ HEAD.goldie = function (c, t) {
   for (k = 0; k < 5; k++) { var f = (t * 0.4 + k * 0.2) % 1; c.globalAlpha = Math.sin(f * Math.PI); star(c, -0.9 + k * 0.5 + Math.sin(f * 5 + k) * 0.15, 0.9 + f * 1.5, 0.1 + 0.05 * (k % 2), '#ffe27a'); } c.globalAlpha = 1;
 };
 
+/* a five-point star at (x, y), r to the tips, turned by ang. lw 0 = no outline */
+function star5(c, x, y, r, ang, fill, lw) {
+  var k, p = [];
+  for (k = 0; k < 10; k++) { var a = ang + Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * 0.42 : r; p.push(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+  po(c, p, fill, lw == null ? 0.06 : lw);
+}
+/* the flaming hoop the daredevil has just come through: an iron ring seen side on, centre (cx, 0.1), half of it at a time */
+function hoop(c, t, cx, front) {
+  var k, rx = 0.32, ry = 1.5, a0 = front ? -Math.PI / 2 : Math.PI / 2, a1 = front ? Math.PI / 2 : Math.PI * 1.5;
+  for (k = 0; k < 9; k++) {                                                                                         // flames licking off the ring, blown back
+    var a = a0 + (k + 0.5) * Math.PI / 9, x = cx + Math.cos(a) * rx, y = 0.1 + Math.sin(a) * ry, out = Math.atan2(Math.sin(a) / ry, Math.cos(a) / rx);
+    var dir = Math.atan2(Math.sin(out) * 0.8 + 0.25, Math.cos(out) * 0.6 - 0.8);
+    plume(c, x, y, dir, 0.42 + 0.14 * Math.sin(t * 5 + k * 1.9), 0.11, t, k * 1.7 + (front ? 0 : 3), ['#e8321a', '#ff8a1f', '#fff08a'], 0.06);
+  }
+  c.beginPath(); c.ellipse(cx, 0.1, rx, ry, 0, a0, a1); c.lineWidth = 0.2; c.strokeStyle = OUT; c.stroke();
+  c.lineWidth = 0.11; c.strokeStyle = '#ff9a2a'; c.stroke();
+  c.lineWidth = 0.04; c.strokeStyle = '#fff2a8'; c.stroke();
+}
+HEAD.daredevil = function (c, t) {
+  var k, pu = 0.5 + 0.5 * Math.sin(t * 2.2), sh = (t * 0.5) % 2.6 - 1.1;
+  glow(c, 0.1, 0.1, 3.0, 'rgb(255,205,110)', 0.5 + 0.12 * pu);
+  for (k = 0; k < 2; k++) {                                                                                        // two searchlights sweeping the night
+    var bx = k ? 1.5 : -1.3, ba = Math.PI / 2 + (k ? 0.35 : -0.3) + 0.35 * Math.sin(t * 0.8 + k * 2.4), bl2 = 4.2, bw = 0.28;
+    c.beginPath(); c.moveTo(bx, -2.2); c.lineTo(bx + Math.cos(ba - bw) * bl2, -2.2 + Math.sin(ba - bw) * bl2); c.lineTo(bx + Math.cos(ba + bw) * bl2, -2.2 + Math.sin(ba + bw) * bl2); c.closePath();
+    var bg = c.createLinearGradient(bx, -2.2, bx + Math.cos(ba) * bl2, -2.2 + Math.sin(ba) * bl2); bg.addColorStop(0, 'rgba(255,250,225,0.5)'); bg.addColorStop(1, 'rgba(255,250,225,0)');
+    c.fillStyle = bg; c.fill();
+  }
+  hoop(c, t, -1.5, false);
+  // the helmet: glossy white, a blue racing band full of stars over the crown edged in red, and a big star on the side
+  var g = c.createRadialGradient(0.25, 0.45, 0.08, 0, 0, 1.05); g.addColorStop(0, '#ffffff'); g.addColorStop(0.6, '#f3f1ec'); g.addColorStop(1, '#c9ccd4');
+  ci(c, 0, 0, 1, g);
+  c.save(); c.beginPath(); c.arc(0, 0, 0.95, 0, TAU); c.clip();
+  c.beginPath(); c.arc(-0.12, -0.12, 0.74, 0.5, 3.15); c.lineWidth = 0.46; c.strokeStyle = '#d3232e'; c.stroke();
+  c.lineWidth = 0.32; c.strokeStyle = '#1f4aa8'; c.stroke();
+  c.beginPath(); c.arc(-0.12, -0.12, 0.74, 0.5, 3.15); c.lineWidth = 0.03; c.strokeStyle = 'rgba(255,255,255,0.7)'; c.stroke();
+  for (k = 0; k < 5; k++) { var sa = 0.75 + k * 0.5; star5(c, -0.12 + Math.cos(sa) * 0.74, -0.12 + Math.sin(sa) * 0.74, 0.1, sa - Math.PI / 2, '#ffffff', 0); }
+  c.save(); c.translate(sh, 0); c.rotate(0.5); c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillRect(-0.1, -2, 0.22, 4); c.fillRect(0.2, -2, 0.06, 4); c.restore();     // travelling shine
+  c.restore();
+  arc(c, 0.9, 1.55, 2.5, 0.08, 'rgba(255,255,255,0.95)'); arc(c, 0.9, 3.9, 5.1, 0.1, 'rgba(60,70,100,0.3)');
+  star5(c, -0.32, -0.36, 0.36, -0.1, '#e8b030', 0.08); star5(c, -0.32, -0.36, 0.25, -0.1, '#d3232e', 0);                // the big star
+  ln(c, [-0.36, -0.2, -0.3, -0.12], 0.04, 'rgba(255,255,255,0.8)');
+  // face under the visor: sideburns, a big grin, the chin strap
+  bl(c, [0.2, 0.25, 0.95, 0.3, 1.12, -0.12, 1.02, -0.78, 0.56, -0.96, 0.18, -0.55], SKIN, 0.12);
+  bl(c, [0.2, 0.0, 0.42, 0.0, 0.46, -0.5, 0.3, -0.62, 0.2, -0.4], '#6a4228', 0.06);
+  ci(c, 1.08, -0.3, 0.12, '#dba27c', 0.09);
+  c.beginPath(); c.moveTo(0.5, -0.5); c.quadraticCurveTo(0.8, -0.56, 1.02, -0.44); c.quadraticCurveTo(0.96, -0.82, 0.72, -0.82); c.quadraticCurveTo(0.52, -0.76, 0.5, -0.5); c.closePath(); c.fillStyle = '#7a1a20'; c.fill();
+  c.save(); c.clip(); po(c, [0.4, -0.5, 1.1, -0.5, 1.1, -0.62, 0.4, -0.62], '#ffffff', 0); c.restore();
+  c.beginPath(); c.moveTo(0.5, -0.5); c.quadraticCurveTo(0.8, -0.56, 1.02, -0.44); c.quadraticCurveTo(0.96, -0.82, 0.72, -0.82); c.quadraticCurveTo(0.52, -0.76, 0.5, -0.5); c.closePath(); c.lineWidth = 0.07; c.strokeStyle = OUT; c.stroke();
+  ln(c, [0.22, -0.48, 0.58, -0.95], 0.08, '#2b2f38');
+  // the gold mirror visor: sky above the horizon, ground below, a shine sliding over it
+  var vp = [0.1, 0.56, 0.86, 0.6, 1.22, 0.32, 1.24, -0.1, 0.9, -0.2, 0.16, -0.06];
+  c.save(); c.beginPath(); c.moveTo(vp[0], vp[1]); for (k = 2; k < vp.length; k += 2) c.lineTo(vp[k], vp[k + 1]); c.closePath(); c.clip();
+  var vg = c.createLinearGradient(0, 0.6, 0, -0.2); vg.addColorStop(0, '#fff3b0'); vg.addColorStop(0.45, '#f4c43c'); vg.addColorStop(0.5, '#9a6408'); vg.addColorStop(1, '#d99a1e');
+  c.fillStyle = vg; c.fillRect(0, -0.3, 1.4, 1);
+  c.beginPath(); c.moveTo(0.1, 0.17); c.quadraticCurveTo(0.7, 0.26, 1.3, 0.12); c.lineWidth = 0.035; c.strokeStyle = 'rgba(255,250,220,0.9)'; c.stroke();
+  var vs = ((t * 0.45) % 1.8) - 0.4; c.save(); c.translate(vs, 0.2); c.rotate(-0.6); c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillRect(-0.06, -1, 0.14, 2); c.fillRect(0.14, -1, 0.04, 2); c.restore();
+  c.restore();
+  po(c, vp, null, 0.1);
+  ln(c, [0.3, 0.46, 0.8, 0.5], 0.05, 'rgba(255,255,255,0.85)');
+  ci(c, 0.14, 0.24, 0.1, '#d3232e', 0.06); ci(c, 0.14, 0.24, 0.04, '#ffffff', 0);                                 // visor snap
+  var tw = Math.max(0, Math.sin(t * 3.3)); if (tw > 0.05) star(c, 0.95, 0.36, 0.06 + 0.14 * tw, '#ffffff');           // a reflected flashbulb
+  hoop(c, t, -1.5, true);
+  // the jumpsuit's big seventies collar, a blue yoke with white stars, and a gold star buckle
+  po(c, [-0.35, -1.0, 0.45, -1.0, 0.35, -1.5, 0.05, -1.75, -0.25, -1.5], '#1f4aa8', 0.08);
+  star5(c, -0.12, -1.3, 0.09, 0.2, '#ffffff', 0); star5(c, 0.22, -1.25, 0.08, -0.3, '#ffffff', 0); star5(c, 0.06, -1.55, 0.07, 0, '#ffffff', 0);
+  po(c, [-0.3, -0.92, -0.85, -1.05, -0.62, -1.48, -0.25, -1.22], '#f8f6ef', 0.08); ln(c, [-0.8, -1.08, -0.62, -1.4], 0.06, '#d3232e');
+  po(c, [0.38, -0.92, 0.98, -1.0, 0.8, -1.46, 0.36, -1.22], '#f8f6ef', 0.08); ln(c, [0.92, -1.04, 0.79, -1.38], 0.06, '#d3232e');
+  star5(c, 0.06, -1.03, 0.16, 0, '#ffd23f', 0.06); ci(c, 0.06, -1.03, 0.04, '#fff7cf', 0);
+  for (k = 0; k < 4; k++) {                                                                                       // camera flashes going off in the crowd
+    var f = (t * 0.55 + k * 0.27) % 1, fx = [1.55, -0.7, 1.3, 0.4][k], fy = [1.25, 1.65, -0.8, 1.9][k], fk = Math.max(0, 1 - f * 3.2);
+    if (fk > 0) { c.globalAlpha = fk; star(c, fx, fy, 0.08 + 0.22 * fk, k % 2 ? '#fff7cf' : '#ffffff'); }
+  } c.globalAlpha = 1;
+};
+
 })(typeof window !== 'undefined' ? window : globalThis);

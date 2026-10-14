@@ -15,6 +15,7 @@
 var RR = root.RR || (root.RR = {});
 var PI = Math.PI, TAU = PI * 2;
 function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+function wrap(a) { return a - TAU * Math.round(a / TAU); }
 RR.clamp = clamp;
 
 /* Surface materials: mu = grip multiplier, roll = rolling drag, */
@@ -50,7 +51,7 @@ RR.buildCollision = function (chains) {
     bx: new Float64Array(n), by: new Float64Array(n),
     dx: new Float64Array(n), dy: new Float64Array(n),
     len: new Float64Array(n), depth: new Float64Array(n),
-    mat: new Uint8Array(n), gate: new Int16Array(n), side: new Uint8Array(n),
+    mat: new Uint8Array(n), gate: new Int16Array(n), side: new Uint8Array(n), log: new Int16Array(n), under: new Int16Array(n),
     next: new Int32Array(n), prev: new Int32Array(n), cvx: new Uint8Array(n),
     mark: new Int32Array(n), stamp: 0
   };
@@ -68,6 +69,9 @@ RR.buildCollision = function (chains) {
       col.mat[k] = ch.mats ? ch.mats[i] : (ch.mat || 0);
       col.gate[k] = ch.gate == null ? -1 : ch.gate;
       col.side[k] = ch.side == null ? 2 : ch.side;
+      // logs a heavy enough bike can smash: the log's own faces, and the flat ground hidden under it
+      col.log[k] = ch.logs ? ch.logs[i] : -1;
+      col.under[k] = ch.under == null ? -1 : ch.under;
       col.prev[k] = k > first ? k - 1 : -1;
       col.next[k] = -1;
       if (k > first) col.next[k - 1] = k;
@@ -95,9 +99,11 @@ RR.buildCollision = function (chains) {
   return col;
 };
 
+var SM = null;      // the smashed-log list of the sim being stepped, or null
+
 function Contacts() {
   this.nx = new Float64Array(8); this.ny = new Float64Array(8);
-  this.pen = new Float64Array(8); this.mat = new Uint8Array(8); this.n = 0;
+  this.pen = new Float64Array(8); this.mat = new Uint8Array(8); this.log = new Int16Array(8); this.n = 0;
 }
 RR.Contacts = Contacts;
 
@@ -109,7 +115,7 @@ function query(col, px, py, r, gates, C) {
   var c0 = Math.floor((px - r - col.x0) / col.cw), c1 = Math.floor((px + r - col.x0) / col.cw);
   if (c0 < 0) c0 = 0; if (c1 >= col.nc) c1 = col.nc - 1;
   var stamp = ++col.stamp;
-  var inD = 1e9, inNx = 0, inNy = 0, inMat = 0;
+  var inD = 1e9, inNx = 0, inNy = 0, inMat = 0, inLog = -1;
   for (var c = c0; c <= c1; c++) {
     var cell = col.cells[c];
     for (var q = 0; q < cell.length; q++) {
@@ -118,6 +124,9 @@ function query(col, px, py, r, gates, C) {
       col.mark[i] = stamp;
       var g = col.gate[i];
       if (g >= 0 && col.side[i] !== 2 && gates[g] !== col.side[i]) continue;
+      // a smashed log is gone and the ground under it takes over; nothing else ever sees that ground
+      if (col.log[i] >= 0 && SM && SM[col.log[i]]) continue;
+      if (col.under[i] >= 0 && !(SM && SM[col.under[i]])) continue;
       var dx = col.dx[i], dy = col.dy[i];
       var rx = px - col.ax[i], ry = py - col.ay[i];
       var d = -rx * dy + ry * dx;                 // signed distance from the surface line
@@ -133,7 +142,7 @@ function query(col, px, py, r, gates, C) {
           if (kk >= 0 && (nearStart ? col.cvx[kk] : col.cvx[i])) {
             if (-(px - col.ax[kk]) * col.dy[kk] + (py - col.ay[kk]) * col.dx[kk] > 0) continue;
           }
-          if (-d < inD) { inD = -d; inNx = -dy; inNy = dx; inMat = col.mat[i]; }
+          if (-d < inD) { inD = -d; inNx = -dy; inNy = dx; inMat = col.mat[i]; inLog = col.log[i]; }
           continue;
         }
         onx = -dy; ony = dx; pen = r - d;
@@ -152,7 +161,7 @@ function query(col, px, py, r, gates, C) {
           if (dist >= col.depth[i]) continue;
           onx = -dy - col.dy[j]; ony = dx + col.dx[j];
           var nl = Math.sqrt(onx * onx + ony * ony) || 1; onx /= nl; ony /= nl;
-          if (dist < inD) { inD = dist; inNx = onx; inNy = ony; inMat = col.mat[i]; }
+          if (dist < inD) { inD = dist; inNx = onx; inNy = ony; inMat = col.mat[i]; inLog = col.log[i]; }
           continue;
         }
       } else {
@@ -162,10 +171,10 @@ function query(col, px, py, r, gates, C) {
         if (dd > 1e-6) { onx = wx / dd; ony = wy / dd; } else { onx = -dy; ony = dx; }
         pen = r - dd;
       }
-      if (n < 7) { C.nx[n] = onx; C.ny[n] = ony; C.pen[n] = pen; C.mat[n] = col.mat[i]; n++; }
+      if (n < 7) { C.nx[n] = onx; C.ny[n] = ony; C.pen[n] = pen; C.mat[n] = col.mat[i]; C.log[n] = col.log[i]; n++; }
     }
   }
-  if (inD < 1e8) { n = 0; C.nx[0] = inNx; C.ny[0] = inNy; C.pen[0] = r + inD; C.mat[0] = inMat; n = 1; }
+  if (inD < 1e8) { n = 0; C.nx[0] = inNx; C.ny[0] = inNy; C.pen[0] = r + inD; C.mat[0] = inMat; C.log[0] = inLog; n = 1; }
   C.n = n;
   return n;
 }
@@ -231,6 +240,25 @@ RR.prepBike = function (def) {
   b.tip = Math.atan2(def.com[0], def.com[1] - rr) + 0.08;   // pitch where the bike balances on the rear wheel
   b.ebrake = def.ebrake == null ? 0.05 : def.ebrake;
   b.bonk = def.bonk || 0;
+  /* the tricks only one bike has (see bikes.js) */
+  b.hop = def.hop || 0;                              // one push straight "up" from the bike per jump, m/s
+  b.stick = def.stick ? def.stick.f * b.Mtot * G0 * 0.5 : 0;   // suction on each tyre, newtons
+  b.stickMax = def.stick ? def.stick.t : 0;          // seconds of wall riding before the tyres let go
+  b.rail = def.rail || 0;                            // furthest the bike can pitch from its line, radians
+  b.pivot = def.pivot || null;
+  b.glide = def.glide || null;
+  b.smash = def.smash || 0;                          // speed (m/s) needed to break a log
+  b.turboT = def.turbo ? def.turbo.build : 0;        // seconds of held gas to reach full boost
+  b.turboPow = def.turbo ? def.turbo.power : 0;      // extra push at full boost, share of normal
+  b.turboTop = def.turbo ? def.turbo.top : 0;        // extra top speed at full boost, share of normal
+  // a tyre that grips some surfaces better than others: per material grip and rolling drag
+  if (def.surf) {
+    b.matMu = []; b.matRoll = [];
+    for (i = 0; i < RR.MATS.length; i++) {
+      var sf = def.surf[RR.MATS[i].id] || def.surf.other || [1, 1];
+      b.matMu.push(RR.MATS[i].mu * sf[0]); b.matRoll.push(RR.MATS[i].roll * sf[1]);
+    }
+  } else { b.matMu = null; b.matRoll = null; }
   b.pts = [];
   for (i = 0; i < def.body.length; i++) b.pts.push([def.body[i][0] - def.com[0], def.body[i][1] - def.com[1], def.body[i][2]]);
   b.headR = 0.15 * (def.rider.scale || 1);
@@ -281,7 +309,8 @@ RR.createSim = function (bike, track) {
     wx: [0, 0], wy: [0, 0], wvx: [0, 0], wvy: [0, 0], wa: [0, 0], ww: [0, 0],
     comp: [0, 0], compV: [0, 0], gnd: [false, false], load: [0, 0], slip: [0, 0], mat: [0, 0],
     nrmX: [0, 1], nrmY: [1, 1], bot: [0, 0], airW: [0, 0],
-    gates: new Uint8Array(Math.max(1, track.loops.length)),
+    gates: new Uint8Array(track.gateN || Math.max(1, track.loops.length)),
+    smash: bike.smash ? new Uint8Array(Math.max(1, track.logCount || 0)) : null,
     events: []
   };
   // In low gravity full power would just flip the bike on the spot, so the push is
@@ -308,6 +337,8 @@ RR.resetSim = function (s) {
   s.flips = 0; s.bestAir = 0; s.jumpX = 0; s.bestJump = 0; s.maxSpeed = 0; s.wheelieT = 0;
   s.finishTime = 0; s.sinceCrash = 0; s.driveF = 0; s.body = false;
   s._pvx = [0, 0]; s._pvy = [0, 0]; s.pendFlip = null;
+  s.hopReady = 1; s.btn = 0; s.stickT = b.stickMax; s.lift = 0; s.turbo = 0;
+  if (s.smash) for (i = 0; i < s.smash.length; i++) s.smash[i] = 0;
   s.events.length = 0;
   // let the suspension settle before the clock starts
   var idle = { lean: 0, brake: true, gas: false };
@@ -325,6 +356,8 @@ function substep(s, inp, dt) {
   var gas = inp.gas && !inp.brake && !s.crashed && !s.finished;
   var braking = inp.brake || s.finished;
   var boost = s.boost > 0 ? 1 : 0;
+  SM = s.smash;
+  var stickF = b.stick && s.stickT > 0 && !s.crashed ? b.stick : 0;
 
   for (i = 0; i < 2; i++) {
     var W = b.wh[i];
@@ -358,15 +391,17 @@ function substep(s, inp, dt) {
       if (N > NMAX) N = NMAX;
       var tx = ny, ty = -nx;
       var slip = s.wvx[i] * tx + s.wvy[i] * ty + s.ww[i] * W.r;
-      var mat = RR.MATS[C.mat[k]];
-      var lim = b.mu * mat.mu * N;
+      var mat = RR.MATS[C.mat[k]], mmu = b.matMu ? b.matMu[C.mat[k]] : mat.mu;
+      if (stickF) { wfx -= stickF * nx; wfy -= stickF * ny; N += stickF; }     // sticky tyres: pulled onto whatever they touch
+      if (C.log[k] >= 0 && SM && !SM[C.log[k]] && sp > b.smash) { SM[C.log[k]] = 1; s.events.push({ t: 'smash', log: C.log[k], x: s.wx[i], y: s.wy[i], v: sp }); }
+      var lim = b.mu * mmu * N;
       if (slip > 1.5 || slip < -1.5) lim *= 0.88;
       var Ft = -slip * W.meff * FB / dt;
       if (Ft > lim) Ft = lim; else if (Ft < -lim) Ft = -lim;
       wfx += N * nx + Ft * tx; wfy += N * ny + Ft * ty;
       wt += Ft * W.r;
       // rolling drag
-      var rollT = mat.roll * N * W.r, wAbs = s.ww[i] < 0 ? -s.ww[i] : s.ww[i];
+      var rollT = (b.matRoll ? b.matRoll[C.mat[k]] : mat.roll) * (stickF ? N - stickF : N) * W.r, wAbs = s.ww[i] < 0 ? -s.ww[i] : s.ww[i];
       if (wAbs > 0.5) wt += s.ww[i] > 0 ? -rollT : rollT;
       Nsum += N; slipSum += slip * N;
       s.nrmX[i] = nx; s.nrmY[i] = ny; s.mat[i] = C.mat[k];
@@ -377,8 +412,8 @@ function substep(s, inp, dt) {
     if (i === 0) {
       var Fd = 0;
       if (gas && s.airW[0] < 0.12) {
-        var vmax = b.vmax * (boost ? 1.22 : 1);
-        Fd = s.thrust * (boost ? 1.45 : 1);
+        var vmax = b.vmax * (boost ? 1.22 : 1) * (1 + b.turboTop * s.turbo);
+        Fd = s.thrust * (boost ? 1.45 : 1) * (1 + b.turboPow * s.turbo);
         var vv = wv > 1 ? wv : 1;
         if (vv > b.vp) Fd *= b.vp / vv;
         if (boost) Fd = Math.max(Fd, s.thrust * 0.7);
@@ -408,6 +443,7 @@ function substep(s, inp, dt) {
     n = query(col, s.x + prx, s.y + pry, pr, s.gates, C);
     for (k = 0; k < n; k++) {
       var bnx = C.nx[k], bny = C.ny[k];
+      if (C.log[k] >= 0 && SM && !SM[C.log[k]] && sp > b.smash) { SM[C.log[k]] = 1; s.events.push({ t: 'smash', log: C.log[k], x: s.x + prx, y: s.y + pry, v: sp }); }
       var pvx = s.vx - s.w * pry, pvy = s.vy + s.w * prx;
       var bvn = pvx * bnx + pvy * bny;
       var BN = KB * C.pen[k] - CB * bvn;
@@ -462,21 +498,43 @@ function substep(s, inp, dt) {
   if (!s.crashed && !s.finished) {
     var L = inp.lean;
     var grounded = s.airW[0] < 0.03 || s.airW[1] < 0.03;
+    // the pivot bike: hand brake on in the air spins it faster, or stops it dead if you are not leaning
+    var pv = b.pivot && !grounded && inp.brake ? b.pivot : null;
     if (L !== 0) {
       // on the ground the rider can throw their weight forward faster than they can haul the front up
-      var wtgt = -L * (grounded ? Math.min(b.spin, L > 0 ? b.groundSpin * 1.8 : b.groundSpin) : b.spin), dw = wtgt - s.w, tl = 0;
+      var wtgt = -L * (grounded ? Math.min(b.spin, L > 0 ? b.groundSpin * 1.8 : b.groundSpin) : b.spin * (pv ? pv.spin : 1)), dw = wtgt - s.w, tl = 0;
       if (dw * wtgt > 0) {
         tl = dw * b.Isys * 14;
         // the rider has to shift their weight first, so a quick tap is a nudge and a hold is a full heave
         var ramp = L < 0 ? -s.lp : s.lp; ramp = ramp < 0 ? 0 : ramp > 1 ? 1 : ramp;
-        var tm = b.leanTq * (grounded ? 1 : LEAN_AIR) * (L < 0 ? -L : L) * (LEAN_FLOOR + (1 - LEAN_FLOOR) * ramp);
+        var tm = b.leanTq * (grounded ? 1 : LEAN_AIR) * (L < 0 ? -L : L) * (LEAN_FLOOR + (1 - LEAN_FLOOR) * ramp) * (pv ? pv.tq : 1);
         if (tl > tm) tl = tm; else if (tl < -tm) tl = -tm;
       }
       // Leaning forward pulls a wheelie back down at full strength, but once the front tyre is on
       // the ground the rider cannot lever the bike over its own front wheel, so it does much less.
       if (grounded) tl *= L > 0 ? (s.airW[1] > 0.03 ? Math.max(1, b.leanGround) : 0.3) : b.leanGround;
       tq += tl;
-    } else if (!grounded) tq -= s.w * (s.relT > 0 ? LEAN_STOP : b.airDamp) * b.Isys;
+    } else if (pv) tq -= s.w * pv.lock * b.Isys;
+    else if (!grounded) tq -= s.w * (s.relT > 0 ? LEAN_STOP : b.airDamp) * b.Isys;
+    // the sidecar: the passenger and the third wheel keep it within b.rail of its line, so it can neither flip nor tip
+    if (b.rail) {
+      var ref = 0;
+      if (grounded) { var gi = s.airW[0] < 0.03 ? 0 : 1; ref = Math.atan2(-s.nrmX[gi], s.nrmY[gi]); }
+      else if (s.vx > 1) ref = clamp(Math.atan2(s.vy, s.vx), -0.8, 0.8);
+      var rel = wrap(s.a - ref), lim = b.rail;
+      if (rel > lim) tq -= ((rel - lim) * 80 + (s.w > 0 ? s.w * 12 : 0)) * b.Isys;
+      else if (rel < -lim) tq -= ((rel + lim) * 80 + (s.w < 0 ? s.w * 12 : 0)) * b.Isys;
+    }
+    // the glider: a wing lifts in proportion to speed squared and how far the nose is above the line of flight
+    s.lift = 0;
+    if (b.glide && s.air0 && !s.gnd[0] && !s.gnd[1] && s.vx > 1.5) {
+      var gam = Math.atan2(s.vy, s.vx), aoa = wrap(s.a - gam) + b.glide.inc, aab = aoa < 0 ? -aoa : aoa;
+      var cl = clamp(aoa * 2.2, 0, 1.1);         // lift only: a wing pointed down just stops lifting, it never presses the bike down
+      if (aab > 0.55) cl *= Math.max(0, 1 - (aab - 0.55) * 2.5);           // stalls if pointed too far off its line
+      var Lf = Math.min(b.glide.k * cl * sp * sp, b.glide.cap * b.Mtot * g), Df = b.glide.k * (b.glide.drag || 0.22) * cl * cl * sp * sp;
+      fx += (-s.vy * Lf - s.vx * Df) / sp; fy += (s.vx * Lf - s.vy * Df) / sp;
+      s.lift = Lf / (b.Mtot * g);
+    }
     if (b.rocket && gas) {
       var rk = b.rocket * (boost ? 1.3 : 1), fwd = s.vx * ca + s.vy * sa;
       var rl = (b.rocketV * (boost ? 1.15 : 1) - fwd) / 4;
@@ -507,6 +565,7 @@ function substep(s, inp, dt) {
   for (i = 0; i < 2; i++) {
     s.wx[i] += s.wvx[i] * dt; s.wy[i] += s.wvy[i] * dt; s.wa[i] += s.ww[i] * dt;
   }
+  SM = null;
 }
 
 /* One 120th of a second of game time. */
@@ -520,12 +579,39 @@ function tick(s, inp, settling) {
     if (s.gates[i] === 0) { if (s.x < lp.cx && s.y > lp.cy && s.x > lp.cx - lp.R) s.gates[i] = 1; }
     else if (s.x < lp.cx - lp.R - 1.5) s.gates[i] = 0;
   }
+  // two routes: until you reach the fork sign, leaning back means you have chosen the high road
+  if (tr.forks) for (i = 0; i < tr.forks.length; i++) { var fk = tr.forks[i]; if (s.x < fk.x) s.gates[fk.g] = s.lp < -0.5 ? 1 : 0; }
   var tgt = (s.crashed || s.finished) ? 0 : inp.lean;
   s.lp += clamp(tgt - s.lp, -DT * LEAN_RATE, DT * LEAN_RATE);
   if (tgt === 0 && s.pl !== 0) s.relT = LEAN_STOP_T;
   if (s.relT > 0) s.relT -= DT;
   s.pl = tgt;
+  // the hop bike: tap brake in the air for one puff of air straight out of the bottom of the bike
+  var btn = inp.brake ? 1 : 0;
+  if (b.hop && !settling) {
+    if (s.gnd[0] || s.gnd[1]) s.hopReady = 1;
+    else if (btn && !s.btn && s.hopReady && !s.crashed && !s.finished && s.airW[0] > 0.08 && s.airW[1] > 0.08) {
+      var hx = -Math.sin(s.a) * b.hop, hy = Math.cos(s.a) * b.hop;
+      s.vx += hx; s.vy += hy;
+      for (i = 0; i < 2; i++) { s.wvx[i] += hx; s.wvy[i] += hy; }
+      s.hopReady = 0; s.events.push({ t: 'hop', x: s.x, y: s.y, a: s.a });
+    }
+  }
+  s.btn = btn;
+  // the turbo bike: boost builds for as long as the gas is held, and is gone the moment you let off
+  if (b.turboT && !settling) {
+    if (inp.gas && !inp.brake && !s.crashed && !s.finished) {
+      var was = s.turbo; s.turbo = Math.min(1, s.turbo + DT / b.turboT);
+      if (was < 1 && s.turbo >= 1) s.events.push({ t: 'spool', x: s.x, y: s.y });
+    } else { if (s.turbo > 0.3) s.events.push({ t: 'dump', x: s.x, y: s.y, k: s.turbo }); s.turbo = 0; }
+  }
   for (i = 0; i < NSUB; i++) substep(s, inp, H);
+  // sticky tyres let go after b.stickMax seconds on anything steep, and recover on gentle ground
+  if (b.stick) {
+    var steep = (s._gnd[0] && s.nrmY[0] < 0.6) || (s._gnd[1] && s.nrmY[1] < 0.6);
+    if (steep) s.stickT = Math.max(0, s.stickT - DT);
+    else if (s._gnd[0] || s._gnd[1]) s.stickT = Math.min(b.stickMax, s.stickT + DT * 1.5);
+  }
 
   var wasAir = s.air;
   for (i = 0; i < 2; i++) {
@@ -555,7 +641,7 @@ function tick(s, inp, settling) {
     if (s.airT > s.bestAir) s.bestAir = s.airT;
     var jd = s.x - s.jumpX; if (jd > s.bestJump) s.bestJump = jd;
     if (nf > 0 && !s.crashed && s.airT > 0.35) {
-      s.pendFlip = { n: nf, dir: s.rot > 0 ? 1 : -1, t: 0.25, air: s.airT };
+      s.pendFlip = { n: nf, dir: s.rot > 0 ? 1 : -1, t: 0.25, air: s.airT, jx: s.jumpX };
     } else if (s.airT > 0.9 && !s.crashed) s.events.push({ t: 'air', air: s.airT, dist: jd });
   }
   s.air = air;
@@ -565,7 +651,7 @@ function tick(s, inp, settling) {
     else if (s.pendFlip.t <= 0) {
       s.flips += s.pendFlip.n;
       s.boost = Math.min(3.2, s.boost + 0.9 + 0.55 * s.pendFlip.n);
-      s.events.push({ t: 'flip', n: s.pendFlip.n, dir: s.pendFlip.dir, air: s.pendFlip.air });
+      s.events.push({ t: 'flip', n: s.pendFlip.n, dir: s.pendFlip.dir, air: s.pendFlip.air, jumpX: s.pendFlip.jx });
       s.pendFlip = null;
     }
   }
@@ -612,7 +698,7 @@ function tick(s, inp, settling) {
 RR.tick = function (s, inp) { tick(s, inp, false); };
 
 /* Copy of everything that changes, so the test bot can rewind. */
-var NUMS = ['x', 'y', 'a', 'vx', 'vy', 'w', 'time', 'lp', 'airT', 'rot', 'boost', 'flips', 'bestAir', 'jumpX', 'bestJump', 'maxSpeed', 'wheelieT', 'finishTime', 'sinceCrash', 'driveF', 'pl', 'relT', 'padT', 'bonks', 'bonkT'];
+var NUMS = ['x', 'y', 'a', 'vx', 'vy', 'w', 'time', 'lp', 'airT', 'rot', 'boost', 'flips', 'bestAir', 'jumpX', 'bestJump', 'maxSpeed', 'wheelieT', 'finishTime', 'sinceCrash', 'driveF', 'pl', 'relT', 'padT', 'bonks', 'bonkT', 'hopReady', 'btn', 'stickT', 'lift', 'turbo'];
 var ARRS = ['wx', 'wy', 'wvx', 'wvy', 'wa', 'ww', 'comp', 'compV', 'gnd', 'load', 'slip', 'mat', 'nrmX', 'nrmY', 'bot', 'airW', '_pvx', '_pvy'];
 RR.snapshot = function (s) {
   var o = {}, i;
@@ -620,7 +706,8 @@ RR.snapshot = function (s) {
   for (i = 0; i < ARRS.length; i++) o[ARRS[i]] = s[ARRS[i]].slice();
   o.started = s.started; o.crashed = s.crashed; o.finished = s.finished; o.air = s.air; o.crashCause = s.crashCause;
   o.gates = Array.prototype.slice.call(s.gates);
-  o.pendFlip = s.pendFlip ? { n: s.pendFlip.n, dir: s.pendFlip.dir, t: s.pendFlip.t, air: s.pendFlip.air } : null;
+  o.smash = s.smash ? Array.prototype.slice.call(s.smash) : null;
+  o.pendFlip = s.pendFlip ? { n: s.pendFlip.n, dir: s.pendFlip.dir, t: s.pendFlip.t, air: s.pendFlip.air, jx: s.pendFlip.jx } : null;
   return o;
 };
 RR.restore = function (s, o) {
@@ -629,7 +716,8 @@ RR.restore = function (s, o) {
   for (i = 0; i < ARRS.length; i++) s[ARRS[i]] = o[ARRS[i]].slice();
   s.started = o.started; s.crashed = o.crashed; s.finished = o.finished; s.air = o.air; s.crashCause = o.crashCause;
   for (i = 0; i < o.gates.length; i++) s.gates[i] = o.gates[i];
-  s.pendFlip = o.pendFlip ? { n: o.pendFlip.n, dir: o.pendFlip.dir, t: o.pendFlip.t, air: o.pendFlip.air } : null;
+  if (s.smash && o.smash) for (i = 0; i < o.smash.length; i++) s.smash[i] = o.smash[i];
+  s.pendFlip = o.pendFlip ? { n: o.pendFlip.n, dir: o.pendFlip.dir, t: o.pendFlip.t, air: o.pendFlip.air, jx: o.pendFlip.jx } : null;
   s.events.length = 0;
 };
 

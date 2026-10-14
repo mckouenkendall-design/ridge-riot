@@ -8,8 +8,8 @@ let fails = 0; const ok = (c, what, extra) => { console.log((c ? 'PASS ' : 'FAIL
 const count = {}; RR.TIERS.forEach(t => count[t.id] = RR.ITEMS.filter(i => i.tier === t.id).length);
 console.log('things to collect:', RR.ITEMS.length, JSON.stringify(count), '(' + RR.PAINTS.filter(p => p.tier !== 'trophy').length + ' crate paint jobs, ' + RR.RIDERS.filter(p => p.tier !== 'trophy').length + ' crate riders, ' + RR.TROPHIES.length + ' trophies kept out of crates)');
 // 0. the shape of the collection
-ok(RR.PAINTS.length === 72 + 4 && RR.RIDERS.length === 60 + 2, '72 paint jobs and 60 riders, plus the trophies', RR.PAINTS.length + ' paints, ' + RR.RIDERS.length + ' riders including trophies');
-ok(RR.ITEMS.every(i => i.tier !== 'trophy') && RR.TROPHIES.every(i => i.tier === 'trophy') && RR.TROPHIES.length >= 4 && RR.TROPHIES.length <= 6, 'trophies are kept out of the crate pool, and there are 4 to 6 of them', RR.TROPHIES.length);
+ok(RR.PAINTS.filter(p => p.tier !== 'trophy').length === 72 && RR.RIDERS.filter(p => p.tier !== 'trophy').length === 60 && RR.PAINTS.length === 72 + 5 && RR.RIDERS.length === 60 + 3, '72 paint jobs and 60 riders, plus the trophies (5 paint, 3 rider)', RR.PAINTS.length + ' paints, ' + RR.RIDERS.length + ' riders including trophies');
+ok(RR.ITEMS.every(i => i.tier !== 'trophy') && RR.TROPHIES.every(i => i.tier === 'trophy') && RR.TROPHIES.length === 8, 'trophies are kept out of the crate pool, and there are 8 of them', RR.TROPHIES.length);
 ok(RR.TIERS.map(t => t.id).join() === 'common,uncommon,rare,epic,legendary', 'the five crate tiers are common, uncommon, rare, epic, legendary');
 // 1. first crate on an empty collection, many times over
 const N = 200000, got = {}; for (let i = 0; i < N; i++) { const it = RR.rollCrate('any', () => false, rnd, false); got[it.tier] = (got[it.tier] || 0) + 1; }

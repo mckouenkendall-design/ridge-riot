@@ -122,6 +122,7 @@ h3 { margin: 0; font-size: 1.5rem; font-weight: 900; font-style: italic; line-he
 /* a tile's height is set by the script (--th, from the width of a column) because a grid will not count aspect-ratio when it works out how tall each row is */
 .tiles.scroll .tile { aspect-ratio: 1 / 0.92; min-height: auto; height: var(--th, auto); touch-action: pan-y; }
 .t7.scroll .tile, .t6.scroll .tile { aspect-ratio: 1 / 1; }
+.t6.scroll.bk .tile { aspect-ratio: 1 / 0.7; }
 .t6 { grid-template-columns: repeat(6, 1fr); } .t7 { grid-template-columns: repeat(7, 1fr); } .t9 { grid-template-columns: repeat(9, 1fr); }
 .sep { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 0.5rem; padding: 0.05rem 0.2rem 0; border-bottom: 0.12rem solid var(--tc, var(--ink)); font-size: 0.8rem; line-height: 1.15; }
 .sep b { font-weight: 900; font-style: italic; } .sep i { font-style: normal; font-weight: 700; opacity: 0.7; }
@@ -232,7 +233,7 @@ input[type=range]::-moz-range-thumb { width: 1.3rem; height: 1.3rem; background:
 .center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; }
 #s-pause .center { display: flex; flex-direction: column; gap: 0.7rem; width: 15rem; }
 #s-pause h2 { margin-bottom: 0.4rem; font-size: 2.4rem; }
-.res { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -51%); width: min(38rem, calc(100% - 2rem - var(--safe-l) - var(--safe-r))); max-height: calc(100% - 1.4rem - var(--safe-b)); padding: 0.55rem 1.1rem 0.8rem; text-align: center; }
+.res { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -51%); width: min(38rem, calc(100% - 2rem - var(--safe-l) - var(--safe-r))); max-height: calc(100% - 1.4rem - var(--safe-b)); padding: 0.45rem 1.1rem 0.65rem; text-align: center; }
 .res .tn { font-size: 0.95rem; font-weight: 800; font-style: italic; opacity: 0.75; }
 .res .time { font-size: 3.5rem; font-weight: 900; font-style: italic; line-height: 0.95; font-variant-numeric: tabular-nums; }
 .res .big { font-size: 2.6rem; display: flex; justify-content: center; gap: 0.5rem; margin: 0.1rem 0 0.15rem; color: rgba(23, 26, 34, 0.16); }
@@ -246,7 +247,7 @@ input[type=range]::-moz-range-thumb { width: 1.3rem; height: 1.3rem; background:
 .res .pay span { font-weight: 500; opacity: 0.75; font-size: 0.84rem; }
 .res .unl { margin-top: 0.15rem; font-size: 0.95rem; font-weight: 800; color: var(--blue); line-height: 1.15; }
 .res .unl.gold { color: #b9801a; }
-.res .btns { display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; row-gap: 0.45rem; }
+.res .btns { display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 0.35rem; flex-wrap: wrap; row-gap: 0.35rem; }
 .res .btns .btn { font-size: 1.15rem; padding: 0.3rem 0.9rem; min-height: 2.5rem; }
 .res .btns .btn.small { font-size: 0.95rem; padding: 0.2rem 0.7rem; min-height: 2.45rem; }
 #toast { position: absolute; left: 50%; top: calc(4.6rem + var(--safe-t)); max-width: calc(100% - 2rem - var(--safe-l) - var(--safe-r)); transform: translate(-50%, -9rem) skewX(-8deg); transition: transform 0.25s cubic-bezier(0.2, 1.2, 0.4, 1); padding: 0.3rem 1rem; font-weight: 900; font-style: italic; font-size: 1.05rem; line-height: 1.15; text-align: center; background: var(--yellow); pointer-events: none; z-index: 5; }
@@ -282,3 +283,25 @@ input[type=range]::-moz-range-thumb { width: 1.3rem; height: 1.3rem; background:
 .pk.cur { background: var(--yellow); }
 .pk.down { filter: brightness(0.86); }
 .pickbox .btns { flex: none; display: flex; gap: 0.6rem; justify-content: center; }
+
+/* Phase 2: the three stars, the gear and the challenge */
+.stars.sb .star:nth-child(2)::after, .stars.sb .star:nth-child(3)::after { content: none; }
+.gm { display: inline-flex; gap: 0.15rem; margin-left: 0.3rem; vertical-align: middle; }
+.gm i { width: 0.95rem; height: 0.95rem; display: inline-block; color: rgba(23, 26, 34, 0.22); }
+.gm i svg { width: 100%; height: 100%; display: block; }
+.gm i.g.on { color: #c8962a; filter: drop-shadow(0.05em 0.05em 0 var(--ink)); }
+.gm i.c.on { color: #e0409a; filter: drop-shadow(0.05em 0.05em 0 var(--ink)); }
+.howto .goals { display: flex; gap: 0.7rem; justify-content: center; flex-wrap: wrap; font-size: 0.82rem; font-weight: 800; margin-top: 0.35rem; }
+.howto .goals span, .howto .chal { display: inline-flex; align-items: center; gap: 0.25rem; }
+.howto .goals svg, .howto .chal svg { width: 1em; height: 1em; }
+.howto .chal { display: flex; justify-content: center; font-size: 0.82rem; font-weight: 800; margin-top: 0.25rem; color: #ffb8e6; }
+.howto .chal.done { opacity: 0.6; }
+#goal .hg { display: inline-flex; align-items: center; gap: 0.18rem; margin: 0 0.25rem; opacity: 0.55; font-variant-numeric: tabular-nums; }
+#goal .hg.on { opacity: 1; }
+#goal .hg svg { width: 0.95em; height: 0.95em; }
+#goal .hg.c.on { color: #e0409a; }
+.res .big .sg { display: inline-flex; flex-direction: column; align-items: center; }
+.res .big .sg small { font-size: 0.62rem; font-weight: 800; color: rgba(23, 26, 34, 0.5); line-height: 1; margin-top: 0.1rem; white-space: nowrap; }
+.res .big .sg small.got { color: var(--ink); }
+.res .line.chl { display: flex; align-items: center; justify-content: center; gap: 0.3rem; }
+.res .line.chl svg { width: 1em; height: 1em; color: #e0409a; }

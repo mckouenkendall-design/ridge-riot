@@ -356,6 +356,665 @@ KINDS.chute = {
   }
 };
 
+/* ------------------------------ phase 2 bikes ------------------------------ */
+/* where point i of a figure is in the world */
+function fw(f, i) { var p = f.pts[i], ca = Math.cos(f.a), sa = Math.sin(f.a), x = p.x * f.sx, y = p.y * f.sy; return { x: f.x + x * ca - y * sa, y: f.y + x * sa + y * ca }; }
+/* a figure let go: a rag doll in the same pose, moving at vx, vy */
+function ragFrom(f, vx, vy) { var pts = [], i; for (i = 0; i < f.pts.length; i++) { var q = fw(f, i); pts.push({ x: q.x, y: q.y, px: q.x - vx / 120, py: q.y - vy / 120 }); } return { pts: pts, sc: f.sc, t: 0 }; }
+/* a rag doll frozen stiff: a figure measured from its hips, upright */
+function figFrom(rag) { var p = rag.pts, hx = p[2].x, hy = p[2].y, loc = [], i; for (i = 0; i < p.length; i++) loc.push({ x: p[i].x - hx, y: p[i].y - hy }); return { pts: loc, sc: rag.sc, x: hx, y: hy, a: 0, vx: 0, vy: 0, w: 0, sx: 1, sy: 1 }; }
+/* ease a figure's pose toward P (hip at 0,0, y up, for a rider of scale 1) */
+function setPose(f, P, k) { for (var i = 0; i < P.length; i++) { f.pts[i].x += (P[i][0] * f.sc - f.pts[i].x) * k; f.pts[i].y += (P[i][1] * f.sc - f.pts[i].y) * k; } }
+/* the same angle as a, but within half a turn of b, so easing from one to the other goes the short way */
+function near(a, b) { while (a - b > Math.PI) a -= TAU; while (a - b < -Math.PI) a += TAU; return a; }
+/* ground height, or a stand-in where there is none (over a gap) */
+function floorAt(G, x, alt) { var gy = groundAt(G, x); return gy < G.track.minY - 5 ? alt : gy; }
+/* clip drawing to what is above the ground, from x - span to x + span */
+function aboveGround(c, tr, x, span, top) {
+  c.beginPath(); c.moveTo(x - span, RR.groundY(tr, x - span) - 0.02);
+  for (var i = -span + 0.2; i <= span + 0.01; i += 0.2) c.lineTo(x + i, RR.groundY(tr, x + i) - 0.02);
+  c.lineTo(x + span, top); c.lineTo(x - span, top); c.closePath(); c.clip();
+}
+function dustCol(G) { return R.THEMES[G.track.worldIndex].dust; }
+function hexMix(a, b, k) {
+  if (typeof a !== 'string' || a[0] !== '#' || a.length !== 7) return k > 0.5 ? b : a;
+  var x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16), r = ((x >> 16) * (1 - k) + (y >> 16) * k) | 0, g = (((x >> 8) & 255) * (1 - k) + ((y >> 8) & 255) * k) | 0, bl = ((x & 255) * (1 - k) + (y & 255) * k) | 0;
+  return 'rgb(' + r + ',' + g + ',' + bl + ')';
+}
+function feather(c, p) {
+  var r = p.r; c.rotate(Math.sin(p.age * 5 + p.seed) * 0.7);
+  c.beginPath(); c.moveTo(0, -r); c.quadraticCurveTo(r * 0.55, -r * 0.1, 0, r); c.quadraticCurveTo(-r * 0.45, 0, 0, -r); c.closePath();
+  c.fillStyle = p.col; c.fill(); c.lineWidth = 0.014; c.strokeStyle = OUT; c.stroke();
+  c.beginPath(); c.moveTo(0, -r * 1.25); c.lineTo(0, r * 0.8); c.lineWidth = 0.012; c.stroke();
+}
+function feathers(x, y, n, cols, sp) { for (var i = 0; i < n; i++) R.emit(8, x + rnd(-0.2, 0.2), y + rnd(-0.1, 0.3), rnd(-sp, sp), rnd(0.5, sp * 1.3), rnd(1.6, 2.6), rnd(0.1, 0.15), cols[i % cols.length], { g: 0.18, drag: 2.4, front: 1, rot: rnd(0, 6), vr: rnd(-3, 3), seed: rnd(0, 6), fade: 0.3, draw: feather }); }
+/* a little motorbike, for the dizzy rider to see going round */
+function tinyBike(c, s, col) {
+  c.scale(s, s);
+  A.circ(c, -0.5, 0, 0.32, '#1c1d22', 0.09); A.circ(c, 0.55, 0, 0.32, '#1c1d22', 0.09);
+  A.shape(c, [-0.5, 0, -0.1, 0.5, 0.45, 0.5, 0.55, 0], col, 0.09);
+  A.line(c, [0.45, 0.5, 0.35, 0.82, 0.62, 0.86], 0.1, OUT);
+}
+/* poses for the stiff figure: hip at 0,0, y up, facing +x */
+var STAND = [[0.03, 0.72], [0, 0.5], [0, 0], [0.3, 0.52], [0.59, 0.55], [0.04, -0.44], [0.02, -0.9], [-0.3, 0.52], [-0.59, 0.55], [0.27, -0.31], [0.1, -0.66]];
+var FELL = [[0.02, 0.72], [0, 0.5], [0, 0], [0.04, 0.76], [0.06, 1.02], [0.03, -0.44], [0.02, -0.9], [-0.02, 0.76], [-0.02, 1.02], [0.0, -0.44], [-0.01, -0.9]];
+var FLY = [[0, 0.72], [0, 0.5], [0, 0], [0, 0.5], [0, 0.5], [0.05, -0.43], [0.02, -0.89], [0, 0.5], [0, 0.5], [-0.04, -0.43], [-0.08, -0.88]];
+
+/* Puffin: the air tank lets go and jets the rider about like a balloon let go of */
+function tankOn(c, p0, p1, col, stripe) {
+  var tx = p1.x - p0.x, ty = p1.y - p0.y, L = Math.sqrt(tx * tx + ty * ty) || 1, ux = tx / L, uy = ty / L, bx = -uy, by = ux;
+  var cx = (p0.x + p1.x) / 2 + bx * 0.17, cy = (p0.y + p1.y) / 2 + by * 0.17;
+  c.save(); c.translate(cx, cy); c.rotate(Math.atan2(uy, ux) - Math.PI / 2);
+  c.beginPath(); if (c.roundRect) c.roundRect(-0.085, -0.22, 0.17, 0.44, 0.08); else c.rect(-0.085, -0.22, 0.17, 0.44);
+  c.fillStyle = col; c.fill(); c.lineWidth = 0.03; c.strokeStyle = OUT; c.stroke();
+  A.line(c, [-0.085, 0.06, 0.085, 0.06], 0.05, stripe);
+  A.line(c, [-0.04, 0.1, -0.04, 0.18], 0.025, 'rgba(255,255,255,0.7)');
+  A.shape(c, [-0.04, -0.22, 0.04, -0.22, 0.06, -0.3, -0.06, -0.3], '#555b66', 0.025);
+  c.restore();
+}
+KINDS.puffball = {
+  start: function (w, G) { var f = w.f = figure(G); f.vx = G.sim.vx * 0.3; f.vy = 3; w.hx = f.x + 1.2; w.hy = Math.max(f.y, floorAt(G, f.x, f.y) + 1) + 2; w.limp = false; Au().wipe('vent'); },
+  step: function (w, G, dt) {
+    var f = w.f, g = G.sim.g;
+    if (!w.limp) {
+      // spinning every which way, pushed out of the seat of the pants, with a soft pull that keeps it in shot
+      f.w = 7 + 9 * Math.sin(w.t * 2.3 + 0.5) + 6 * Math.sin(w.t * 5.1);
+      f.a += f.w * dt;
+      var ax = -Math.sin(f.a), ay = Math.cos(f.a), th = 19 * (1 - w.t / 2.1);
+      f.vx += (ax * th + (w.hx - f.x) * 2.2) * dt; f.vy += (ay * th + (w.hy - f.y) * 2.2 - g * 0.3) * dt;
+      var dk = Math.exp(-2.2 * dt); f.vx *= dk; f.vy *= dk;
+      f.x += f.vx * dt; f.y += f.vy * dt;
+      var gy = floorAt(G, f.x, f.y - 1);
+      if (f.y < gy + 0.55) { f.y = gy + 0.55; f.vy = Math.abs(f.vy) * 0.6 + 1; }
+      if (Math.random() < dt * 40) R.emit(0, f.x - ax * 0.2, f.y - ay * 0.2, -ax * rnd(4, 7) + f.vx * 0.3, -ay * rnd(4, 7) + f.vy * 0.3, rnd(0.25, 0.45), rnd(0.07, 0.12), '#ffffff', { gr: 0.9, a: 0.7, drag: 3, front: 1 });
+      if (w.t > 1.8) { w.limp = true; Au().wipe('pfft'); w.rag = ragFrom(f, f.vx * 0.5, f.vy * 0.5); puff(f.x, f.y, 4, '#ffffff', 1.2); }
+      w.fx = f.x; w.fy = f.y;
+    } else { R.stepRag(w.rag, G.track, g, dt); w.fx = w.rag.pts[2].x; w.fy = w.rag.pts[2].y; }
+  },
+  draw: function (w, c, dd) {
+    var col = '#cfd6de', st = dd.suit[1];
+    if (!w.limp) {
+      var f = w.f;
+      c.save(); c.translate(f.x, f.y); c.rotate(f.a); tankOn(c, f.pts[2], f.pts[1], col, st); c.restore();
+      drawFigure(c, f, dd);
+    } else { tankOn(c, w.rag.pts[2], w.rag.pts[1], col, st); R.drawRag(c, w.rag, dd); }
+  }
+};
+
+/* Spool 600: the turbo over-boosts and blows its own compressor housing off. The rider is caught in it like a
+   hermit crab, and the slowest thing in the game creeps away on a trail of slime, sighing "stututu" now and then */
+var TUCK = [[0.14, 0.7], [0.06, 0.5], [0, 0], [0.26, 0.32], [0.32, 0.06], [0.36, 0.3], [0.22, -0.1], [0.2, 0.34], [0.28, 0.1], [0.3, 0.28], [0.16, -0.12]];
+var SHELL = 3.0, SHELL_H = 0.215 * SHELL + 0.09, CAP = 0.3;
+function slimeLine(c, pts, t) {
+  if (pts.length < 2) return;
+  var i;
+  for (i = 1; i < pts.length; i++) {
+    var a = pts[i - 1], b = pts[i], al = Math.max(0, 1 - (t - b.t) / 7);
+    if (al <= 0 || Math.abs(b.x - a.x) > 0.5) continue;
+    c.globalAlpha = al;
+    c.lineWidth = 0.075; c.strokeStyle = 'rgba(190,240,210,0.6)'; c.beginPath(); c.moveTo(a.x, a.y + 0.02); c.lineTo(b.x, b.y + 0.02); c.stroke();
+    c.lineWidth = 0.018; c.strokeStyle = 'rgba(255,255,255,0.85)'; c.beginPath(); c.moveTo(a.x, a.y + 0.04); c.lineTo(b.x, b.y + 0.04); c.stroke();
+  }
+  c.globalAlpha = 1;
+}
+KINDS.blowoff = {
+  start: function (w, G, dd) {
+    var s = G.sim, f = w.f = figure(G), ca = Math.cos(s.a), sa = Math.sin(s.a), com = s.b.com, th = Math.sqrt(Math.min(1, s.g / 9.8)), i;
+    var lx = 0.99 - com[0], ly = 0.5 - com[1];
+    w.sx0 = s.x + ca * lx - sa * ly; w.sy0 = s.y + sa * lx + ca * ly;      // where the turbo was on the bike
+    w.dir = s.vx < -1 ? -1 : 1;
+    f.vx = w.dir * clamp(Math.abs(s.vx) * 0.35 + 2.8, 2.8, 4.5); f.vy = 4.6 * th; f.w = -w.dir * 7;
+    w.x = w.sx0; w.y = w.sy0; w.vx = 0; w.vy = 0; w.a = 0; w.va = 0; w.sc = 1 / SHELL;
+    w.caught = false; w.landT = -1; w.bounced = false; w.gy0 = floorAt(G, f.x, f.y - 1);
+    w.emerge = 0; w.stalk = 0; w.peeked = false; w.slime = []; w.sigh = 1.4; w.sighT = -9; w.sl = 0;
+    Au().wipe('dump'); G.cam.shake = Math.max(G.cam.shake, 0.5);
+    for (i = 0; i < 26; i++) { var an = rnd(0, TAU), sp = rnd(1.5, 6); R.emit(0, w.sx0, w.sy0, Math.cos(an) * sp + s.vx * 0.2, Math.sin(an) * sp * 0.7 + 1.5, rnd(0.5, 1.1), rnd(0.12, 0.26), i % 3 ? '#ffffff' : '#dfe6ee', { gr: rnd(0.8, 1.6), a: 0.85, drag: 3, front: 1 }); }
+    R.emit(5, w.sx0, w.sy0, 0, 0, 0.35, 0.2, '#ffffff', { gr: 7, a: 0.9, front: 1, w: 0.07 });
+  },
+  step: function (w, G, dt) {
+    var f = w.f, g = G.sim.g, t = w.t, gy, i;
+    if (!w.caught) {
+      // the rider tumbles up out of the seat, curling up; the snail flies off the bike after them, growing
+      setPose(f, TUCK, Math.min(1, dt * 9));
+      f.vy -= g * dt; f.x += f.vx * dt; f.y += f.vy * dt; f.a += f.w * dt;
+      var k = Math.min(1, t / CAP), e = k * k * (3 - 2 * k), hp = fw(f, 2);
+      w.x = w.sx0 + (hp.x + 0.1 * w.dir - w.sx0) * e; w.y = w.sy0 + (hp.y + 0.15 - w.sy0) * e;
+      w.sc = (1 + (SHELL - 1) * e) / SHELL; w.a = -w.dir * 9 * e * k;
+      if (Math.random() < dt * 40) R.emit(0, w.x + rnd(-0.1, 0.1), w.y + rnd(-0.1, 0.1), rnd(-1, 1), rnd(0, 1.5), rnd(0.3, 0.6), rnd(0.07, 0.14), '#ffffff', { gr: 0.8, a: 0.7, drag: 3, front: 1 });
+      if (t >= CAP) {
+        w.caught = true; w.sc = 1; w.vx = f.vx * 0.7; w.vy = f.vy; w.va = -w.dir * 5; Au().wipe('shell');
+        puff(w.x, w.y, 6, '#ffffff', 2, 1.2);
+      }
+      w.fx = w.x; w.fy = w.y;
+      return;
+    }
+    gy = floorAt(G, w.x, w.gy0); w.gy0 = gy;
+    if (w.landT < 0) {
+      // in the air: a spinning snail with two boots kicking out of it
+      w.vy -= g * dt; w.x += w.vx * dt; w.y += w.vy * dt; w.a += w.va * dt;
+      if (w.y < gy + SHELL_H && w.vy < 0) {
+        w.y = gy + SHELL_H;
+        if (!w.bounced && w.vy < -1.6) { w.bounced = true; w.vy = -w.vy * 0.32; w.vx *= 0.4; w.va *= -0.5; }
+        else { w.landT = t; w.vx = 0; w.vy = 0; }
+        Au().wipe('clonk'); puff(w.x, gy + 0.1, 7, dustCol(G), 1.6, 1.1); G.cam.shake = Math.max(G.cam.shake, 0.25);
+      }
+    } else {
+      var lt = t - w.landT, ok = groundAt(G, w.x) > G.track.minY - 5;
+      w.sl = ok ? RR.groundSlope(G.track, w.x) : w.sl;
+      w.a = near(w.a, w.sl); w.a += (w.sl - w.a) * Math.min(1, dt * 9);
+      w.emerge = clamp((lt - 0.35) / 0.4, 0, 1);
+      w.stalk = clamp((lt - 0.8) / 0.25, 0, 1);
+      if (!w.peeked && lt > 0.8) { w.peeked = true; Au().wipe('peek'); }
+      if (lt > 1.1) {
+        // creeping off, at a snail's pace, leaving a trail
+        var sp = 0.3 * (0.75 + 0.25 * Math.sin(lt * 5));
+        w.x += w.dir * sp * Math.cos(w.sl) * dt;
+        if (!w.slime.length || Math.abs(w.x - w.slime[w.slime.length - 1].x) > 0.08) w.slime.push({ x: w.x - w.dir * 0.55, y: floorAt(G, w.x - w.dir * 0.55, gy), t: t });
+        w.sigh -= dt;
+        if (w.sigh <= 0) {
+          w.sigh = 2.2; w.sighT = t; Au().wipe('chatter');
+          for (i = 0; i < 6; i++) R.emit(0, w.x - w.dir * 0.05, w.y + 0.1, rnd(-0.8, 0.8) - w.dir * 0.6, rnd(1.2, 2.4), rnd(0.4, 0.7), rnd(0.08, 0.14), '#ffffff', { gr: 0.9, a: 0.75, drag: 2.5, front: 1, g: -0.05 });
+        }
+      }
+      w.y = floorAt(G, w.x, gy) + SHELL_H;
+    }
+    w.fx = w.x; w.fy = w.y;
+  },
+  draw: function (w, c, dd) {
+    var t = w.t, s = dd.suit, i, b = w.caught ? 0 : 1 - w.t / CAP, lt = w.landT < 0 ? -1 : t - w.landT;
+    slimeLine(c, w.slime, t);
+    if (!w.caught) drawFigure(c, w.f, dd);
+    var S = SHELL * w.sc, nose = typeof dd.col[0] === 'string' ? dd.col[0] : '#ff6a00';
+    c.save(); c.translate(w.x, w.y); c.rotate(w.a); c.scale(w.dir, 1);
+    var ax = 0.15 * S, ay = -0.17 * S;               // the mouth of the snail (the compressor outlet)
+    if (w.caught) {
+      var gyL = -SHELL_H;
+      if (lt >= 0) {
+        // the foot: the rider's legs, ripping along under the shell, with a boot for a tail
+        var top = [], n = 12;
+        for (i = 0; i <= n; i++) { var x = -0.95 + 1.95 * i / n; top.push(x, gyL + 0.16 + (lt > 1.1 ? 0.025 * Math.sin(x * 14 - t * 7) : 0) - (i === 0 ? 0.07 : 0)); }
+        var pts = [1.02, gyL + 0.02, -0.98, gyL + 0.02].concat(top);
+        A.blob(c, pts, s[1], 0.035);
+        A.line(c, [-0.85, gyL + 0.07, 0.9, gyL + 0.07], 0.025, A.shade(s[1], 0.8));
+        A.blob(c, [-1.14, gyL + 0.02, -1.16, gyL + 0.15, -0.98, gyL + 0.19, -0.9, gyL + 0.02], s[2], 0.03);
+      }
+      if (lt < 0) {
+        // boots kicking out of the mouth while it flies
+        for (i = 0; i < 2; i++) {
+          var kk = Math.sin(t * 22 + i * 2.2) * 0.25, a0 = -0.25 - i * 0.35 + kk, L = 0.5;
+          var ex = ax + Math.cos(a0) * L, ey = ay + Math.sin(a0) * L;
+          A.tube(c, [ax - 0.05, ay + 0.05, ex, ey], 0.12, i ? A.shade(s[1], 0.62) : s[1], 0.04);
+          A.circ(c, ex, ey, 0.09, s[2], 0.03);
+        }
+      }
+    }
+    // the shell itself: the turbo's compressor snail, turned so its outlet faces forward and down
+    c.save(); c.scale(S, S); c.rotate(-Math.PI / 2);
+    A.turboSnail(c, w.caught ? (lt >= 0 ? 0 : 1) : 1, t, nose, w.caught ? 0 : b);
+    c.restore();
+    if (w.caught && lt >= 0 && w.emerge > 0) {
+      // the head: out of the mouth on a long neck, looking about, with two eye stalks on the helmet
+      var e = w.emerge, ee = e * e * (3 - 2 * e), look = lt > 1.1 ? Math.sin(t * 1.3) * 0.06 : 0;
+      var hx = ax + 0.12 + 0.5 * ee, hy = ay + 0.1 + 0.62 * ee + look, nx = (ax + hx) / 2 + 0.12, ny = ay + 0.06;
+      A.curve(c, [ax, ay + 0.06, nx, ny, hx - 0.05, hy - 0.12], 0.17, s[0], 0.04);
+      A.circ(c, ax + 0.02, ay + 0.06, 0.1, A.shade(s[0], 0.75), 0.03);
+      var hr = 0.17, ha = -0.15 + look;
+      if (w.stalk > 0) {
+        for (i = 0; i < 2; i++) {
+          var sk = w.stalk, wob = Math.sin(t * 6 + i * 1.7) * 0.05, ox = hx - 0.06 + i * 0.1, oy = hy + hr * 0.8;
+          var tx = ox + (0.02 + i * 0.1 + wob) * sk, ty = oy + (0.3 - i * 0.04) * sk;
+          A.tube(c, [ox, oy, (ox + tx) / 2 - 0.02, (oy + ty) / 2, tx, ty], 0.035, s[1], 0.03);
+          var blink = Math.sin(t * 1.9 + i * 0.4) > 0.96 ? 0.25 : 1;
+          c.beginPath(); c.ellipse(tx, ty, 0.065 * sk, 0.065 * sk * blink, 0, 0, TAU); c.fillStyle = '#ffffff'; c.fill(); c.lineWidth = 0.025; c.strokeStyle = OUT; c.stroke();
+          A.circ(c, tx + 0.02 * sk, ty - 0.008, 0.026 * sk * blink, OUT, 0);
+        }
+      }
+      A.helmet(c, hx, hy, hr, ha, dd, dd.kind);
+    }
+    c.restore();
+    // "stututu" over the shell when it sighs
+    if (w.sighT > 0 && t - w.sighT < 0.7) {
+      var q = (t - w.sighT) / 0.7;
+      c.save(); c.globalAlpha = 1 - q * q; c.translate(w.x - w.dir * 0.2, w.y + 0.85 + q * 0.3); c.scale(1, -1);
+      c.font = '900 italic 0.24px ' + R.FONT; c.textAlign = 'center'; c.lineWidth = 0.06; c.strokeStyle = OUT; c.strokeText('stu-tu-tu', 0, 0); c.fillStyle = '#ffffff'; c.fillText('stu-tu-tu', 0, 0);
+      c.restore();
+    }
+  }
+};
+
+/* Odd Couple: rider and passenger come off together, hand in hand, and the passenger never stops waving */
+var PASS = ['#7a5a3a', '#c9b48a', '#3a2a1e'];
+KINDS.tandem = {
+  start: function (w, G, dd) {
+    var s = G.sim, ca = Math.cos(s.a), sa = Math.sin(s.a), ox = ca * 0.34 + sa * 0.3, oy = sa * 0.34 - ca * 0.3, i;
+    w.rag = R.makeRag(s, G.bikeDef); w.rag2 = R.makeRag(s, G.bikeDef);
+    w.dir = s.vx < -1 ? -1 : 1; var th = Math.sqrt(Math.min(1, s.g / 9.8)), up = 0.035 * th, fw2 = 0.03 * th;
+    // the outfit cannot tip, so the pair are thrown clear over the front together
+    for (i = 0; i < w.rag2.pts.length; i++) { var p = w.rag2.pts[i]; p.x += ox; p.y += oy; p.px += ox + 0.012 - w.dir * fw2; p.py += oy - 0.008 - up; p = w.rag.pts[i]; p.px -= w.dir * fw2 * 0.9; p.py -= up; }
+    w.landT = -1;
+    w.pd = Object.create(dd); w.pd.suit = PASS; w.pd._skin = null;
+    w.said = false; Au().wipe('honk');
+  },
+  step: function (w, G, dt) {
+    var g = G.sim.g, a = w.rag.pts, b = w.rag2.pts, i;
+    R.stepRag(w.rag, G.track, g, dt); R.stepRag(w.rag2, G.track, g, dt);
+    // holding hands
+    for (i = 0; i < 3; i++) { var h1 = a[8], h2 = b[8], dx = h2.x - h1.x, dy = h2.y - h1.y, d = Math.sqrt(dx * dx + dy * dy) || 1e-6; if (d > 0.1) { var f = (d - 0.1) / d * 0.5; h1.x += dx * f; h1.y += dy * f; h2.x -= dx * f; h2.y -= dy * f; } }
+    // the wave: whatever the rest of the passenger is doing, this arm is up and waving
+    if (w.landT < 0 && w.t > 0.3 && b[2].y - floorAt(G, b[2].x, b[2].y - 1) < 0.45) w.landT = w.t;
+    var lt = w.landT < 0 ? -1 : w.t - w.landT;
+    if (lt > 0.15) {                 // once down, sits up to make sure you saw
+      var su = Math.min(1, (lt - 0.15) * 2) * Math.min(1, dt * 8), up = [[1, 0.1 * w.dir, 0.48], [0, 0.14 * w.dir, 0.71]];
+      for (i = 0; i < 2; i++) { var q = b[up[i][0]], tx = b[2].x + up[i][1], ty = b[2].y + up[i][2]; q.x += (tx - q.x) * su; q.y += (ty - q.y) * su; q.px += (tx - q.px) * su; q.py += (ty - q.py) * su; }
+    }
+    var sh = b[1], wv = Math.sin(w.t * 13);
+    b[3].x = sh.x + 0.26 * w.dir; b[3].y = sh.y + 0.16; b[4].x = b[3].x + (0.1 + 0.14 * wv) * w.dir; b[4].y = b[3].y + 0.25;
+    b[3].px = b[3].x; b[3].py = b[3].y; b[4].px = b[4].x; b[4].py = b[4].y;
+    w.lt = lt;
+    if (!w.said && lt > 0.5) { w.said = true; Au().wipe('yoohoo'); }
+    w.fx = (a[2].x + b[2].x) / 2; w.fy = (a[2].y + b[2].y) / 2;
+  },
+  draw: function (w, c, dd) {
+    var b = w.rag2.pts, t = w.t, k;
+    // a scarf streaming off the passenger's neck
+    var sc = [b[1].x, b[1].y + 0.08];
+    for (k = 1; k <= 4; k++) sc.push(b[1].x - 0.17 * k, b[1].y + 0.1 + Math.sin(t * 15 - k * 1.3) * 0.05 * k);
+    A.curve(c, sc, 0.07, '#e2402f', 0.035);
+    R.drawRag(c, w.rag2, w.pd);
+    // a leather flying cap and goggles over the helmet
+    var ha = Math.atan2(b[0].y - b[1].y, b[0].x - b[1].x) - Math.PI / 2;
+    c.save(); c.translate(b[0].x, b[0].y); c.rotate(ha);
+    A.circ(c, 0, 0, 0.165, '#6b4a2e', 0.03);
+    c.beginPath(); c.ellipse(0.06, -0.06, 0.1, 0.09, 0, 0, TAU); c.fillStyle = '#e8b890'; c.fill(); c.lineWidth = 0.02; c.strokeStyle = OUT; c.stroke();
+    A.shape(c, [-0.08, -0.04, -0.02, -0.04, -0.03, -0.17, -0.08, -0.15], '#5a3c24', 0.02);
+    A.line(c, [-0.16, 0.04, 0.16, 0.02], 0.045, '#3a2a1e');
+    A.circ(c, 0.1, 0.03, 0.05, '#9fe8ff', 0.022, '#c9a347');
+    c.beginPath(); c.arc(0.08, -0.08, 0.035, 0.2, 2.6); c.lineWidth = 0.018; c.strokeStyle = OUT; c.stroke();
+    c.restore();
+    R.drawRag(c, w.rag, dd);
+    var lt = w.lt == null ? -1 : w.lt;
+    if (lt > 0.5) {
+      var al = Math.min(1, (lt - 0.5) * 5) * (lt > 3 ? Math.max(0, (3.5 - lt) * 2) : 1);
+      if (al > 0) {
+        var x = b[0].x + 0.3, y = b[0].y + 0.5;
+        c.globalAlpha = al;
+        c.beginPath(); if (c.roundRect) c.roundRect(x, y, 1.3, 0.46, 0.16); else c.rect(x, y, 1.3, 0.46);
+        c.moveTo(x + 0.18, y); c.lineTo(x + 0.04, y - 0.22); c.lineTo(x + 0.4, y);
+        c.fillStyle = '#ffffff'; c.fill(); c.lineWidth = 0.035; c.strokeStyle = OUT; c.stroke();
+        c.save(); c.translate(x + 0.65, y + 0.23); c.scale(1, -1); c.font = '800 0.28px ' + R.FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = OUT; c.fillText('Cheerio!', 0, 0); c.restore();
+        c.globalAlpha = 1;
+      }
+    }
+  }
+};
+
+/* Gecko: flies at the camera and splats on the glass like a gecko on a window, then peels off a toe at a time */
+var LIMB = { root: [[0.2, 0.3], [-0.2, 0.3], [0.12, -0.28], [-0.12, -0.28]], len: [0.62, 0.62, 0.72, 0.72], wid: [0.15, 0.15, 0.19, 0.19], spread: [0.5, Math.PI - 0.5, -0.95, -Math.PI + 0.95], bend: [0.35, -0.35, -0.3, 0.3], off: [2.15, 1.65, 1.0, 1.3] };
+var SPLAT_T = 0.32;
+function padAt(w, i) { var r = LIMB.root[i], L = LIMB.len[i] * w.ls[i], a = w.la[i]; return { x: r[0] + Math.cos(a) * L, y: r[1] + Math.sin(a) * L, a: a }; }
+function starfish(c, dd, w) {
+  var i, q, s = dd.suit;
+  for (i = 3; i >= 0; i--) {
+    var r = LIMB.root[i], a = w.la[i], L = LIMB.len[i] * w.ls[i], b = a + LIMB.bend[i] * (w.lstuck[i] ? 0.3 : 1);
+    var e = padAt(w, i), mx = r[0] + Math.cos(b) * L * 0.5, my = r[1] + Math.sin(b) * L * 0.5;
+    A.curve(c, [r[0], r[1], mx, my, e.x, e.y], LIMB.wid[i], i < 2 ? s[0] : s[1], 0.05);
+    for (q = -1.5; q <= 1.5; q++) { var ta = a + q * 0.42, tl = w.lstuck[i] ? 0.15 : 0.11; A.circ(c, e.x + Math.cos(ta) * tl, e.y + Math.sin(ta) * tl, w.lstuck[i] ? 0.055 : 0.04, '#3ccf6e', 0.025); }
+    A.circ(c, e.x, e.y, 0.1, s[2], 0.03);
+  }
+  c.beginPath(); c.ellipse(0, 0.02, 0.27, 0.4, 0, 0, TAU); c.fillStyle = s[0]; c.fill(); c.lineWidth = 0.035; c.strokeStyle = OUT; c.stroke();
+  c.beginPath(); c.ellipse(0, -0.02, 0.26, 0.1, 0, 0.15, Math.PI - 0.15); c.lineWidth = 0.08; c.strokeStyle = s[1]; c.stroke();
+  A.helmet(c, 0, 0.62, 0.27, 0.15, dd, dd.kind);
+}
+KINDS.splat = {
+  start: function (w, G) {
+    var s = G.sim; w.x0 = s.x; w.y0 = s.y + 0.4; w.cx = G.cam.x; w.cy = G.cam.y; w.vh = G.cam.vh; w.hit = false; w.gone = false; w.slide = 0;
+    w.la = LIMB.spread.slice(); w.lv = [0, 0, 0, 0]; w.ls = [1, 1, 1, 1]; w.lstuck = [0, 0, 0, 0]; w.marks = []; w.fall = 0;
+    w.fx = s.x; w.fy = s.y; Au().wipe('whoosh');
+  },
+  step: function (w, G, dt) {
+    var i, S = 0.3;
+    // pinned to the screen, not the world: the camera's position is the glass
+    w.cx = G.cam.x; w.cy = G.cam.y; w.vh = G.cam.vh; w.fx = G.sim.x; w.fy = G.sim.y;
+    if (w.t < SPLAT_T) { for (i = 0; i < 4; i++) w.la[i] = LIMB.spread[i] + 0.7 * Math.sin(w.t * 22 + i * 1.7); return; }
+    if (!w.hit) { w.hit = true; Au().wipe('splat'); G.cam.shake = Math.max(G.cam.shake, 0.35); for (i = 0; i < 4; i++) { w.la[i] = LIMB.spread[i]; w.lstuck[i] = 1; } }
+    var tt = w.t - SPLAT_T;
+    w.slide = 0.012 * tt + 0.02 * tt * tt;
+    for (i = 0; i < 4; i++) {
+      if (w.lstuck[i] && w.t > LIMB.off[i]) {
+        w.lstuck[i] = 0; Au().wipe('peel');
+        var p = padAt(w, i); w.marks.push({ x: 0.04 + p.x * S, y: 0.1 - w.slide + p.y * S, a: p.a, t: w.t });
+      }
+      if (!w.lstuck[i]) {            // a limb let go swings down and dangles
+        var da = near(-Math.PI / 2 + (i % 2 ? -0.12 : 0.12), w.la[i]) - w.la[i];
+        w.lv[i] += (da * 40 - w.lv[i] * 4) * dt; w.la[i] += w.lv[i] * dt; w.ls[i] += (1 - w.ls[i]) * Math.min(1, dt * 8);
+      }
+    }
+    // the last hand to go stretches first
+    if (w.lstuck[0] && w.t > LIMB.off[0] - 0.45) { if (!w.str) { w.str = true; Au().wipe('stretch'); } w.ls[0] = 1 + (w.t - (LIMB.off[0] - 0.45)) * 1.0; }
+    if (w.t > LIMB.off[0]) { w.fall += dt; if (w.fall > 1.2) w.gone = true; }
+  },
+  draw: function (w, c, dd) {
+    var vh = w.vh, S = 0.3 * vh, i, k, x, y, sc, rot = 0, sqx = 1, sqy = 1;
+    // prints left on the glass
+    for (i = 0; i < w.marks.length; i++) {
+      var m = w.marks[i], al = 0.55 * Math.max(0, 1 - (w.t - m.t) / 2.5);
+      if (al <= 0) continue;
+      var mx = w.cx + m.x * vh, my = w.cy + m.y * vh;
+      c.globalAlpha = al;
+      A.circ(c, mx, my, 0.1 * S, '#e6fff0', 0);
+      for (k = -1.5; k <= 1.5; k++) A.circ(c, mx + Math.cos(m.a + k * 0.42) * 0.15 * S, my + Math.sin(m.a + k * 0.42) * 0.15 * S, 0.05 * S, '#e6fff0', 0);
+      c.globalAlpha = 1;
+    }
+    if (w.gone) return;
+    if (w.t < SPLAT_T) {
+      var q = w.t / SPLAT_T, e = q * q;
+      x = w.x0 + (w.cx + 0.04 * vh - w.x0) * e; y = w.y0 + (w.cy + 0.1 * vh - w.y0) * e;
+      sc = 0.5 * Math.pow(S / 0.5, e); rot = (1 - q) * 9;
+    } else {
+      var tt = w.t - SPLAT_T;
+      x = w.cx + 0.04 * vh; y = w.cy + (0.1 - w.slide) * vh - 1.3 * w.fall * w.fall * vh;
+      sc = S; rot = w.fall * 0.8;
+      var sq = Math.exp(-tt * 9) * Math.cos(tt * 30) * 0.22; sqx = 1 + sq; sqy = 1 - sq;
+    }
+    c.save(); c.translate(x, y); c.rotate(rot); c.scale(sc * sqx, sc * sqy);
+    starfish(c, dd, w);
+    c.restore();
+    if (w.t >= SPLAT_T && w.t < SPLAT_T + 0.3) {             // the slap
+      var kk = (w.t - SPLAT_T) / 0.3; c.globalAlpha = 1 - kk; c.lineWidth = 0.06; c.strokeStyle = '#ffffff';
+      for (i = 0; i < 10; i++) { var a = i * TAU / 10 + 0.2, r0 = S * (1.0 + kk * 0.3), r1 = r0 + S * 0.22; c.beginPath(); c.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); c.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); c.stroke(); }
+      c.globalAlpha = 1;
+    }
+  }
+};
+
+/* Sandpiper: a sand devil swallows the rider and leaves a sandcastle wearing the helmet */
+var SAND = ['#e8c77a', '#d4ac5a', '#f4dfa4'];
+KINDS.sandstorm = {
+  start: function (w, G) { w.rag = R.makeRag(G.sim, G.bikeDef); w.dx = G.sim.x; w.dir = G.sim.vx < -1 ? -1 : 1; w.gy0 = floorAt(G, G.sim.x, G.sim.y - 1); w.gy = w.gy0; w.castle = false; w.k = 0; Au().wipe('swirl'); },
+  step: function (w, G, dt) {
+    var p = w.rag.pts, i, t = w.t;
+    w.k = t < 0.2 ? 0 : t < 0.55 ? (t - 0.2) / 0.35 : t < 1.5 ? 1 : Math.max(0, 1 - (t - 1.5) / 0.4);
+    if (t < 1.45) w.dx += w.dir * 1.4 * dt;
+    w.gy = floorAt(G, w.dx, w.gy0); w.gy0 = w.gy;
+    if (!w.castle) {
+      R.stepRag(w.rag, G.track, G.sim.g, dt);
+      if (t > 0.25) for (i = 0; i < p.length; i++) {            // sucked up into the swirl
+        var ax = w.dx + Math.sin(t * 9 + i) * 0.25, ay = w.gy + 0.9 + i * 0.07;
+        p[i].x += (ax - p[i].x) * Math.min(1, dt * 5); p[i].y += (ay - p[i].y) * Math.min(1, dt * 5);
+      }
+    }
+    if (w.k > 0.3 && Math.random() < dt * 60 * w.k) { var h = rnd(0, 2.4), a = rnd(0, TAU); R.emit(1, w.dx + Math.cos(a) * (0.4 + h * 0.3), w.gy + h, -Math.sin(a) * 4 + w.dir, rnd(0.5, 2), rnd(0.3, 0.6), rnd(0.025, 0.05), SAND[(Math.random() * 3) | 0], { g: 0.3, front: 1, vr: rnd(-8, 8) }); }
+    if (!w.castle && t > 1.45) { w.castle = true; w.cx = w.dx; w.cy = w.gy; puff(w.cx, w.cy + 0.3, 10, SAND[2], 2, 1.3); Au().wipe('tada'); }
+    if (w.castle && Math.random() < dt * 3) R.emit(1, w.cx + rnd(-0.4, 0.4), w.cy + 0.8, rnd(-0.2, 0.2), 0, rnd(0.4, 0.8), 0.025, SAND[0], { g: 1, front: 1 });
+    w.fx = w.dx; w.fy = w.gy + 1;
+  },
+  draw: function (w, c, dd) {
+    var t = w.t, i, k = w.k;
+    if (!w.castle && t < 0.75) R.drawRag(c, w.rag, dd);
+    if (w.castle) this.castle(w, c, dd);
+    if (k <= 0.01) return;
+    // the devil: rings that widen going up, each one spinning
+    var x = w.dx, y = w.gy, n = 9;
+    for (i = 0; i < n; i++) {
+      var h = (i + 0.5) / n * 2.6 * k, r = (0.25 + h * 0.32) * k, wob = Math.sin(t * 6 + i * 0.9) * 0.12 * h, ph = t * 11 + i * 1.3, ry = 0.12 + r * 0.18;
+      c.globalAlpha = Math.min(1, k * 1.2) * 0.85;
+      c.beginPath(); c.ellipse(x + wob, y + h, r, ry, 0, 0, TAU); c.fillStyle = SAND[i % 3]; c.fill();
+      c.lineWidth = 0.035; c.strokeStyle = 'rgba(120,80,30,0.6)'; c.beginPath(); c.ellipse(x + wob, y + h, r, ry, 0, ph % TAU, ph % TAU + 2.2); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.5)'; c.beginPath(); c.ellipse(x + wob, y + h, r * 0.8, ry * 0.8, 0, (ph + 3) % TAU, (ph + 3) % TAU + 1.4); c.stroke();
+    }
+    c.globalAlpha = 1;
+  },
+  castle: function (w, c, dd) {
+    var x = w.cx, y = w.cy, rise = Math.min(1, (w.t - 1.45) * 3), tr = dd._track, i;
+    var b = y - 1.2 + rise * 1.2;           // rises up out of the ground
+    c.save(); aboveGround(c, tr, x, 1.6, y + 5);
+    c.translate(x, y); c.scale(1.4, 1.4); c.translate(-x, -y);
+    var S1 = SAND[0], S2 = SAND[1];
+    // two side towers, a wall and a middle keep, all with battlements
+    function tower(cx, w2, h) { A.shape(c, [cx - w2, b - 0.4, cx - w2, b + h, cx - w2 * 0.5, b + h, cx - w2 * 0.5, b + h + 0.1, cx, b + h + 0.1, cx, b + h, cx + w2 * 0.5, b + h, cx + w2 * 0.5, b + h + 0.1, cx + w2, b + h + 0.1, cx + w2, b - 0.4], S1, 0.035); }
+    A.shape(c, [x - 0.7, b - 0.4, x - 0.7, b + 0.42, x + 0.7, b + 0.42, x + 0.7, b - 0.4], S2, 0.035);
+    tower(x - 0.62, 0.17, 0.62); tower(x + 0.62, 0.17, 0.62); tower(x, 0.24, 0.85);
+    A.blob(c, [x - 0.1, b - 0.02, x - 0.1, b + 0.22, x, b + 0.3, x + 0.1, b + 0.22, x + 0.1, b - 0.02], '#5a4128', 0.03);
+    A.line(c, [x - 0.15, b + 0.55, x - 0.05, b + 0.52, x + 0.08, b + 0.58], 0.02, 'rgba(120,80,30,0.6)');
+    A.line(c, [x - 0.62, b + 0.72, x - 0.62, b + 1.02], 0.025, '#5a4128');
+    A.shape(c, [x - 0.62, b + 1.02, x - 0.42, b + 0.95, x - 0.62, b + 0.88], dd.suit[1], 0.02);
+    c.restore();
+    // the helmet sat on top of the keep, a little crooked
+    if (rise > 0.6) { c.save(); c.translate(x, y); c.scale(1.4, 1.4); c.translate(-x, -y); A.helmet(c, x + 0.02, b + 0.95 + 0.14, 0.17, 0.25 + Math.sin(w.t * 1.7) * 0.03, dd, dd.kind); c.restore(); }
+  }
+};
+
+/* Whiplash: spins like a top on the spot, topples over, and sees little motorbikes going round */
+KINDS.spinout = {
+  start: function (w, G) {
+    var f = w.f = figure(G);
+    w.ph = 0; w.fell = false; w.gy0 = floorAt(G, f.x, f.y - 1); w.dir = G.sim.vx < -1 ? -1 : 1; w.fa = 0; w.fv = 0; w.side = 1; w.dz = false;
+    w.px = f.x; w.a0 = near(f.a, 0); w.x0 = f.x; w.y0 = f.y; Au().wipe('whirr');
+  },
+  step: function (w, G, dt) {
+    var f = w.f, t = w.t, gy, fl = 0.9 * f.sc;
+    setPose(f, w.fell ? FELL : STAND, Math.min(1, dt * 10));
+    // flung clear of the bike first, landing on one foot a couple of metres on
+    w.px = w.x0 + w.dir * 2.2 * Math.min(1, t / 0.35) * (2 - Math.min(1, t / 0.35));
+    gy = floorAt(G, w.px, w.gy0); w.gy0 = gy;
+    if (t < 1.65) {
+      var om = t < 1.0 ? 24 : 24 * Math.max(0.15, 1 - (t - 1.0) / 0.8);
+      w.ph += om * dt;
+      f.sx = Math.cos(w.ph); if (Math.abs(f.sx) < 0.1) f.sx = f.sx < 0 ? -0.1 : 0.1;
+      w.fa = Math.sin(t * 8) * (t < 0.9 ? 0.04 : 0.04 + (t - 0.9) * 0.45);
+      if (Math.random() < dt * 12) R.emit(0, w.px + rnd(-0.2, 0.2), gy + 0.05, rnd(-1.5, 1.5), rnd(0.2, 0.8), rnd(0.3, 0.6), rnd(0.08, 0.14), dustCol(G), { gr: 0.6, a: 0.5, drag: 2, front: 1 });
+    } else {
+      if (!w.fell) { w.fell = true; w.side = -w.dir; }
+      f.sx += (1 - f.sx) * Math.min(1, dt * 10);
+      if (Math.abs(w.fa) < 1.45) { w.fv += 9 * dt; w.fa += w.side * w.fv * dt; if (Math.abs(w.fa) >= 1.45) { w.fa = 1.45 * w.side; Au().wipe('pat'); puff(w.px - w.side * 0.8, gy + 0.1, 6, dustCol(G), 1.4); } }
+      if (!w.dz && t > 2.0) { w.dz = true; Au().wipe('cuckoo'); }
+    }
+    // standing on one foot, tipping about that foot; the first moment eases in from the crash pose
+    var tx = w.px - Math.sin(w.fa) * fl, ty = gy + 0.06 + Math.cos(w.fa) * fl + Math.sin(Math.PI * Math.min(1, t / 0.35)) * 0.8, e = Math.min(1, t / 0.25);
+    f.x = w.x0 + (tx - w.x0) * e; f.y = w.y0 + (ty - w.y0) * e; f.a = w.fa + w.a0 * (1 - e);
+    w.fx = f.x; w.fy = f.y;
+  },
+  draw: function (w, c, dd) {
+    var f = w.f, t = w.t, i;
+    drawFigure(c, f, dd);
+    if (t < 1.65) {                 // whoosh lines going round
+      c.lineWidth = 0.03; c.strokeStyle = 'rgba(255,255,255,0.75)';
+      for (i = 0; i < 3; i++) { var a0 = w.ph + i * 2.1, yy = f.y - 0.3 + i * 0.4; c.beginPath(); c.ellipse(f.x, yy, 0.62, 0.12, 0, a0 % TAU, a0 % TAU + 1.6); c.stroke(); }
+    }
+    if (w.fell && t > 2.0) {
+      var k = Math.min(1, (t - 2.0) * 4), hp = fw(f, 0), hx = hp.x, hy = hp.y;
+      // a spiral where the eyes would be
+      c.save(); c.translate(hx + 0.05, hy + 0.02); c.rotate(-t * 7); c.beginPath();
+      for (i = 0; i < 40; i++) { var ra = i * 0.35, rr = 0.004 * i * k; c[i ? 'lineTo' : 'moveTo'](Math.cos(ra) * rr, Math.sin(ra) * rr); }
+      c.lineWidth = 0.028; c.strokeStyle = '#ffe23d'; c.stroke(); c.restore();
+      var col = typeof dd.col[0] === 'string' ? dd.col[0] : '#ff3d7f';
+      for (i = 0; i < 3; i++) {
+        var a = t * 3.6 + i * TAU / 3, x = hx + Math.cos(a) * 0.55, y = hy + 0.45 + Math.sin(a) * 0.12, s = 0.19 * k * (0.8 + 0.2 * Math.sin(a));
+        c.save(); c.translate(x, y); c.scale(-Math.sin(a) > 0 ? 1 : -1, 1); c.rotate(Math.sin(t * 9 + i) * 0.25); tinyBike(c, s, i === 1 ? '#ffe23d' : col); c.restore();
+      }
+    }
+  }
+};
+
+/* Icepick: freezes into a block of ice and slides away like a curling stone, then shivers */
+var FROST = '#cfefff';
+function frosted(dd, fd, k) { fd.suit = [hexMix(dd.suit[0], FROST, k), hexMix(dd.suit[1], FROST, k), hexMix(dd.suit[2], FROST, k)]; return fd; }
+KINDS.shiver = {
+  start: function (w, G, dd) { w.rag = R.makeRag(G.sim, G.bikeDef); w.frozen = false; w.v = clamp(Math.abs(G.sim.vx) * 0.6, 2.4, 4.5) * (G.sim.vx < -1 ? -1 : 1); w.stop = false; w.brrT = 0.6; w.jit = 0; w.fd = Object.create(dd); w.gy0 = floorAt(G, G.sim.x, G.sim.y - 1); Au().wipe('freeze'); },
+  step: function (w, G, dt) {
+    var g = G.sim.g, i;
+    if (!w.frozen) {
+      R.stepRag(w.rag, G.track, g, dt);
+      var hp = w.rag.pts[2];
+      w.fx = hp.x; w.fy = hp.y;
+      if (w.t < 0.45 || (hp.y - floorAt(G, hp.x, hp.y - 1) > 0.7 && w.t < 0.9)) return;
+      // frozen stiff: measure the pose square to the ground, and build the block round it
+      w.frozen = true; var f = figFrom(w.rag), sl = RR.groundSlope(G.track, f.x), ca = Math.cos(-sl), sa = Math.sin(-sl), x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+      for (i = 0; i < f.pts.length; i++) { var p = f.pts[i], rx = p.x * ca - p.y * sa, ry = p.x * sa + p.y * ca, r = i === 0 ? 0.24 : 0.12; p.x = rx; p.y = ry; x0 = Math.min(x0, rx - r); x1 = Math.max(x1, rx + r); y0 = Math.min(y0, ry - r); y1 = Math.max(y1, ry + r); }
+      var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+      for (i = 0; i < f.pts.length; i++) { f.pts[i].x -= cx; f.pts[i].y -= cy; }
+      w.f = f; w.bw = (x1 - x0) / 2 + 0.06; w.bh = (y1 - y0) / 2 + 0.06; w.x = f.x + cx * Math.cos(sl); w.dist = 0; w.sl = sl;
+      for (i = 0; i < 8; i++) R.emit(2, w.x + rnd(-w.bw, w.bw), f.y + rnd(0, w.bh), rnd(-3, 3), rnd(1, 4), rnd(0.2, 0.4), 0.04, '#ffffff', { g: 1, front: 1 });
+      Au().wipe('slide'); G.cam.shake = Math.max(G.cam.shake, 0.3);
+    }
+    var gy = groundAt(G, w.x), ok = gy > G.track.minY - 5;
+    if (ok) { w.sl = RR.groundSlope(G.track, w.x); w.gy0 = gy; } else gy = w.gy0;
+    if (!w.stop) {
+      w.v += (-g * Math.sin(w.sl) - 0.07 * g * (w.v > 0 ? 1 : -1) - (w.dist > 4.5 ? w.v * 2 : 0)) * dt;
+      if (!ok) w.v *= 0.9;
+      w.x += w.v * Math.cos(w.sl) * dt; w.dist += Math.abs(w.v) * dt;
+      if (Math.abs(w.v) < 0.08 && w.t > 0.9) { w.stop = true; w.v = 0; }
+      if (Math.random() < dt * 30 * Math.min(1, Math.abs(w.v))) R.emit(2, w.x - w.bw * (w.v > 0 ? 1 : -1), gy + 0.02, -w.v * rnd(0.2, 0.6), rnd(0.5, 2), rnd(0.15, 0.3), 0.035, '#e9f8ff', { g: 1, front: 1 });
+    } else {
+      w.brrT -= dt;
+      if (w.brrT <= 0) { w.brrT = 1.5; w.jit = 0.45; Au().wipe('brr'); }
+    }
+    w.jit = Math.max(0, w.jit - dt);
+    // the block's middle sits half its height off the ground, square to the slope
+    w.bx = w.x - Math.sin(w.sl) * w.bh; w.by = gy + Math.cos(w.sl) * w.bh;
+    w.fx = w.bx; w.fy = w.by;
+  },
+  draw: function (w, c, dd) {
+    var i;
+    if (!w.frozen) { R.drawRag(c, w.rag, frosted(dd, w.fd, Math.min(1, w.t / 0.45) * 0.6)); return; }
+    var j = w.jit > 0 ? Math.sin(w.t * 90) * 0.03 : 0, bw = w.bw, bh = w.bh;
+    c.save(); c.translate(w.bx + j, w.by); c.rotate(w.sl);
+    R.drawRag(c, w.f, frosted(dd, w.fd, 0.6));
+    c.beginPath(); if (c.roundRect) c.roundRect(-bw, -bh, bw * 2, bh * 2, 0.1); else c.rect(-bw, -bh, bw * 2, bh * 2);
+    c.fillStyle = 'rgba(175,228,255,0.5)'; c.fill(); c.lineWidth = 0.08; c.strokeStyle = 'rgba(233,248,255,0.9)'; c.stroke(); c.lineWidth = 0.03; c.strokeStyle = '#2c5ea8'; c.stroke();
+    c.lineWidth = 0.04; c.strokeStyle = 'rgba(255,255,255,0.8)';
+    c.beginPath(); c.moveTo(-bw + 0.12, bh - 0.12); c.lineTo(-bw + 0.12 + bh * 0.6, bh - 0.12 - bh * 0.6); c.moveTo(-bw + 0.26, bh - 0.1); c.lineTo(-bw + 0.36, bh - 0.2); c.stroke();
+    c.lineWidth = 0.02; c.strokeStyle = 'rgba(255,255,255,0.55)'; c.beginPath(); c.moveTo(bw - 0.3, -bh + 0.1); c.lineTo(bw - 0.45, -bh + 0.3); c.lineTo(bw - 0.38, -bh + 0.42); c.stroke();
+    // icicles hanging off the top edge
+    for (i = 0; i < 3; i++) { var ix = bw - 0.15 - i * 0.18; A.shape(c, [ix - 0.05, bh, ix + 0.05, bh, ix, bh + 0.1 + (i % 2) * 0.06], '#e9f8ff', 0.015); }
+    c.restore();
+    if (w.stop && w.jit > 0) {
+      c.save(); c.translate(w.bx + w.bw * 0.2, w.by + w.bh + 0.35); c.scale(1, -1); c.font = '900 italic 0.26px ' + R.FONT; c.textAlign = 'center'; c.lineWidth = 0.06; c.strokeStyle = OUT; c.strokeText('brrr', 0, 0); c.fillStyle = '#9fe8ff'; c.fillText('brrr', 0, 0); c.restore();
+    }
+  }
+};
+
+/* Rhino: carried off in a stampede, a brawl cloud full of hooves and horns, leaving hoofprints (some of them on you) */
+function hoofprint(c, x, y, a, s) {
+  c.save(); c.translate(x, y); c.rotate(a); c.scale(s, s); c.fillStyle = 'rgba(40,28,18,0.55)';
+  c.beginPath(); c.ellipse(0, 0, 0.11, 0.035, 0, 0, TAU); c.fill();
+  for (var i = -1; i <= 1; i++) { c.beginPath(); c.ellipse(i * 0.1, 0.05 - Math.abs(i) * 0.015, 0.04, 0.025, 0, 0, TAU); c.fill(); }
+  c.restore();
+}
+KINDS.stampede = {
+  start: function (w, G) { w.rag = R.makeRag(G.sim, G.bikeDef); w.cx = G.sim.x; w.dir = G.sim.vx < -1 ? -1 : 1; w.prints = []; w.lastP = w.cx; w.pokes = []; w.out = false; w.k = 0; w.gy0 = floorAt(G, w.cx, G.sim.y - 1); w.cy = w.gy0; Au().wipe('gallop'); },
+  step: function (w, G, dt) {
+    var t = w.t, p = w.rag.pts, i, gy;
+    w.k = t < 0.12 ? 0 : t < 0.3 ? (t - 0.12) / 0.18 : t < 1.9 ? 1 : Math.max(0, 1 - (t - 1.9) / 0.3);
+    var mv = t > 0.2 && t < 1.95 ? w.dir * 2.3 * dt : 0;
+    w.cx += mv; gy = floorAt(G, w.cx, w.gy0); w.gy0 = gy; w.cy = gy;
+    R.stepRag(w.rag, G.track, G.sim.g, dt);
+    if (t > 0.2 && t < 1.95) {            // carried along, and well trodden on
+      for (i = 0; i < p.length; i++) { p[i].x += mv + (w.cx - p[2].x) * dt * 2; p[i].px += mv; }
+      if (Math.random() < dt * 8) { var j = (Math.random() * p.length) | 0; p[j].py -= rnd(0.01, 0.03); }
+      if (Math.abs(w.cx - w.lastP) > 0.3) { w.lastP = w.cx; var px = w.cx + rnd(-0.8, 0.4) * w.dir; w.prints.push({ x: px, y: floorAt(G, px, gy) + 0.02, a: RR.groundSlope(G.track, px), t: t }); }
+      if (Math.random() < dt * 14) R.emit(0, w.cx + rnd(-0.9, 0.9), gy + rnd(0, 0.4), -w.dir * rnd(0.5, 2), rnd(0.3, 1.2), rnd(0.4, 0.8), rnd(0.15, 0.3), dustCol(G), { gr: 0.8, a: 0.5, drag: 2, front: 1 });
+      if (Math.random() < dt * 14) w.pokes.push({ k: ['hoof', 'hoof', 'horn', 'boot', 'helmet', 'bang'][(Math.random() * 6) | 0], a: rnd(-0.5, Math.PI + 0.5), t: t, life: rnd(0.25, 0.4) });
+    }
+    if (!w.out && t > 1.95) { w.out = true; puff(w.cx, gy + 0.6, 16, '#e8dcc4', 3, 1.6); Au().wipe('poof'); }
+    for (i = w.pokes.length - 1; i >= 0; i--) if (t - w.pokes[i].t > w.pokes[i].life) w.pokes.splice(i, 1);
+    w.fx = w.k > 0.2 ? w.cx : p[2].x; w.fy = gy + 1;
+  },
+  draw: function (w, c, dd) {
+    var t = w.t, i, k = w.k, p = w.rag.pts;
+    for (i = 0; i < w.prints.length; i++) { var q = w.prints[i], al = Math.max(0, 1 - (t - q.t) / 5); if (al <= 0) continue; c.globalAlpha = al; hoofprint(c, q.x, q.y, q.a, 1); c.globalAlpha = 1; }
+    if (k < 0.95) {
+      R.drawRag(c, w.rag, dd);
+      if (w.out) {            // trodden on: two prints across the back of the suit
+        var hx = p[2].x, hy = p[2].y, sx = p[1].x, sy = p[1].y, a = Math.atan2(sy - hy, sx - hx);
+        hoofprint(c, hx + (sx - hx) * 0.35, hy + (sy - hy) * 0.35, a, 0.9); hoofprint(c, hx + (sx - hx) * 0.72, hy + (sy - hy) * 0.72, a + 0.4, 0.9);
+      }
+    }
+    if (k <= 0.01) return;
+    var x = w.cx, y = w.cy + 0.95 * k, R0 = 1.3 * k;
+    // things sticking out of the cloud, drawn first so the cloud covers where they join
+    for (i = 0; i < w.pokes.length; i++) {
+      var pk = w.pokes[i], e = Math.sin(Math.PI * Math.min(1, (t - pk.t) / pk.life)), ex = x + Math.cos(pk.a) * (R0 * 0.8 + 0.3 * e), ey = y + Math.sin(pk.a) * (R0 * 0.6 + 0.3 * e);
+      c.save(); c.translate(ex, ey); c.rotate(pk.a - Math.PI / 2);
+      if (pk.k === 'hoof') { A.tube(c, [0, -0.3, 0, 0.12], 0.12, '#8d939d', 0.035); A.shape(c, [-0.09, 0.1, 0.09, 0.1, 0.08, 0.2, -0.08, 0.2], '#3a3f4b', 0.03); }
+      else if (pk.k === 'horn') { A.blob(c, [-0.18, -0.3, -0.2, 0.1, 0.0, 0.22, 0.2, 0.1, 0.18, -0.3], '#8d939d', 0.035); A.shape(c, [-0.06, 0.16, 0.06, 0.16, 0.0, 0.44], '#f1ecdc', 0.03); A.circ(c, -0.08, 0.02, 0.025, OUT, 0); }
+      else if (pk.k === 'boot') { A.tube(c, [0, -0.3, 0, 0.1], 0.11, dd.suit[1], 0.035); A.circ(c, 0, 0.13, 0.08, dd.suit[2], 0.03); }
+      else if (pk.k === 'helmet') A.helmet(c, 0, 0.05, 0.15, 0, dd, dd.kind);
+      else { c.beginPath(); for (var q2 = 0; q2 < 14; q2++) { var sa = q2 * Math.PI / 7, sr = q2 % 2 ? 0.08 : 0.2; c[q2 ? 'lineTo' : 'moveTo'](Math.sin(sa) * sr, Math.cos(sa) * sr); } c.closePath(); c.fillStyle = '#ffe23d'; c.fill(); c.lineWidth = 0.025; c.strokeStyle = OUT; c.stroke(); }
+      c.restore();
+    }
+    // the cloud: a ring of boiling puffs, outlined as one shape
+    var n = 10, cs = [];
+    for (i = 0; i < n; i++) { var ang = i * TAU / n + t * 1.5, r = (0.45 + 0.12 * Math.sin(t * 13 + i * 2.1)) * k; cs.push(x + Math.cos(ang) * R0 * 0.75, y + Math.sin(ang) * R0 * 0.5, r); }
+    cs.push(x, y, 0.85 * k);
+    c.fillStyle = OUT; for (i = 0; i < cs.length; i += 3) { c.beginPath(); c.arc(cs[i], cs[i + 1], cs[i + 2] + 0.035, 0, TAU); c.fill(); }
+    c.fillStyle = '#e8dcc4'; for (i = 0; i < cs.length; i += 3) { c.beginPath(); c.arc(cs[i], cs[i + 1], cs[i + 2], 0, TAU); c.fill(); }
+    c.fillStyle = 'rgba(255,255,255,0.45)'; for (i = 0; i < cs.length - 3; i += 6) { c.beginPath(); c.arc(cs[i] - 0.08, cs[i + 1] + 0.1, cs[i + 2] * 0.4, 0, TAU); c.fill(); }
+    c.lineWidth = 0.03; c.strokeStyle = 'rgba(140,110,70,0.8)';
+    for (i = 0; i < 3; i++) { var sa2 = t * 9 + i * 2.1; c.beginPath(); c.arc(x + Math.cos(sa2) * 0.2, y + Math.sin(sa2 * 1.3) * 0.15, 0.14, sa2, sa2 + 3.5); c.stroke(); }
+  }
+};
+
+/* Albatross: flaps like a bird, glides a little, then plants face first in a puff of feathers */
+function wings(w, f, th, sw) {
+  // th: how far up the arms are (radians), sw: how far they are swept back
+  var sh = f.pts[1], sc = f.sc, i;
+  for (i = 0; i < 2; i++) {
+    var a = th + (i ? 0.15 : 0), b = a - 0.5 * Math.cos(w.t * 14) * (w.mode === 0 ? 1 : 0.2);
+    var ux = -Math.sin(a), uy = -sw, L = Math.sqrt(ux * ux + uy * uy), vx = -Math.sin(b), vy = -sw * 1.3, L2 = Math.sqrt(vx * vx + vy * vy);
+    var e = f.pts[i ? 7 : 3], h = f.pts[i ? 8 : 4];
+    e.x = sh.x + ux / L * 0.3 * sc; e.y = sh.y + uy / L * 0.3 * sc; h.x = e.x + vx / L2 * 0.29 * sc; h.y = e.y + vy / L2 * 0.29 * sc;
+  }
+}
+KINDS.nosedive = {
+  start: function (w, G, dd) {
+    var f = w.f = figure(G), s = G.sim;
+    w.dir = s.vx < -0.5 ? -1 : 1; w.vx = w.dir * clamp(Math.abs(s.vx) * 0.4, 1.8, 3.5); w.vy = 2.5; w.mode = 0; w.gy0 = floorAt(G, f.x, f.y - 1);
+    w.fcol = ['#ffffff', '#f5f1e6', dd.suit[1], '#ffffff']; w.dust = dustCol(G);
+    Au().wipe('flap');
+  },
+  step: function (w, G, dt) {
+    var f = w.f, t = w.t, gy = floorAt(G, f.x, w.gy0), aim = 0;
+    w.gy0 = gy;
+    setPose(f, FLY, Math.min(1, dt * 9));
+    if (w.mode === 0) {            // flapping
+      wings(w, f, 1.1 * Math.sin(t * 14), 0.25);
+      w.vy += (0.6 + 0.9 * Math.sin(t * 14) - w.vy) * Math.min(1, dt * 4);
+      aim = -w.dir * Math.PI / 2 + w.dir * 0.15;
+      if (Math.random() < dt * 4) feathers(f.x, f.y + 0.4, 1, w.fcol, 0.6);
+      if (t > 1.0) w.mode = 1;
+    } else if (w.mode === 1) {     // gliding
+      wings(w, f, 0.05 + Math.sin(t * 3) * 0.08, 0.3);
+      w.vy += (-0.6 - w.vy) * Math.min(1, dt * 3);
+      aim = -w.dir * Math.PI / 2 - w.dir * Math.sin(t * 4) * 0.08;
+      if (t > 1.55) { w.mode = 2; Au().wipe('dive'); }
+    } else if (w.mode === 2) {     // nose down
+      wings(w, f, -0.9, 1.2);
+      w.vy -= 10 * dt; w.vx *= 1 - Math.min(1, dt * 1.5);
+      aim = -w.dir * Math.PI * 0.85;
+    }
+    if (w.mode < 3) {
+      f.a = near(f.a, aim); f.a += (aim - f.a) * Math.min(1, dt * (w.mode === 2 ? 6 : 5));
+      f.x += w.vx * dt; f.y += w.vy * dt;
+      if (w.mode < 2 && f.y < gy + 1.1) { f.y = gy + 1.1; if (w.vy < 0) w.vy = 0; }
+      var hd = fw(f, 0), hg = floorAt(G, hd.x, gy);
+      if (w.mode === 2 && hd.y < hg + 0.02) {
+        w.mode = 3; w.pt = t; f.y += hg - 0.12 - hd.y; w.hx = hd.x; w.hy = hg; Au().wipe('plant'); G.cam.shake = Math.max(G.cam.shake, 0.4);
+        feathers(hd.x, hg + 0.2, 22, w.fcol, 2.4); puff(hd.x, hg + 0.1, 6, w.dust, 1.6);
+      }
+    } else {                        // legs kicking in the air, slower and slower
+      var kk = Math.max(0, 1 - (t - w.pt) / 1.6), s = Math.sin((t - w.pt) * 16) * 0.22 * kk;
+      f.pts[5].x = (0.05 + s) * f.sc; f.pts[6].x = (0.02 + s * 1.8) * f.sc; f.pts[9].x = (-0.04 - s) * f.sc; f.pts[10].x = (-0.08 - s * 1.8) * f.sc;
+      wings(w, f, 0.4 + 0.9 * Math.sin((t - w.pt) * 11) * kk, -0.2);
+    }
+    w.fx = f.x; w.fy = f.y;
+  },
+  draw: function (w, c, dd) {
+    if (w.mode === 3) { c.save(); aboveGround(c, dd._track, w.hx, 2, w.hy + 6); drawFigure(c, w.f, dd); c.restore(); } else drawFigure(c, w.f, dd);
+    if (w.mode === 3) { c.beginPath(); c.ellipse(w.hx, w.hy, 0.32, 0.12, 0, 0, Math.PI); c.fillStyle = w.dust; c.fill(); c.lineWidth = 0.03; c.strokeStyle = OUT; c.stroke(); }
+  }
+};
+
 RR.Wipe = {
   KINDS: KINDS,
   start: function (kind, G, e) {

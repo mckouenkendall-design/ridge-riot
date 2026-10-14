@@ -32,24 +32,38 @@ const out = process.argv[2] || '/tmp';
       return buf.getChannelData(0);
     }
     const result = { engines: {}, sfx: {}, images: {} };
-    // each engine: 0.6 s idle, then a pull through the gears to flat out, then throttle shut
+    // each engine: 0.6 s idle, then a pull through the gears to flat out, then throttle shut.
+    // turbo builds the way the Spool 600's does (0 to 1 over 2.2 s of held gas); the other engines ignore it
     for (const d of RR.BIKES) {
       const dur = 6.5; let v = 0;
       const data = await render(dur, () => { Au.engineStart(d); }, t => {
         const gas = t > 0.6 && t < 5.2 ? 1 : 0; if (gas) v = Math.min(d.vmax, v + d.vmax / 4.2 * 0.02); else if (t >= 5.2) v = Math.max(0, v - d.vmax * 0.02 * 0.4);
-        Au.engineUpdate({ v, vmax: d.vmax, gas, air: false, boost: false, dt: 0.02 });
+        Au.engineUpdate({ v, vmax: d.vmax, gas, air: false, boost: false, dt: 0.02, turbo: gas ? Math.min(1, (t - 0.6) / 2.2) : 0 });
       });
       result.engines[d.id] = { type: d.snd.type, idle: Object.assign(level(data, 0.25, 0.6), stats(data, 0.3)), mid: Object.assign(level(data, 2.2, 2.8), stats(data, 2.4)), top: Object.assign(level(data, 4.6, 5.2), stats(data, 4.8)), off: level(data, 5.6, 6.3) };
       if (['scrapper', 'sling'].includes(d.id)) result.images[d.id] = specImage(data, dur);
+      Au.engineStop();
+    }
+    // the turbo bike held at the same speed and throttle at several boost levels: the whistle is the loudest
+    // pitch above 1.2 kHz, and its level is the rms of everything above 1.2 kHz
+    result.turbo = {};
+    const td = RR.BIKE.turbo;
+    if (td) for (const k of [0, 0.25, 0.5, 0.75, 1]) {
+      const data = await render(2.6, () => { Au.engineStart(td); }, t => { Au.engineUpdate({ v: td.vmax * 0.6, vmax: td.vmax, gas: 1, air: false, boost: false, dt: 0.02, turbo: t > 0.3 ? k : 0 }); });
+      const N = 8192, m = spectrum(data, 1.6, N); let pk = 0, pi = 0, hi = 0, all = 0;
+      for (let i = 2; i < N / 2; i++) { const f = i * SR / N; all += m[i] * m[i]; if (f > 1200) { hi += m[i] * m[i]; if (m[i] > pk) { pk = m[i]; pi = i; } } }
+      result.turbo[k] = Object.assign(level(data, 1.4, 2.4), { whistleHz: Math.round(pi * SR / N), highShare: +(hi / all).toFixed(3) });
       Au.engineStop();
     }
     const shots = { land_soft: () => Au.land(2.5, 0), land_hard: () => Au.land(9, 0), bottom: () => Au.bottom(4), crash: () => Au.crash(15), splash: () => Au.splash('water'), lava: () => Au.splash('lava'), fall: () => Au.fall(),
       flip1: () => Au.flip(1), flip3: () => Au.flip(3), boost: () => Au.boost(), go: () => Au.go(), finish: () => Au.finish(), star: () => { Au.star(0); }, newBest: () => Au.newBest(), unlocked: () => Au.unlocked(),
       ui_tap: () => Au.ui('tap'), ui_go: () => Au.ui('go'), ui_back: () => Au.ui('back'), ui_no: () => Au.ui('no'), ui_swipe: () => Au.ui('swipe'),
       pad: () => Au.pad(), bus_crunch: () => Au.crunch(), bonk: () => Au.bonk(), knock: () => Au.knock(6), coin: () => Au.coin(3),
+      hop: () => Au.hop(), blowoff_03: () => Au.blowoff(0.3), blowoff_1: () => Au.blowoff(1), spool: () => Au.spool(), smash_wood: () => Au.smash(4), smash_rock: () => Au.smash(1), smash_ice: () => Au.smash(2), smash_tyre: () => Au.smash(12), unstick: () => Au.unstick(), pivot: () => Au.pivot(),
       crate_tap: () => Au.crate('tap', 1), crate_pry: () => Au.crate('crack', 2), crate_common: () => Au.crate('open', 0), crate_rare: () => Au.crate('open', 2), crate_legendary: () => Au.crate('open', 4) };
-    ['stars', 'birds', 'inflate', 'pop', 'tumble', 'poof', 'bleat', 'bell', 'smash', 'zap', 'boing', 'whistleUp', 'ting', 'spring', 'boom', 'flutter', 'pat', 'pomf', 'squeak', 'whoosh', 'fwump'].forEach(k => { shots['wipe_' + k] = () => Au.wipe(k, 6); });
-    for (const k in shots) { let done = false; const data = await render(k === 'geode_opal' || k === 'wipe_bell' ? 3.2 : 1.9, () => {}, t => { if (!done && t >= 0.1) { done = true; shots[k](); } });
+    ['stars', 'birds', 'inflate', 'pop', 'tumble', 'poof', 'bleat', 'bell', 'smash', 'zap', 'boing', 'whistleUp', 'ting', 'spring', 'boom', 'flutter', 'pat', 'pomf', 'squeak', 'whoosh', 'fwump',
+      'vent', 'pfft', 'dump', 'shell', 'clonk', 'peek', 'chatter', 'honk', 'yoohoo', 'splat', 'peel', 'stretch', 'swirl', 'tada', 'whirr', 'cuckoo', 'freeze', 'slide', 'brr', 'gallop', 'flap', 'dive', 'plant'].forEach(k => { shots['wipe_' + k] = () => Au.wipe(k, 6); });
+    for (const k in shots) { let done = false; const data = await render(['geode_opal', 'wipe_bell', 'wipe_gallop', 'wipe_cuckoo'].includes(k) ? 3.2 : 1.9, () => {}, t => { if (!done && t >= 0.1) { done = true; shots[k](); } });
       let end = 0; for (let i = data.length - 1; i > 0; i--) if (Math.abs(data[i]) > 0.004) { end = i / SR; break; }
       result.sfx[k] = Object.assign(level(data, 0.1, Math.max(0.3, end)), stats(data, 0.12), { lastsS: +(end - 0.1).toFixed(2) }); }
     // layers + music
@@ -68,6 +82,8 @@ const out = process.argv[2] || '/tmp';
   delete res.images;
   console.log('ENGINES (idle / mid revs / flat out):  rms, peak, clipped samples, lowest strong pitch Hz, loudest pitch Hz, brightness (centroid Hz)');
   for (const id in res.engines) { const e = res.engines[id]; const f = s => `rms ${s.rms} pk ${s.peak} clip ${s.clip} low ${String(s.lowHz).padStart(4)} loud ${String(s.peakHz).padStart(4)} bright ${String(s.centroid).padStart(4)}`; console.log(id.padEnd(9), e.type.padEnd(8), '|', f(e.idle), '|', f(e.mid), '|', f(e.top), '| off-throttle rms', e.off.rms); }
+  console.log('\nTURBO WHISTLE (Spool 600 at 60% speed, full gas, boost held at each level): rms, peak, clipped, loudest pitch above 1.2 kHz, share of energy above 1.2 kHz');
+  for (const k in res.turbo) { const s = res.turbo[k]; console.log(('boost ' + k).padEnd(11), `rms ${s.rms} pk ${s.peak} clip ${s.clip} whistle ${String(s.whistleHz).padStart(5)}Hz high share ${s.highShare}`); }
   console.log('\nEFFECTS: rms, peak, clipped, loudest pitch, brightness, how long it lasts');
   for (const k in res.sfx) { const s = res.sfx[k]; console.log(k.padEnd(11), `rms ${s.rms} pk ${s.peak} clip ${s.clip} loud ${String(s.peakHz).padStart(5)}Hz bright ${String(s.centroid).padStart(5)}Hz` + (s.lastsS != null ? ` lasts ${s.lastsS}s` : '')); }
   if (errs.length) console.log('ERRORS', errs.slice(0, 5));

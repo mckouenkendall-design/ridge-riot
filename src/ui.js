@@ -9,11 +9,19 @@ var UI = RR.UI = { cur: '', world: 0, gi: 0, gtab: 'bikes', pick: null };
 function $(id) { return doc.getElementById(id); }
 function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 function fmt(t) { return t.toFixed(2); }
+/* the three stars of a track, each with what it is for */
+function starBits(bits, cls) { return '<span class="stars sb ' + (cls || '') + '">' + [1, 2, 4].map(function (b) { return '<i class="star' + (bits & b ? ' on' : '') + '"></i>'; }).join('') + '</span>'; }
+function goalMarks(i) { return '<span class="gm"><i class="g' + (P.gearHave(i) ? ' on' : '') + '" title="Hidden gear">' + IC.gear + '</i><i class="c' + (P.chalHave(i) ? ' on' : '') + '" title="Challenge">' + IC.chal + '</i></span>'; }
 function stars(n, cls) { var s = '<span class="stars ' + (cls || '') + '">'; for (var i = 0; i < 3; i++) s += '<i class="star' + (i < n ? ' on' : '') + '"></i>'; return s + '</span>'; }
 var NUG = '<i class="nug"></i>';
 UI.NUG = NUG; UI.esc = esc;
 
 var IC = {
+  gear: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M10.3 1.8h3.4l.5 2.6 1.9.8 2.2-1.5 2.4 2.4-1.5 2.2.8 1.9 2.6.5v3.4l-2.6.5-.8 1.9 1.5 2.2-2.4 2.4-2.2-1.5-1.9.8-.5 2.6h-3.4l-.5-2.6-1.9-.8-2.2 1.5-2.4-2.4 1.5-2.2-.8-1.9-2.6-.5v-3.4l2.6-.5.8-1.9-1.5-2.2 2.4-2.4 2.2 1.5 1.9-.8zM12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2z"/></svg>',
+  chal: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.5a9.5 9.5 0 1 0 9.5 9.5h-3a6.5 6.5 0 1 1-6.5-6.5V2.5zm1.2 0v6.4l4.6-3.2 1.6 2.3-6.2 4.3V2.5z"/></svg>',
+  flip: '<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M5 13a7 7 0 1 1 3 5.7"/><path fill="currentColor" d="M2.3 10.8l5.4 1.2-3.9 3.9z"/></svg>',
+  clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2.6"/><path stroke="currentColor" stroke-width="2.6" stroke-linecap="round" d="M12 9v4.5l3 1.8M9.5 2.5h5"/></svg>',
+  flag: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M5 2.5h2.4v19H5zM8.6 3.4h11l-2.6 4 2.6 4h-11z"/></svg>',
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="#f6f2e7" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4 7 12l8 8"/></svg>',
   pause: '<svg viewBox="0 0 24 24" fill="#f6f2e7"><rect x="5" y="4" width="5" height="16" rx="1.2"/><rect x="14" y="4" width="5" height="16" rx="1.2"/></svg>',
   redo: '<svg viewBox="0 0 24 24" fill="none" stroke="#f6f2e7" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3.5V8h-4.5"/></svg>',
@@ -310,7 +318,7 @@ var toastT = 0;
 UI.toast = function (text) { var t = $('toast'); t.textContent = text; t.className = 'plate on'; clearTimeout(toastT); toastT = setTimeout(function () { t.className = "plate"; }, Math.max(2800, text.length * 60)); };
 UI.toastBikes = function (list) {
   Au.unlocked();
-  var bikes = list.filter(function (x) { return !x.kind; }), tro = list.filter(function (x) { return x.kind; }), t = [];
+  var bikes = list.filter(function (x) { return !!x.unlock; }), tro = list.filter(function (x) { return !x.unlock; }), t = [];
   if (bikes.length) t.push('New bike in the garage: ' + bikes.map(function (d) { return d.name; }).join(', '));
   if (tro.length) t.push('Trophy earned: ' + tro.map(function (d) { return d.name; }).join(', '));
   UI.toast(t.join('. ')); Store.save();
@@ -334,12 +342,13 @@ UI.tracks = function () {
     var info = RR.trackInfo(i), open = P.trackOpen(i), best = Store.data.best[i];
     h += '<button class="card' + (open ? '' : ' locked') + '" data-act="track" data-i="' + i + '" aria-label="' + esc(info.name) + (open ? '' : ', locked') + '">' +
       '<canvas data-thumb="' + i + '" width="240" height="90"></canvas><span class="num">' + (info.num + 1) + '</span><span class="nm">' + esc(info.name) + '</span>' +
-      (open ? '<span class="st">' + stars(P.starsFor(i)) + '</span>' + (best ? '<span class="bt">' + fmt(best) + '</span>' : '') : '<span class="lock">' + IC.lock + '</span>') + '</button>';
+      (open ? '<span class="st">' + starBits(P.starBits(i)) + goalMarks(i) + '</span>' + (best ? '<span class="bt">' + fmt(best) + '</span>' : '') : '<span class="lock">' + IC.lock + '</span>') + '</button>';
   }
   $('grid').innerHTML = h;
   var cvs = $('grid').querySelectorAll('canvas');
   for (i = 0; i < cvs.length; i++) R.trackThumb(cvs[i], RR.getTrack(+cvs[i].getAttribute('data-thumb')), T.ground[0], T.crust === '#f6fbff' ? '#9db8e8' : T.id === 'race' ? '#3a3d46' : T.crust);
-  $('lockmsg').textContent = wopen ? (P.worldCount(w) < 8 ? 'Finish a track to open the next one.' : P.worldStars(w) < 24 ? 'Three stars on all eight earns an epic crate.' : '') : W.name + ' opens at ' + W.need + ' stars. You have ' + tot + '.';
+  var gW = 0, cW = 0; for (i = w * 8; i < w * 8 + 8; i++) { if (P.gearHave(i)) gW++; if (P.chalHave(i)) cW++; }
+  $('lockmsg').textContent = wopen ? (P.worldCount(w) < 8 ? 'Finish a track to open the next one. ' : P.worldStars(w) < 24 ? 'Three stars on all eight earns an epic crate. ' : '') + 'Gears found here: ' + gW + ' of 8. Challenges: ' + cW + ' of 8.' : W.name + ' opens at ' + W.need + ' stars. You have ' + tot + '.';
 };
 
 /* ------------------------------------------------------------------ */
@@ -378,11 +387,11 @@ UI.garage = function () {
   $('gtabs').innerHTML = h;
   $('gnug').innerHTML = NUG + Store.data.nuggets;
   var f = Store.data.fit[d.id] || {}, look = previewLook();
-  $('gcap').innerHTML = '<b>' + esc(d.name) + '</b>' + (tab === 'bikes' ? '<i>' + esc(d.tag) + '</i>' + esc(d.blurb) : (look.paint ? esc(look.paint.name) + ' paint' : 'Stock paint') + ', ' + (look.rider ? esc(look.rider.name) : 'stock rider') + '.');
+  $('gcap').innerHTML = '<b>' + esc(d.name) + '</b>' + (tab === 'bikes' ? '<i>' + esc(d.tag) + '</i>' + esc(d.trick || d.blurb) : (look.paint ? esc(look.paint.name) + ' paint' : 'Stock paint') + ', ' + (look.rider ? esc(look.rider.name) : 'stock rider') + '.');
   h = '';
   if (tab === 'bikes') {
     RR.BIKES.forEach(function (b) { if (P.bikeOpen(b)) own++; });
-    h += '<div class="tiles t5">';
+    h += '<div class="tiles scroll t6 bk" id="tiles">';      // 24 bikes: a list that scrolls, in tiles big enough to tap
     RR.BIKES.forEach(function (b, n) { h += '<button class="tile' + (P.bikeOpen(b) ? '' : ' locked') + (b.id === Store.data.bike ? ' sel' : '') + (n === UI.gi ? ' cur' : '') + '" data-act="gdot" data-i="' + n + '" aria-label="' + esc(b.name) + '"><canvas data-bike="' + n + '"></canvas></button>'; });
     h += '</div><div class="info"><div class="nm"><h3>' + esc(d.name) + '</h3></div><div class="bars">';
     var st = RR.bikeStats(d);
@@ -439,7 +448,14 @@ UI.garage = function () {
   $('gpanel').className = 'gright plate tab-' + tab;
   var tl = $('tiles');
   if (tl) {
-    if (tileScroll < 0) { var c0 = tl.querySelector('.tile.cur'); tl.scrollTop = c0 ? Math.max(0, c0.offsetTop - tl.clientHeight / 2 + c0.offsetHeight / 2) : 0; tileScroll = tl.scrollTop; }
+    // the tiles get their height first: until then the list is too short to hold the old scroll position,
+    // and the browser would quietly snap it back to the top
+    sizeTiles();
+    if (tileScroll < 0) {
+      // open with the chosen tile in the middle of the list (measured on screen: offsetTop counts from the panel, not the list)
+      var c0 = tl.querySelector('.tile.cur'), dy = c0 ? c0.getBoundingClientRect().top - tl.getBoundingClientRect().top : 0;
+      tl.scrollTop = c0 ? Math.max(0, dy - tl.clientHeight / 2 + c0.offsetHeight / 2) : 0; tileScroll = tl.scrollTop;
+    }
     else tl.scrollTop = tileScroll;
     tl.addEventListener('scroll', function () { tileScroll = tl.scrollTop; paintTiles(false); }, { passive: true });
   }
@@ -453,7 +469,7 @@ function sizeTiles() {
   var tl = $('tiles'); if (!tl || !tl.clientWidth) return;
   var cols = tl.classList.contains('t9') ? 9 : tl.classList.contains('t7') ? 7 : 6, cs = root.getComputedStyle(tl);
   var w = (tl.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0) - (parseFloat(cs.columnGap) || 0) * (cols - 1)) / cols;
-  tl.style.setProperty('--th', (w * (cols === 9 ? 0.92 : 1)).toFixed(2) + 'px');
+  tl.style.setProperty('--th', (w * (tl.classList.contains('bk') ? 0.7 : cols === 9 ? 0.92 : 1)).toFixed(2) + 'px');
 }
 /* a trophy has been earned and not looked at yet */
 function trophyNew() { var n = false; RR.TROPHIES.forEach(function (it) { if (Store.data.fresh[it.id] && P.reallyOwns(it)) n = true; }); return n; }
@@ -650,7 +666,10 @@ UI.onReset = function () {
   if (i === 0 && !touchy) tip = 'W or up: gas. S or down: brake. A and D, or left and right: lean back and forward.';
   if (tilt && i === 0) tip = 'Tilt the phone to lean. The lean buttons still work.';
   if (G.bikeDef.bonk && !tip) tip = 'The roll hoop takes one knock on the head for you. Only one.';
-  $('howmid').innerHTML = go + (tip ? '<small>' + esc(tip) + '</small>' : '');
+  var st = RR.STAR_TIMES[i], ch = G.track.chal;
+  var goals = '<span class="goals"><span>' + IC.flag + 'Finish</span><span>' + IC.clock + 'Under ' + fmt(st[0]) + '</span><span>' + IC.flip + st[1] + ' flip' + (st[1] > 1 ? 's' : '') + ' in one run</span></span>' +
+    (ch ? '<span class="chal' + (P.chalHave(i) ? ' done' : '') + '">' + IC.chal + 'Challenge: ' + esc(RR.chalText(ch)) + (P.chalHave(i) ? ' (done)' : '') + '</span>' : '');
+  $('howmid').innerHTML = go + goals + (tip ? '<small>' + esc(tip) + '</small>' : '');
   $('pads').className = 'pads' + (Store.data.settings.hints ? '' : ' off');
   UI.measurePads();
   lastGoal = -1; lastClk = ''; lastPads = '';
@@ -675,8 +694,10 @@ UI.hud = function (g, In) {
   var s = g.sim, i = g.track.index, st = RR.STAR_TIMES[i];
   var txt = fmt(s.finished ? s.finishTime : s.time);
   if (txt !== lastClk) { $('clk').textContent = txt; lastClk = txt; }
-  var tier = s.time <= st[0] ? 3 : s.time <= st[1] ? 2 : 1;
-  if (tier !== lastGoal) { lastGoal = tier; $('goal').innerHTML = stars(tier) + '<span>' + (tier === 3 ? 'under ' + fmt(st[0]) : tier === 2 ? 'under ' + fmt(st[1]) : 'just finish') + '</span>'; }
+  var inTime = s.time <= st[0], fl = Math.min(s.flips, 99), cp = RR.chalProgress(g.chal), key = (inTime ? 1 : 0) + ':' + fl + ':' + cp + ':' + (g.chal && g.chal.done ? 1 : 0);
+  if (key !== lastGoal) { lastGoal = key;
+    $('goal').innerHTML = '<span class="hg' + (inTime ? ' on' : '') + '">' + IC.clock + fmt(st[0]) + '</span><span class="hg' + (fl >= st[1] ? ' on' : '') + '">' + IC.flip + fl + '/' + st[1] + '</span>' +
+      (g.chal ? '<span class="hg c' + (g.chal.done ? ' on' : '') + '">' + IC.chal + (cp ? esc(cp) : '') + '</span>' : ''); }
   var pads = (In.L ? 'L' : '') + (In.R ? 'R' : '') + (In.G ? 'G' : '') + (In.B ? 'B' : '');
   if (pads !== lastPads) { lastPads = pads; $('padB').className = 'pad b' + (In.L ? ' on' : ''); $('padF').className = 'pad f' + (In.R ? ' on' : ''); $('padG').className = 'pad g' + (In.G && !In.B ? ' on' : ''); $('padK').className = 'pad k' + (In.B ? ' on' : ''); }
   var bo = $('boost');
@@ -687,13 +708,19 @@ UI.results = function (r, again) {
   var i = r.track, info = RR.trackInfo(i), st = RR.STAR_TIMES[i], h, k;
   var next = i + 1 < RR.TRACK_COUNT && P.trackOpen(i + 1) ? i + 1 : -1;
   h = '<div class="tn">' + esc(RR.WORLDS[info.world].name) + ' ' + (info.num + 1) + ', ' + esc(info.name) + '</div><div class="time">' + fmt(r.time) + '</div>' +
-      '<div class="big"><i class="star' + (again && r.stars > 0 ? ' on' : '') + '" id="rs0"></i><i class="star' + (again && r.stars > 1 ? ' on' : '') + '" id="rs1"></i><i class="star' + (again && r.stars > 2 ? ' on' : '') + '" id="rs2"></i></div>';
+      '<div class="big">' + [1, 2, 4].map(function (b, n) { var lab = b === 1 ? 'Finish' : b === 2 ? 'Under ' + fmt(st[0]) : st[1] + ' flip' + (st[1] > 1 ? 's' : ''); return '<span class="sg"><i class="star' + (again && ((r.bits | r.bitsBefore) & b) ? ' on' : '') + '" id="rs' + n + '"></i><small class="' + (r.bits & b ? 'got' : (r.bitsBefore & b ? 'had' : '')) + '">' + lab + '</small></span>'; }).join('') + '</div>';
   var line;
   if (r.best && r.old) line = '<b>New best</b> ' + fmt(r.old - r.time) + ' quicker than before';
   else if (r.best) line = '<b>First finish</b>';
   else line = 'Your best is ' + fmt(r.old) + ', this was ' + fmt(r.time - r.old) + ' off it';
   h += '<div class="line">' + line + '</div>';
-  h += '<div class="line">' + (r.stars === 3 ? 'All three stars. Nothing left to prove here.' : r.stars === 2 ? 'Three stars needs under ' + fmt(st[0]) + '.' : 'Two stars needs under ' + fmt(st[1]) + ', three needs under ' + fmt(st[0]) + '.') + '</div>';
+  var all = r.bits | r.bitsBefore, miss = [];
+  if (!(all & 2)) miss.push('finish under ' + fmt(st[0]));
+  if (!(all & 4)) miss.push('land ' + st[1] + ' flip' + (st[1] > 1 ? 's' : '') + ' in one run (you landed ' + r.flips + ')');
+  h += '<div class="line">' + (miss.length ? 'Still to get: ' + miss.join(', and ') + '.' : 'All three stars here.') + '</div>';
+  var ch = G.track && G.track.chal;
+  if (ch) h += '<div class="line chl' + (P.chalHave(i) ? ' done' : '') + '">' + IC.chal + (r.chal ? '<b>Challenge done</b> ' : P.chalHave(i) ? 'Challenge done: ' : 'Challenge: ') + esc(RR.chalText(ch)) + '</div>';
+  for (k = 0; k < (r.goals || []).length; k++) if (r.goals[k].why !== 'Trophy') h += '<div class="unl">' + esc(r.goals[k].why) + ': ' + (r.goals[k].item ? esc(r.goals[k].item.name) : 'an epic crate') + '</div>';
   var pay = r.pay, bits = [];
   if (pay) {
     bits.push('finish ' + pay.finish); if (pay.stars) bits.push('new stars ' + pay.stars); if (pay.flips) bits.push('flips ' + pay.flips); if (pay.best) bits.push('new best ' + pay.best);
@@ -710,7 +737,7 @@ UI.results = function (r, again) {
   $('res').innerHTML = h;
   UI.show('results');
   if (again) return;
-  for (k = 0; k < r.stars; k++) (function (n) { setTimeout(function () { var e = $('rs' + n); if (e && UI.cur === 'results') { e.className = 'star on'; Au.star(n); } }, 350 + n * 330); })(k);
+  [1, 2, 4].forEach(function (b, n) { if (!((r.bits | r.bitsBefore) & b)) return; setTimeout(function () { var e = $('rs' + n); if (e && UI.cur === 'results') { e.className = 'star on'; Au.star(n); } }, 350 + n * 330); });
   setTimeout(function () { if (UI.cur !== 'results') return; if (r.bikes.length || r.worlds.length || (r.crates || []).length || (r.trophies || []).length) Au.unlocked(); else if (r.best && r.old) Au.newBest(); else if (pay) Au.coin(2); }, 350 + r.stars * 330 + 150);
 };
 
@@ -719,15 +746,16 @@ RR.boot = function () {
   Store.load();
   P.claim();
   var owed = P.settle();      // old saves are paid for the stars and worlds they already have
-  var news = Store.data.news < 3;
-  if (owed.nuggets || owed.crates.length || news) { Store.data.news = 3; Store.save(); }
+  var news = Store.data.news < 3, news4 = Store.data.news < 4;
+  if (owed.nuggets || owed.crates.length || news || news4) { Store.data.news = 4; Store.save(); }
   R.init($('stage'));
   UI.init();
   // the crate answers to a tap anywhere
   $('cratecv').addEventListener('pointerdown', function (e) { e.preventDefault(); Au.unlock(); afterUnlock(); crateHit(); });
   G.menu();
   UI.title();
-  if (owed.nuggets || owed.crates.length || news) setTimeout(function () { UI.toast('New: crates, trophies and a showroom for your bikes, and far more paint jobs and riders. You have ' + Store.data.nuggets + ' nuggets' + (P.freeCrates() ? ' and ' + P.freeCrates() + ' prize crate' + (P.freeCrates() > 1 ? 's' : '') : '') + '.'); }, 900);
+  if (news4) setTimeout(function () { UI.toast('New: every track now has three goals (finish, beat the time, land the flips), a challenge and a hidden gear, and there are nine new bikes. Your old stars carried over.'); }, 900);
+  else if (owed.nuggets || owed.crates.length || news) setTimeout(function () { UI.toast('New: crates, trophies and a showroom for your bikes, and far more paint jobs and riders. You have ' + Store.data.nuggets + ' nuggets' + (P.freeCrates() ? ' and ' + P.freeCrates() + ' prize crate' + (P.freeCrates() > 1 ? 's' : '') : '') + '.'); }, 900);
   if (Store.rebuilt) setTimeout(function () { UI.toast(Store.rebuilt + ' track' + (Store.rebuilt > 1 ? 's have' : ' has') + ' been rebuilt and now bite back. You keep your stars on them. Best times start again.'); }, owed.nuggets || owed.crates.length || news ? 7500 : 900);
   root.requestAnimationFrame(G.frame);
 };

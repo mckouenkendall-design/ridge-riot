@@ -12,18 +12,19 @@ function TB(world, seed) {
   this.mat = world.mat; this.baseMat = world.mat;
   this.pts = []; this.mats = [];
   this.x = 0; this.y = 0; this.ang = 0;
-  this.chains = []; this.loops = []; this.hazards = []; this.feats = []; this.roofs = [];
+  this.chains = []; this.loops = []; this.hazards = []; this.feats = []; this.roofs = []; this.forks = [];
   this.seed = seed || 1; this.pit = {};
   this.R = 7;
   // back wall, then the start pad
   this.pts.push(-16, 9, -16, 0); this.mats.push(this.mat);
+  this.logIds = [-1]; this._log = -1; this.logN = 0;      // which log (if any) each stretch of ground belongs to
   this.x = -16; this.y = 0;
   this.line(16 + 9);
   this.start = [1.2, 0];
 }
 var P = TB.prototype;
 P.rnd = function () { this.seed = (this.seed * 1664525 + 1013904223) >>> 0; return this.seed / 4294967296; };
-P.push = function (x, y) { this.pts.push(x, y); this.mats.push(this.mat); this.x = x; this.y = y; };
+P.push = function (x, y) { this.pts.push(x, y); this.mats.push(this.mat); this.logIds.push(this._log); this.x = x; this.y = y; };
 P.line = function (len) {
   var n = Math.max(1, Math.round(len / 3)), c = Math.cos(this.ang), s = Math.sin(this.ang);
   var x0 = this.x, y0 = this.y;
@@ -123,12 +124,16 @@ P.logs = function (count, spacing, r) {
     var rr = r * (0.85 + 0.3 * this.rnd()), x0 = this.x, y0 = this.y, hh = rr * 0.72;
     var half = Math.acos(1 - hh / rr), n = 7;
     this.mat = this.world.logMat == null ? RR.MAT.wood : this.world.logMat;
+    var id = this.logN++; this._log = id;
     for (var i = 0; i <= n; i++) {
       var a = -half + 2 * half * i / n;
       this.push(x0 + rr * Math.sin(half) + rr * Math.sin(a), y0 - (rr - hh) + rr * Math.cos(a));
     }
     this.y = y0; this.pts[this.pts.length - 1] = y0;
-    this.feats.push({ t: 'log', x: x0 + rr * Math.sin(half), y: y0 - (rr - hh), r: rr });
+    this._log = -1; this.logIds[this.logIds.length - 1] = -1;
+    // the flat ground under the log, which only a bike that has smashed it ever touches
+    this.chains.push({ pts: [x0 - 0.05, y0, this.x + 0.05, y0], mat: this.baseMat, under: id, depth: 0.4, kind: 'logfloor' });
+    this.feats.push({ t: 'log', x: x0 + rr * Math.sin(half), y: y0 - (rr - hh), r: rr, id: id });
     this.mat = m;
   }
   return this;
@@ -178,6 +183,50 @@ P.loop = function (R) {
   this.line(1);
   return this;
 };
+/* TWO ROUTES. At the fork sign (the pen, when this is called) the rider chooses: hold lean back as you pass it
+   and a ramp carries you up onto the high road over a rock arch; ride through normally and you stay on the low road
+   underneath. The ramps on and off the arch only exist for a rider who chose them, so the low road passes behind
+   them. Nothing at the split can crash you. Fall off the high road (miss its slot) and you land on the low road.
+   o: { H: height of the arch top, th: its thickness, rampLen, slab1, slot, slab2, kickH, stepH, exitLen,
+        low: function (b) building the low road (it is continued flat to the join) } */
+P.fork = function (o) {
+  var D = Math.PI / 180, x0 = this.x, y0 = this.y, g = 64 + this.forks.length, i;
+  var H = y0 + (o.H || 4.2), th = o.th || 0.8, rampLen = o.rampLen || 16, exitLen = o.exitLen || 16;
+  var a0 = x0 + rampLen, s1 = [a0, a0 + (o.slab1 || 10)], s2 = [s1[1] + (o.slot || 5), 0];
+  s2[1] = s2[0] + (o.slab2 || 10);
+  if (o.one) s2 = [s1[1], s1[1]];          // a side ledge: one slab, then straight back down
+  var J = s2[1] + exitLen;
+  this.sign('fork');
+  // the low road
+  if (o.low) o.low(this);
+  if (this.x < J) this.flat(J - this.x);
+  // ramp up (gated), arch slabs (always solid: they are rock), ramp down (gated)
+  function ramp(b, xa, ya, xb, yb) {
+    var pts = [], n = 16;
+    for (i = 0; i <= n; i++) { var t = i / n; pts.push(xa + (xb - xa) * t, ya + (yb - ya) * (0.5 - 0.5 * Math.cos(Math.PI * t))); }
+    b.chains.push({ pts: pts, mat: RR.MAT.wood, gate: g, side: 1, depth: 0.3, kind: 'bridge' });
+    return pts;
+  }
+  function slab(b, xa, xb, ya, yb, kick) {
+    var pts = [xa, H - th], n = Math.max(2, Math.ceil((xb - xa) / 0.8));
+    pts.push(xa, ya);
+    for (i = 1; i <= n; i++) {
+      var t = i / n, x = xa + (xb - xa) * t, y = ya + (yb - ya) * t;
+      if (kick && x > xb - kick.len) y += Math.pow((x - (xb - kick.len)) / kick.len, 1.6) * kick.h;
+      pts.push(x, y);
+    }
+    pts.push(xb, H - th);
+    for (i = n; i >= 0; i--) { var xu = xa + (xb - xa) * i / n; pts.push(xu, H - th + 0.1 * Math.sin(xu * 2.3) + 0.05 * Math.sin(xu * 5.1)); }
+    b.chains.push({ pts: pts, closed: true, mat: RR.MAT.rock, depth: 0.4, kind: 'shelf' });
+  }
+  var up = ramp(this, x0, y0, a0, H);
+  slab(this, s1[0], s1[1], H, H, { len: 2.6, h: o.kickH == null ? 0.6 : o.kickH });
+  if (!o.one) slab(this, s2[0], s2[1], H - (o.stepH || 0.8), H, null);
+  var down = ramp(this, s2[1], H, J, y0);
+  this.forks.push({ x: x0, g: g });
+  this.feats.push({ t: 'fork', x0: x0, a0: a0, xe: s2[1], j: J, y0: y0, top: H, slot: [s1[1], s2[0]], gate: g, up: up, down: down });
+  return this;
+};
 /* rock roof over the track from here on; call roofEnd() to close it */
 P.roofStart = function (clear) { this._roof = { i: this.pts.length / 2 - 1, clear: clear }; return this; };
 P.roofEnd = function (thick) {
@@ -210,6 +259,12 @@ P.beam = function (dx, clear, w, h, style) {
    starter bike should hold. The robot riders use it; the player just has to find out. */
 P.slow = function (v) { this._zone = { t: 'zone', x0: this.x, v: v }; return this; };
 P.go = function () { var z = this._zone; if (z) { z.x1 = this.x; this.feats.push(z); this._zone = null; } return this; };
+/* the track's hidden gear, dx ahead of the pen and dy above it */
+/* where the gear should go, roughly: tools/gearspot.js --write rides the track and picks the exact spot in
+   [here + dx, here + dx + len] (below: under the ordinary line; minh: at least this high above the ground) */
+P.gearHint = function (o) { o = o || {}; var x0 = this.x + (o.dx || 0); this.feats.push({ t: 'gearhint', x0: x0, x1: x0 + (o.len || 40), below: o.below !== false, minh: o.minh || 0 }); return this; };
+P.gearAt = function (x, y) { this.feats.push({ t: 'gear', x: x, y: y }); return this; };
+P.gear = function (dx, dy) { this.feats.push({ t: 'gear', x: this.x + dx, y: this.y + dy }); return this; };
 P.sign = function (kind) { this.feats.push({ t: 'sign', x: this.x, y: this.y, kind: kind }); return this; };
 
 P.finish = function (name, id) {
@@ -219,7 +274,7 @@ P.finish = function (name, id) {
   this.feats.push({ t: 'finish', x: fx, y: this.y });
   this.line(55);
   this.push(this.x, this.y + 9);
-  var main = { pts: this.pts, mats: this.mats, depth: 0.4, kind: 'ground' };
+  var main = { pts: this.pts, mats: this.mats, logs: this.logIds, depth: 0.4, kind: 'ground' };
   var chains = [main].concat(this.chains);
   var n = this.pts.length / 2, xs = new Float64Array(n), ys = new Float64Array(n), minY = 1e9, maxY = -1e9;
   for (var i = 0; i < n; i++) {
@@ -229,14 +284,33 @@ P.finish = function (name, id) {
   }
   var tr = {
     id: id, name: name, world: this.world.id, gravity: this.world.gravity,
-    chains: chains, col: RR.buildCollision(chains), loops: this.loops, hazards: this.hazards, feats: this.feats,
-    start: this.start, finishX: fx, killY: minY - 14, minY: minY, maxY: maxY, xs: xs, ys: ys, mats: this.mats,
+    chains: chains, col: RR.buildCollision(chains), loops: this.loops, hazards: this.hazards, feats: this.feats, forks: this.forks,
+    gateN: Math.max(1, this.loops.length, this.forks.length ? 64 + this.forks.length : 0),
+    start: this.start, finishX: fx, killY: minY - 14, minY: minY, maxY: maxY, xs: xs, ys: ys, mats: this.mats, logCount: this.logN,
     length: fx - this.start[0]
   };
   return tr;
 };
 RR.TB = TB;
 
+/* The top surfaces of shelves and bridges (two-route tracks), for the robot's landing guesses. */
+function tops(tr) {
+  if (tr.tops) return tr.tops;
+  tr.tops = [];
+  tr.chains.forEach(function (c) {
+    if (c.kind === 'bridge') tr.tops.push(c.pts);
+    else if (c.kind === 'shelf') { var p = c.pts, t = [], n = p.length / 2, i; for (i = 1; i < n && (i === 1 || p[i * 2] > p[i * 2 - 2]); i++) t.push(p[i * 2], p[i * 2 + 1]); tr.tops.push(t); }
+  });
+  return tr.tops;
+}
+function polyY(p, x) { for (var i = 0; i + 3 < p.length; i += 2) if (x >= p[i] && x <= p[i + 2]) { var d = p[i + 2] - p[i]; return d < 1e-9 ? Math.max(p[i + 1], p[i + 3]) : p[i + 1] + (p[i + 3] - p[i + 1]) * (x - p[i]) / d; } return null; }
+/* the highest surface at x that is still below y (the main ground, a shelf or a bridge) */
+RR.surfaceY = function (tr, x, y) {
+  var g = RR.groundY(tr, x), T = tops(tr), i;
+  for (i = 0; i < T.length; i++) { var h = polyY(T[i], x); if (h != null && h < y && h > g) g = h; }
+  return g;
+};
+RR.surfaceSlope = function (tr, x, y) { var a = RR.surfaceY(tr, x - 0.3, y), b = RR.surfaceY(tr, x + 0.3, y); return Math.atan2(b - a, 0.6); };
 /* height of the main ground at x (the top surface, ignoring loops and roofs) */
 RR.groundIndex = function (tr, x) {
   var xs = tr.xs, lo = 0, hi = xs.length - 1;

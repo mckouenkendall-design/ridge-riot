@@ -1,5 +1,5 @@
 /* Ridge Riot: the showroom. Your bikes standing in a garage, each wearing its own paint and rider.
-   The garage you own decides how many bikes can stand on show (3 in the shed, up to 15 in the showroom) and
+   The garage you own decides how many bikes can stand on show (3 in the shed, up to 24 in the hall of fame) and
    how the place looks. It is only for looking at: every bike you own can be ridden from the normal bike list.
    Tapping a bike on show makes it your ride. "Arrange" lets you choose who stands where.
 
@@ -13,10 +13,10 @@ function $(id) { return doc.getElementById(id); }
 function esc(s) { return UI.esc(s); }
 
 /* rows of display slots at each garage level, back row first */
-var ROWS = [[3], [3, 3], [5, 4], [6, 6], [5, 5, 5]];
+var ROWS = [[3], [3, 3], [5, 4], [6, 6], [5, 5, 5], [8, 8, 8]];
 var PERSP = { 1: [1], 2: [0.86, 1], 3: [0.76, 0.88, 1] };      // bikes at the back are drawn a little smaller
-var STAND = [4, 7, 5, 10, 12];                                  // how far the stand sticks out below the ground line, in pixels at 1x
-var REFLECT = [false, false, false, true, true];
+var STAND = [4, 7, 5, 10, 12, 8];                                  // how far the stand sticks out below the ground line, in pixels at 1x
+var REFLECT = [false, false, false, true, true, false];
 
 var S = { cost: 0, vs: 16.7, ring: [], rk: 0, shed: false, shedFrames: 0, frames: 0, on: false, raf: 0, last: 0, t: 0, arrange: false, picking: -1, level: -1, W: 0, H: 0, dpr: 1, g: null, scene: null, cells: [], sprites: {}, flash: 0, pop: -1, popT: 0, ctx: null };
 

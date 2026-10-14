@@ -41,7 +41,7 @@ function ride(tr, bikeId, v, seed) {
       if (tick % 7 === 0) { let h = hist.length > 18 ? hist[hist.length - 19] : 0; const q = rand(); if (q < 0.04) h = 0; else if (q < 0.045) h = rand() < 0.5 ? -1 : 1; cur = h; }
       lean = cur;
     }
-    RR.tick(s, { lean: lean, gas: out.gas, brake: out.brake });
+    RR.tick(s, { lean: lean, gas: out.gas, brake: out.brake || !!out.trick });
     s.events.length = 0;
     if (s.x > lastX + 2) { lastX = s.x; lastT = s.time; }
     if (s.finished) return { ok: true, t: s.finishTime };
