@@ -6,7 +6,7 @@ RR.GEAR_AT = {
   'first-gear': [217.6, -3.6],
   'rolling-dunes': [169.1, -6.8],
   'loop-de-dust': [180.2, -6.6],
-  'washboard': [374.6, -8.2],
+  'washboard': [384.7, -8.2],
   'gulch-gap': [238, -14.7],
   'canyon-run': [395.1, -20],
   'log-jam': [152.1, -3.2],
@@ -32,7 +32,13 @@ RR.GEAR_AT = {
   'ash-loop': [276.2, -9.4],
   'eruption': [358.7, -14],
   'the-chimney': [187.6, -3.1],
-  'ember-steps': [262.1, -2.7]
+  'ember-steps': [262.1, -2.7],
+  'one-small-hop': [146, -1.4],
+  'crater-maker': [263.8, -6.1],
+  'dark-side': [196.4, 0.5],
+  'riot-run': [439.5, -35.1],
+  'double-loop': [136.2, -5.3],
+  'escape-velocity': [105.4, -14.1]
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);

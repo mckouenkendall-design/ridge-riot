@@ -179,9 +179,10 @@ var T = [
 }, { t: 'flip', dir: 'f', n: 1, text: 'A frontflip anywhere' }],
 ['Washboard', 'Rock overhead means slow down. Brake before the hump, or it throws you into the roof.', function (b) {
   b.flat(14).bumps(8, 3.4, 0.26).flat(8).ease(18, -2.5).flat(6);
-  PC.rollers(b, 4, 6, 1.0, 2);
   b.flat(8).steps(4, 6, 0.7).flat(14).sign('slow').flat(10);
   PC.tunnel(b, 9, 3.6, [[1.1, 10]]);
+  b.flat(10);
+  PC.rollers(b, 4, 6, 1.0, 2);
   b.flat(8).hill(-1.6, 14).flat(8).bumps(9, 2.8, 0.22).flat(10);
   PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
   b.flat(8).table(17, 1.8, 4, 8).flat(8).logs(3, 6, 0.2).flat(10).gearHint({ len: 30, minh: 1.3 });   // mid-air over the last landing
@@ -464,11 +465,11 @@ var T = [
 ['Slip Road', 'You cannot brake on ice. Lose the speed before you reach it.', function (b) {
   b.flat(18).surface('ice').down(12, 22, 16).flat(10).surface();
   jump(b, 18, 8, 16, 11, { rise: -2 });
-  b.flat(10);
-  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
-  b.flat(8).up(16, 14, 12).flat(8, 14).sign('slow').flat(8);
+  b.flat(10).up(16, 14, 12).flat(8, 14).sign('slow').flat(8);
   b.slow(6).flat(4).surface('ice').down(10, 14, 14).flat(4, 12); PC.cave(b, 3.4, [[1.1, 10]]); b.surface().go();
-  b.flat(12).hill(2.2, 16).surface('ice').flat(14).surface().flat(10);
+  b.flat(12);
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
+  b.flat(8).hill(2.2, 16).surface('ice').flat(14).surface().flat(10);
   PC.ledge(b, 3.8, 8);            // the gear sits on a side ledge: lean back at the sign to ride up onto it
   b.flat(8);
   kick(b, 19, 9, 17, 10, { rise: -1.2, R: 6.5 });
@@ -727,33 +728,39 @@ var T = [
 }, { t: 'combo', seq: ['b', 'f', 'b'], text: 'Backflip, frontflip, backflip, in one run' }],
 
 /* ----------------------------- LOW ORBIT ---------------------------- */
+/* Low gravity: landing flat costs almost nothing, so the doubles and rollers that teach speed elsewhere do not bite
+   here (tools/momentum.js: flat out is quickest on every shape tried). Low Orbit is about air instead. */
 ['One Small Hop', 'A third of the gravity. Jumps go three times as far and flips come easy.', function (b) {
-  b.flat(22).hill(1.4, 26).flat(14).table(14, 1.8, 9, 12).flat(20);
+  b.flat(22).hill(1.4, 26).flat(14).table(14, 1.8, 9, 12).flat(20).gearHint({ len: 40, minh: 1.3 });   // mid-air over the landing: come in slow
   jump(b, 15, 12, 12, 14, { rise: -1, lip: 2 });
   b.flat(18).hill(-1.6, 34).flat(14).table(17, 2.6, 9, 12).flat(22);
-}],
+}, { t: 'multi', n: 2, text: 'A double flip in one jump' }],
 ['Crater Maker', 'Low gravity means a small hump throws you a long way up. Go gently under anything.', function (b) {
   b.flat(16).hill(-2, 40).flat(12).hill(-2.8, 48).flat(14);
   jump(b, 20, 20, 16, 14, { rise: -1.5 });
   b.flat(20).sign('slow').flat(12);
   PC.tunnel(b, 8, 3.6, [[1.0, 12]]);
-  b.flat(8).hill(-2.2, 40).flat(10).up(20, 14, 14).flat(10, 16).drop(4).flat(26);
-}],
+  b.flat(14).gearHint({ len: 22 });   // down in the crater between the jump and the mound
+  PC.double(b, 14, 10, 1.8, 20, 10, { next: [2.6, 20], gapAfter: 1, deep: 2.2 });
+  b.flat(10).hill(-2.2, 40).flat(10).up(20, 14, 14).flat(10, 16).drop(4).flat(26);
+}, { t: 'combo', seq: ['b', 'f'] }],
 ['Slow Float', 'Things float up here, and so do you. Small jumps under the pylons.', function (b) {
   b.flat(34).sign('slow').flat(10);
   PC.cavejump(b, 8, 4.0, 12, 8);
   b.flat(16);
   jump(b, 20, 22, 17, 16, { rise: -2 });
-  b.flat(14).table(20, 3.4, 9, 12).flat(22).sign('slow').flat(10);
+  b.flat(14).table(20, 3.4, 9, 12).flat(18);
+  PC.ledge(b, 4.0, 10, { at: 0.1 });   // the gear sits at the top of a side ledge's ramp: lean back at the sign to ride up there
+  b.flat(12).sign('slow').flat(10);
   PC.limbo(b, 8, 14, 7, 8, 3.3, { land: 10, landLen: 10 });
   b.flat(16);
   jump(b, 22, 25, 19, 18, { rise: -3 });
   b.flat(22);
-}],
-['Dark Side', '', function (b) {
+}, { t: 'combo', seq: ['f', 'f', 'f'], text: 'Three frontflips in one run' }],
+['Dark Side', 'No light, no air, no grip to spare. Lean through the big jumps for the flips.', function (b) {
   b.flat(18).bumps(5, 5.5, 0.3).flat(22);
   PC.box(b, 7, 2.6, 0, 9, 3.1);
-  b.flat(8).up(22, 16, 13).flat(8, 16).drop(5).flat(30);
+  b.flat(8).up(22, 16, 13).flat(8, 16).drop(5).flat(30).gearHint({ len: 44, minh: 1.5 });   // mid-air over the landing: come in slow
   jump(b, 18, 16, 16, 14, { rise: -1.5 });
   b.flat(18);
   PC.tunnel(b, 8, 3.6, [[1.0, 12], [0.8, 12]]);
@@ -762,25 +769,31 @@ var T = [
   b.flat(12);
   kick(b, 20, 20, 19, 18, { rise: -3, R: 8 });
   b.flat(20);
-}],
-['Double Loop', '', function (b) {
-  b.flat(40).loop(6.5).flat(22).loop(7.5).flat(20);
+}, { t: 'combo', seq: ['f', 'b', 'f', 'b'], text: 'Frontflip, backflip, frontflip, backflip' }],
+['Double Loop', 'Two giant loops, then the longest jump yet. Lean the whole way across.', function (b) {
+  b.flat(40).loop(6.5).flat(22).loop(7.5).flat(20).gearHint({ len: 50 });   // at the near end of the landing: only a short jump comes down there
   jump(b, 21, 22, 18, 16, { rise: -2 });
   b.flat(20).loop(5.5).flat(22);
-}],
-['Regolith', '', function (b) {
+}, { t: 'multi', n: 3, text: 'A triple flip in one jump' }],
+['Regolith', 'Two roads. Hold lean back at the fork sign for the high road; ride on for the dust below.', function (b) {
   b.flat(14).surface('sand').flat(16).surface().bumps(6, 4.5, 0.4).flat(10).hill(-4, 30).flat(10);
   PC.tunnel(b, 8, 3.6, [[1.0, 12], [0.8, 12]]);
   b.flat(4).surface('sand').flat(12).surface().flat(6);
   jump(b, 20, 18, 17, 14, { rise: -1.5 });
-  b.flat(26);
+  b.flat(20);
+  b.fork({ one: true, H: 3.6, rampLen: 18, slab1: 28, kickH: 0, exitLen: 20,
+    low: function (b) { b.ease(10, -1.8).flat(2); PC.rollers(b, 3, 11, 0.45); b.ease(10, 1.8); } });
+  (function () { var f = b.feats.filter(function (q) { return q.t === 'fork'; }).pop(); b.gearAt(f.a0 + 1, f.top + 1.0); })();   // at the top of the ramp: the high road only (in this gravity the ramp throws you clean over the slab)
+  b.flat(20);
   PC.box(b, 7, 2.6, 0, 9, 3.1);
   b.flat(4).surface('sand').flat(12).surface().flat(10);
   PC.cavejump(b, 8, 4.0, 12, 8);
+  b.flat(14);
+  jump(b, 20, 18, 17, 14, { rise: -2 });
   b.flat(16);
-}],
-['Escape Velocity', '', function (b) {
-  b.flat(14).down(18, 30, 16).flat(8, 12);
+}, { t: 'multi', n: 2, at: 'biggest', text: 'A double flip over the big gap' }],
+['Escape Velocity', 'Downhill into the biggest gaps in the game. Hold your nerve, and your lean.', function (b) {
+  b.flat(14).down(18, 30, 16).flat(8, 12).gearHint({ dx: 10, len: 50 });   // at the near end of the first landing: only a short jump comes down there
   jump(b, 23, 33, 21, 24, { rise: -5 });
   b.flat(16);
   PC.tunnel(b, 8, 3.4, [[1.0, 14], [0.8, 12]]);
@@ -789,8 +802,8 @@ var T = [
   b.flat(30);
   PC.tunnel(b, 8, 3.6, [[1.0, 12]]);
   b.flat(18);
-}],
-['Riot Run', '', function (b) {
+}, { t: 'multi', n: 3, at: 'biggest', text: 'A triple flip over the biggest gap' }],
+['Riot Run', 'The last track. Everything you have learned, at a third of the gravity.', function (b) {
   b.flat(26).loop(6).flat(16);
   jump(b, 21, 22, 18, 16, { rise: -2 });
   b.flat(18);
@@ -801,10 +814,12 @@ var T = [
   jump(b, 23, 33, 21, 24, { rise: -5 });
   b.flat(26);
   PC.cavejump(b, 8, 4.2, 14, 8);
+  b.flat(14).gearHint({ len: 22 });   // down in the crater between the jump and the mound
+  PC.double(b, 14, 10, 1.8, 20, 10, { next: [2.6, 20], gapAfter: 1, deep: 2.2 });
   b.flat(12);
   PC.limbo(b, 8, 14, 7, 8, 3.3, { land: 10, landLen: 10 });
   b.flat(22);
-}]
+}, { t: 'combo', seq: ['b', 'f', 'b', 'f', 'b'], text: 'Five flips in one run, switching way each time' }]
 ];
 
 /* Running order inside each world, easiest first. The recipes above are grouped
