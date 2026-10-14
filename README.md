@@ -54,9 +54,10 @@ Progress is saved on the device, in the browser. Clearing the browser's site dat
 Two robot riders measure this, on every track and every bike (`tools/skill.js`).
 
 - The **flat-out rider** holds full gas from the start line and only leans to stay the right way up. On the starter bike it finishes the 15 gentle tracks and none of the other 33.
-- The **learned rider** knows the safe speed for each obstacle and aims for it, but judges speed like a person (about 1.5 m/s out either way) and leans a little late. On the starter bike it gets through the 33 harder tracks between 70% and 100% of the time. The last track of each world is the hardest.
+- The **learned rider** knows the safe speed for each obstacle and aims for it, but judges speed like a person (about 1.5 m/s out either way) and leans a little late. On the starter bike it gets through every track between 63% and 100% of the time (93% on a typical track). The last track of each world is the hardest.
+- None of the nine newest bikes gets through a track with teeth flat out more than 17% of the time (the Spool 600 on Crater Maker); most never do. Some of the older bikes are leakier, as they were before.
 
-There are 79 of these obstacles in the game. For each one, on each of the 15 bikes, there is a range of speeds that survives it, and the narrowest of those ranges anywhere is about 3 m/s (11 km/h) wide.
+There are 79 of these obstacles in the game. For each one, on each of the 24 bikes, there is a range of speeds that survives it. For most bikes the narrowest is about 3 m/s (11 km/h) wide; the Penny Dreadful has two that are only 1.5 m/s wide (on Stunt Show and Avalanche), and the Slingshot needs the rewind robot to prove it can finish Stunt Show and Aurora.
 
 Bikes are not equal here. The Penny Dreadful's rider sits about 25 cm higher than anyone else and has the least room under everything. The Mosquito and the Slingshot sit low. Slow bikes (Billy Goat, Biscotti) arrive slower flat out, so they survive a few of the early obstacles without lifting. The Marshmallow's roll hoop takes one roof for you.
 
@@ -124,8 +125,8 @@ These are what was used to check the game. The ones marked "browser" need Playwr
 
 | Command | What it checks |
 |---|---|
-| `node tools/skill.js --bikes all --summary --prove --json out.json` | The main check. For every track and bike: does a rider who never lifts finish (on a track with teeth it must not), what range of speeds survives each obstacle, how often a rider who knows those speeds gets through, and proof that the track can be finished at all. Slow: about 45 minutes on two processor cores |
-| `node tools/skill.js --from out.json` | Writes the star times and robot speeds from that run. Run `node tools/rebuilt.js` first |
+| `node tools/skill.js --bikes all --summary --prove --json out.json` | The main check. For every track and bike: does a rider who never lifts finish (on a track with teeth it must not), what range of speeds survives each obstacle, how often a rider who knows those speeds gets through, and proof that the track can be finished at all. Slow: about two hours for all 24 bikes on two processor cores (split the bikes across two runs) |
+| `node tools/skill.js --from a.json,b.json` | Writes each track's time and flip targets and the robot speeds from those runs (files split by bikes or by tracks are joined). Both targets come from one run of the starter bike's flipping robot, so all three stars can be had in one run. Run `node tools/rebuilt.js` first |
 | `node tools/lab.js <piece> [world] --args ...` | Rides every bike into one obstacle at every speed and prints which speeds survive. This is how the obstacles were sized |
 | `node tools/momentum.js <piece> [world] --bikes all` | Times every bike through one momentum piece at every entry speed: the best speed, what too slow and too fast cost, and any crash |
 | `node tools/goals.js [--tracks 0-47]` | For each track: that an ordinary careful ride and a flat-out ride both miss the hidden gear, how many other ways of riding find it, and that the challenge can be done but is not done by accident |
@@ -150,6 +151,6 @@ These are what was used to check the game. The ones marked "browser" need Playwr
 
 ## What has and has not been tested
 
-Tested by machine: every track can be finished on every bike, every speed obstacle has a workable range of speeds on every bike, a rider who never lifts cannot finish the harder tracks on the starter bike, physics stability, touch and keyboard controls, button taps with a drifting thumb, menu layout at phone sizes with a notch, saving and reloading including saves from the first version, the nugget and crate rules (all 132 crates through the real buttons), trophies, the showroom, saves from both earlier versions, and that every sound plays at a sensible level without clipping.
+Tested by machine: every track can be finished on every bike, all three stars can be earned in one run on the starter bike on every track, every hidden gear is missed by an ordinary careful ride and by a flat-out ride but found by at least two other ways of riding, every challenge can be done and is not done by accident, both roads on the two-road tracks are within half a second on the starter bike, every speed obstacle has a workable range of speeds on every bike, a rider who never lifts cannot finish the harder tracks on the starter bike, physics stability, touch and keyboard controls, button taps with a drifting thumb, menu layout at phone sizes with a notch, saving and reloading including saves from the first version, the nugget and crate rules (all 132 crates through the real buttons), trophies, the showroom, saves from both earlier versions, and that every sound plays at a sensible level without clipping.
 
 Not tested: how it sounds to a human ear, how the handling feels in the hand, whether the difficulty is right for a person (it was set with robot riders, which do not get surprised, bored or annoyed), and behaviour on real iPhone and Android hardware (the tests run in a desktop browser pretending to be a phone). Frame times are only measured in a test browser with no graphics card, so real phone frame rates, and how well the showroom's load sharing (it redraws animated bikes less often if a screen is struggling) behaves on a real screen, are unmeasured. Those need a person.
