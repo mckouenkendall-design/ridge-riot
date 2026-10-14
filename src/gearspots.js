@@ -20,7 +20,13 @@ RR.GEAR_AT = {
   'bus-stop': [320.9, -8],
   'chequered-flag': [442.8, -11.7],
   'seven-buses': [249.6, -3.3],
-  'stunt-show': [116.2, -3.3]
+  'stunt-show': [116.2, -3.3],
+  'black-ice': [170.1, -4.7],
+  'whiteout': [313.2, -3.5],
+  'aurora': [307.5, -13.3],
+  'powder-keg': [284.4, -12.1],
+  'avalanche': [336.6, -39.6],
+  'glacier-loop': [233, -5.8]
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = RR;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -437,41 +437,106 @@ var T = [
 
 /* ----------------------------- FROSTBITE ---------------------------- */
 ['Black Ice', 'Blue ice has no grip. Build your speed before you reach it.', function (b) {
-  b.flat(20).surface('ice').flat(18).surface().hill(1.6, 18).flat(6).surface('ice').flat(10).ease(20, -2.5)
-   .flat(8).surface().flat(10).waves(2, 18, 1.0).surface('ice').flat(16).surface().table(15, 1.6, 6, 9).flat(8)
-   .surface('ice').flat(10).surface();
-  jump(b, 16, 6, 14, 8, { rise: -0.8 });
+  b.flat(20).surface('ice').flat(18).surface().hill(1.6, 18).flat(10);
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
+  b.flat(6).surface('ice').flat(10).ease(20, -2.5).flat(8).surface().flat(10);
+  b.gearHint({ len: 16 });        // down in the pit between the jump and the mound
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1, deep: 1.4 });
+  b.flat(8).surface('ice').flat(16).surface().table(15, 1.6, 6, 9).flat(8)
+   .surface('ice').flat(10).surface().flat(6).sign('jump');
+  jump(b, 17, 6, 15, 11, { rise: -2.2, lip: 1.4 });
   b.flat(14);
-}],
-['Powder Keg', '', function (b) {
+}, { t: 'flip', dir: 'b', n: 1, at: 'last', where: 'off the last jump' }],
+['Glacier Loop', 'Ice before a loop: carry your speed in, you cannot build it on the ice.', function (b) {
+  b.flat(36).loop(4).surface('ice').flat(16).surface().flat(10);
+  kick(b, 18, 7, 16, 9, { rise: -1, R: 6 });
+  b.flat(10);
+  PC.rollers(b, 4, 6, 1.0, 2);
+  b.flat(10).ease(24, -4.5).flat(10).surface('ice').flat(8).surface().loop(4.5).flat(10).gearHint({ len: 42, minh: 2, below: false });   // high over the double: a slower rider's arc goes up there
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
+  b.flat(8);
+  kick(b, 19, 9, 17, 12, { rise: -2.2, R: 6 });
+  b.surface('ice').flat(14).surface().flat(8);
+  hop(b, 18, 6, { rise: -0.4 }).flat(9);
+  hop(b, 18, 6, { rise: -0.4 }).land(15, 8);
+  b.flat(12);
+}, { t: 'wheelie', sec: 2 }],
+['Slip Road', 'You cannot brake on ice. Lose the speed before you reach it.', function (b) {
+  b.flat(18).surface('ice').down(12, 22, 16).flat(10).surface();
+  jump(b, 18, 8, 16, 11, { rise: -2 });
+  b.flat(10);
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
+  b.flat(8).up(16, 14, 12).flat(8, 14).sign('slow').flat(8);
+  b.slow(6).flat(4).surface('ice').down(10, 14, 14).flat(4, 12); PC.cave(b, 3.4, [[1.1, 10]]); b.surface().go();
+  b.flat(12).hill(2.2, 16).surface('ice').flat(14).surface().flat(10);
+  PC.ledge(b, 3.8, 8);            // the gear sits on a side ledge: lean back at the sign to ride up onto it
+  b.flat(8);
+  kick(b, 19, 9, 17, 10, { rise: -1.2, R: 6.5 });
+  b.surface('ice').flat(12).surface().flat(10);
+}, { t: 'combo', seq: ['f', 'f'], text: 'Two frontflips in one run' }],
+['Whiteout', 'Rollers on snow. Find the speed that skims them; too fast and you fly the lot.', function (b) {
+  b.flat(12).bumps(6, 3.2, 0.3).flat(6).surface('ice').flat(8).surface().steps(4, 6, 0.9).flat(10).sign('slow').flat(8);
+  PC.limbo(b, 9, 22, 4.5, 4, 3.0);
+  b.flat(10);
+  PC.rollers(b, 4, 6, 1.0, 2);
+  b.flat(8).logs(2, 6, 0.22).flat(10).up(22, 12, 10).flat(10, 13).drop(2.8).flat(10).surface('ice').flat(12).surface().flat(8);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10], [1.0, 9]]);
+  b.flat(8).gearHint({ len: 16 });   // down in the pit between the jump and the mound
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1, deep: 1.6 });
+  b.flat(6).bumps(7, 2.8, 0.22).flat(12);
+  kick(b, 20, 9, 18, 10, { rise: -1.4, R: 6 });
+  b.flat(10).surface('ice').flat(8).surface().flat(4);
+  kick(b, 20, 9, 18, 12, { rise: -2.6, R: 6 });
+  b.flat(14);
+}, { t: 'flip', dir: 'f', n: 1, at: 'last', where: 'off the last jump' }],
+['Aurora', 'Low ice caves: slow right down before you go in, because you will not stop on the ice inside.', function (b) {
+  b.flat(18).surface('ice').flat(10).surface().table(20, 2.4, 6, 8).flat(8);
+  kick(b, 19, 9, 17, 10, { rise: -1.2, R: 6 });
+  b.flat(12);
+  PC.tunnel(b, 9, 3.2, [[1.1, 10]]);
+  b.flat(12);
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1 });
+  b.flat(10).loop(4.2).flat(12).surface('ice').flat(10).surface().flat(10);
+  PC.limbo(b, 9, 22, 4.5, 4, 3.0);
+  b.flat(8).ease(26, -5).flat(6).gearHint({ len: 36, minh: 1.3 });   // mid-air over the big gap's landing
+  jump(b, 21, 12.5, 19, 11, { rise: -1.8 });
+  b.flat(8);
+  b.slow(6).flat(4).surface('ice').flat(12); PC.cave(b, 3.2, [[1.1, 10]]); b.surface().go();
+  b.flat(10);
+  PC.rollers(b, 3, 6, 1.0, 2);
+  b.flat(8);
+  hop(b, 18, 6, { rise: -0.4 }).flat(9);
+  hop(b, 18, 6.5, { rise: -0.4 }).land(15, 8);
+  b.flat(14);
+}, { t: 'flip', dir: 'b', n: 1, at: 'biggest', where: 'over the big gap' }],
+['Powder Keg', 'Short, steep and lumpy. Pick a speed for each piece, not one for the whole track.', function (b) {
   b.flat(14).waves(3, 16, 1.1).flat(8);
   kick(b, 18, 6.5, 16, 8, { rise: -0.8, R: 6.5 });
+  b.flat(10);
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
   b.flat(8).bumps(5, 3.6, 0.34).flat(8).ease(24, -4).flat(10);
   PC.box(b, 8, 3, 3, 7, 3.2);
-  b.flat(8).table(20, 2.4, 6, 8).flat(8);
-  jump(b, 20, 8.5, 18, 9, { rise: -1.2 });
+  b.flat(8).table(20, 2.4, 6, 8).flat(8).gearHint({ len: 34, minh: 1.3 });   // mid-air over the landing
+  jump(b, 20, 8.5, 18, 11, { rise: -2.2 });
   b.flat(6).logs(3, 5, 0.25).flat(8);
   PC.cavejump(b, 9, 3.4, 16, 4.5);
+  b.flat(10);
+  PC.rollers(b, 4, 6, 1.0, 2);
   b.flat(8);
   kick(b, 19, 7.5, 17, 9, { rise: -1, R: 6 });
   b.flat(14);
-}],
-['Slip Road', 'You cannot brake on ice. Lose the speed before you reach it.', function (b) {
-  b.flat(18).surface('ice').down(12, 22, 16).flat(10).surface();
-  jump(b, 18, 8, 16, 9, { rise: -1 });
-  b.flat(10).up(16, 14, 12).flat(8, 14).sign('slow').flat(8);
-  b.slow(6).flat(4).surface('ice').down(10, 14, 14).flat(4, 12); PC.cave(b, 3.4, [[1.1, 10]]); b.surface().go();
-  b.flat(12).hill(2.2, 16).surface('ice').flat(14).surface().flat(6);
-  kick(b, 19, 9, 17, 10, { rise: -1.2, R: 6.5 });
-  b.surface('ice').flat(12).surface().flat(10);
-}],
-['Crevasse', '', function (b) {
+}, { t: 'flip', dir: 'f', n: 1, at: 'biggest', where: 'over the big gap' }],
+['Crevasse', 'Two roads. Hold lean back at the fork sign for the ice bridge; ride on for the floor of the crevasse.', function (b) {
   b.flat(22);
   jump(b, 18, 7, 16, 8, { rise: -0.8 });
   b.surface('ice').flat(12).surface().flat(10);
   PC.box(b, 8, 3, 3, 7, 3.2);
-  b.flat(8);
-  kick(b, 20, 9, 18, 9, { rise: -1.2, R: 6 });
+  b.flat(14);
+  b.fork({ H: 3.4, rampLen: 16, slab1: 10, slot: 6, slab2: 10, stepH: 1.6, kickH: 0.7, exitLen: 16,
+    low: function (b) { b.ease(9, -1.6).flat(2); PC.rollers(b, 3, 9, 0.5); b.ease(9, 1.6); } });
+  (function () { var f = b.feats.filter(function (q) { return q.t === 'fork'; }).pop(); b.gearAt((f.slot[1] + f.xe) / 2, f.top + 0.95); })();   // on the ice bridge: the high road only
+  b.flat(12);
+  PC.double(b, 22, 6.5, 1.2, 20, 6, { next: [2, 12], gapAfter: 1 });
   b.flat(8).ease(24, -4.5).surface('ice').flat(10).surface();
   jump(b, 21, 12, 19, 11, { rise: -1.6 });
   b.flat(12);
@@ -480,37 +545,20 @@ var T = [
   PC.box(b, 8, 3, 3, 7, 3.2);
   b.flat(8);
   b.kicker(20, 8).gap(4.5, { rise: 0.9 }).flat(12).drop(1.8).flat(14);
-}],
-['Glacier Loop', '', function (b) {
-  b.flat(36).loop(4).surface('ice').flat(16).surface().flat(10);
-  kick(b, 18, 7, 16, 9, { rise: -1, R: 6 });
-  b.flat(10).ease(24, -4.5).flat(10).surface('ice').flat(8).surface().loop(4.5).flat(10);
-  kick(b, 19, 9, 17, 10, { rise: -1.2, R: 6 });
-  b.surface('ice').flat(14).surface().flat(8);
-  hop(b, 18, 6, { rise: -0.4 }).flat(9);
-  hop(b, 18, 6, { rise: -0.4 }).land(15, 8);
-  b.flat(12);
-}],
-['Whiteout', '', function (b) {
-  b.flat(12).bumps(6, 3.2, 0.3).flat(6).surface('ice').flat(8).surface().steps(4, 6, 0.9).flat(10).sign('slow').flat(8);
-  PC.limbo(b, 9, 22, 4.5, 4, 3.0);
-  b.flat(8).logs(2, 6, 0.22).flat(10).up(22, 12, 10).flat(10, 13).drop(2.8).flat(10).surface('ice').flat(12).surface().flat(8);
-  PC.tunnel(b, 9, 3.2, [[1.1, 10], [1.0, 9]]);
-  b.flat(6).bumps(7, 2.8, 0.22).flat(12);
-  kick(b, 20, 9, 18, 10, { rise: -1.4, R: 6 });
-  b.flat(10).surface('ice').flat(8).surface();
-  kick(b, 18, 7, 16, 9, { rise: -1, R: 6 });
-  b.flat(14);
-}],
+}, { t: 'flip', dir: 'f', n: 1, text: 'A frontflip anywhere' }],
 ['Avalanche', 'It is all downhill, so lifting is not enough. Use the brake.', function (b) {
   b.flat(12).down(16, 26, 14).flat(6, 10);
   jump(b, 14, 10, 20, 12, { rise: -2.5 });
   b.down(14, 20, 12).flat(8, 12);
   PC.tunnel(b, 9, 3.2, [[1.1, 10], [1.0, 9]]);
+  b.flat(8);
+  PC.rollers(b, 4, 6, 1.0, 2);
   b.flat(6).surface('ice').flat(8).surface().flat(6);
   kick(b, 16, 12, 22, 13, { rise: -3, R: 7 });
   b.flat(8).down(18, 22, 12).flat(8, 10);
   PC.limbo(b, 9, 25, 4.5, 4, 3.1);
+  b.flat(10).gearHint({ len: 16 });   // down in the pit between the jump and the mound
+  PC.double(b, 14, 8, 1.8, 20, 6, { next: [2.6, 14], gapAfter: 1, deep: 1.4 });
   b.flat(6).down(14, 16, 12).flat(6, 10);
   PC.box(b, 8, 3, 3, 7, 3.2);
   b.flat(8);
@@ -518,23 +566,7 @@ var T = [
   b.flat(8);
   b.slow(6).flat(4).surface('ice').flat(10); PC.cave(b, 3.2, [[1.1, 10]]); b.surface().go();
   b.flat(14);
-}],
-['Aurora', '', function (b) {
-  b.flat(18).surface('ice').flat(10).surface().table(20, 2.4, 6, 8).flat(8);
-  kick(b, 19, 9, 17, 10, { rise: -1.2, R: 6 });
-  b.flat(12);
-  PC.tunnel(b, 9, 3.2, [[1.1, 10]]);
-  b.flat(22).loop(4.2).flat(12).surface('ice').flat(10).surface().flat(10);
-  PC.limbo(b, 9, 22, 4.5, 4, 3.0);
-  b.flat(8).ease(26, -5).flat(6);
-  jump(b, 21, 12.5, 19, 11, { rise: -1.8 });
-  b.flat(8);
-  b.slow(6).flat(4).surface('ice').flat(12); PC.cave(b, 3.2, [[1.1, 10]]); b.surface().go();
-  b.flat(10);
-  hop(b, 18, 6, { rise: -0.4 }).flat(9);
-  hop(b, 18, 6.5, { rise: -0.4 }).land(15, 8);
-  b.flat(14);
-}],
+}, { t: 'combo', seq: ['b', 'b', 'b'], text: 'Three backflips on the way down' }],
 
 /* ---------------------------- CINDER PEAK --------------------------- */
 ['Hot Start', 'Lava ends the run. Jump too short and that is where you land.', function (b) {
