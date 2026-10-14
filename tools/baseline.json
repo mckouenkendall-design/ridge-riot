@@ -1,485 +1,541 @@
 {
  "first-gear": {
-  "print": "s48yen",
+  "print": "qeleow",
   "stars": [
-   20.2,
-   25.5
-  ],
-  "rev": 0
- },
- "rolling-dunes": {
-  "print": "h11032",
-  "stars": [
-   23.6,
-   29.8
-  ],
-  "rev": 0
- },
- "hop-skip": {
-  "print": "ram4vj",
-  "stars": [
-   16.6,
-   21
-  ],
-  "rev": 0
- },
- "loop-de-dust": {
-  "print": "1h7d5w3",
-  "stars": [
-   18.7,
-   23.5
-  ],
-  "rev": 0
- },
- "mesa-drop": {
-  "print": "1ss804u",
-  "stars": [
-   21,
-   26.6
-  ],
-  "rev": 0
- },
- "washboard": {
-  "print": "8yi74g",
-  "stars": [
-   28.1,
-   35.5
+   21.2,
+   1
   ],
   "rev": 1,
   "was": [
-   22.8,
-   28.8
+   20.2,
+   25.5
+  ]
+ },
+ "rolling-dunes": {
+  "print": "e5dkhv",
+  "stars": [
+   25,
+   2
+  ],
+  "rev": 1,
+  "was": [
+   23.6,
+   29.8
+  ]
+ },
+ "hop-skip": {
+  "print": "ot5seg",
+  "stars": [
+   22,
+   1
+  ],
+  "rev": 1,
+  "was": [
+   16.6,
+   21
+  ]
+ },
+ "loop-de-dust": {
+  "print": "1yht6dq",
+  "stars": [
+   22.1,
+   1
+  ],
+  "rev": 1,
+  "was": [
+   18.7,
+   23.5
+  ]
+ },
+ "mesa-drop": {
+  "print": "1a875ev",
+  "stars": [
+   23.2,
+   1
+  ],
+  "rev": 1,
+  "was": [
+   21,
+   26.6
+  ]
+ },
+ "washboard": {
+  "print": "1aeixki",
+  "stars": [
+   37.5,
+   3
+  ],
+  "rev": 2,
+  "was": [
+   28.1,
+   35.5
   ]
  },
  "gulch-gap": {
-  "print": "10s7e7e",
+  "print": "1oysjkc",
   "stars": [
+   28.8,
+   2
+  ],
+  "rev": 2,
+  "was": [
    25.8,
    32.6
-  ],
-  "rev": 1,
-  "was": [
-   21.5,
-   27.1
   ]
  },
  "canyon-run": {
-  "print": "mwh6ze",
+  "print": "19kwrj",
   "stars": [
+   41.2,
+   3
+  ],
+  "rev": 2,
+  "was": [
    34.9,
    44
-  ],
-  "rev": 1,
-  "was": [
-   32.5,
-   41.1
   ]
  },
  "log-jam": {
-  "print": "1e6y7n0",
+  "print": "1f7y049",
   "stars": [
-   20.9,
-   26.4
-  ],
-  "rev": 0
- },
- "mossy-loop": {
-  "print": "1tsf29o",
-  "stars": [
-   20.1,
-   25.4
-  ],
-  "rev": 0
- },
- "timber-table": {
-  "print": "3b3fkt",
-  "stars": [
-   19.5,
-   24.6
+   26,
+   1
   ],
   "rev": 1,
   "was": [
-   17.9,
-   22.6
+   20.9,
+   26.4
+  ]
+ },
+ "mossy-loop": {
+  "print": "a5ep9y",
+  "stars": [
+   27.8,
+   2
+  ],
+  "rev": 1,
+  "was": [
+   20.1,
+   25.4
+  ]
+ },
+ "timber-table": {
+  "print": "o2iewd",
+  "stars": [
+   29.6,
+   2
+  ],
+  "rev": 2,
+  "was": [
+   19.5,
+   24.6
   ]
  },
  "sawmill": {
-  "print": "192laxv",
+  "print": "aprndf",
   "stars": [
+   35.2,
+   1
+  ],
+  "rev": 2,
+  "was": [
    28.5,
    36
-  ],
-  "rev": 1,
-  "was": [
-   21.4,
-   27.1
   ]
  },
  "root-rage": {
-  "print": "1qs1v0w",
+  "print": "gqkc56",
   "stars": [
+   44.3,
+   1
+  ],
+  "rev": 2,
+  "was": [
    35.5,
    44.9
-  ],
-  "rev": 1,
-  "was": [
-   26.6,
-   33.6
   ]
  },
  "creek-hop": {
-  "print": "1v6way0",
+  "print": "1o557a",
   "stars": [
+   28.3,
+   1
+  ],
+  "rev": 2,
+  "was": [
    23.5,
    29.7
-  ],
-  "rev": 1,
-  "was": [
-   18.9,
-   23.8
   ]
  },
  "beaver-dam": {
-  "print": "1av130c",
+  "print": "jtcin",
   "stars": [
+   45.7,
+   3
+  ],
+  "rev": 2,
+  "was": [
    34.2,
    43.1
-  ],
-  "rev": 1,
-  "was": [
-   24.9,
-   31.4
   ]
  },
  "old-growth": {
-  "print": "4b0rp8",
+  "print": "mf88t9",
   "stars": [
+   50.1,
+   4
+  ],
+  "rev": 2,
+  "was": [
    39.8,
    50.3
-  ],
-  "rev": 1,
-  "was": [
-   34.2,
-   43.2
   ]
  },
  "green-flag": {
-  "print": "ivyrwj",
+  "print": "1wpjhn0",
   "stars": [
-   16.5,
-   20.7
-  ],
-  "rev": 0
- },
- "rumble-strip": {
-  "print": "lxi4l4",
-  "stars": [
-   20.6,
-   25.9
-  ],
-  "rev": 0
- },
- "oil-slick": {
-  "print": "xuoenv",
-  "stars": [
-   26.7,
-   33.5
+   27.2,
+   2
   ],
   "rev": 1,
   "was": [
-   21.4,
-   26.9
+   16.5,
+   20.7
+  ]
+ },
+ "rumble-strip": {
+  "print": "rfykef",
+  "stars": [
+   28.4,
+   2
+  ],
+  "rev": 1,
+  "was": [
+   20.6,
+   25.9
+  ]
+ },
+ "oil-slick": {
+  "print": "19x8d10",
+  "stars": [
+   34.8,
+   1
+  ],
+  "rev": 2,
+  "was": [
+   26.7,
+   33.5
   ]
  },
  "bus-stop": {
-  "print": "95kzlh",
+  "print": "8xwlpu",
   "stars": [
+   33.6,
+   2
+  ],
+  "rev": 2,
+  "was": [
    22.2,
    27.9
-  ],
-  "rev": 1,
-  "was": [
-   16.4,
-   20.5
   ]
  },
  "pit-lane": {
-  "print": "1abut93",
+  "print": "1mlopkj",
   "stars": [
+   35.8,
+   1
+  ],
+  "rev": 2,
+  "was": [
    28.4,
    35.6
-  ],
-  "rev": 1,
-  "was": [
-   21.3,
-   26.7
   ]
  },
  "seven-buses": {
-  "print": "4hhq3u",
+  "print": "1r49sks",
   "stars": [
+   38.8,
+   3
+  ],
+  "rev": 2,
+  "was": [
    27.6,
    34.6
-  ],
-  "rev": 1,
-  "was": [
-   20.7,
-   25.9
   ]
  },
  "stunt-show": {
-  "print": "1veivfy",
+  "print": "9sk0i9",
   "stars": [
+   40.9,
+   2
+  ],
+  "rev": 2,
+  "was": [
    31.4,
    39.4
-  ],
-  "rev": 1,
-  "was": [
-   19.6,
-   24.6
   ]
  },
  "chequered-flag": {
-  "print": "1j4vprm",
+  "print": "1wc67xo",
   "stars": [
+   48.3,
+   3
+  ],
+  "rev": 2,
+  "was": [
    36.7,
    46.1
-  ],
-  "rev": 1,
-  "was": [
-   28.9,
-   36.2
   ]
  },
  "black-ice": {
-  "print": "1p97k3u",
+  "print": "v4bmrd",
   "stars": [
-   19.5,
-   24.4
-  ],
-  "rev": 0
- },
- "glacier-loop": {
-  "print": "1qhjq73",
-  "stars": [
-   22.3,
-   27.9
-  ],
-  "rev": 0
- },
- "slip-road": {
-  "print": "15e4tku",
-  "stars": [
-   24,
-   30
+   27.8,
+   2
   ],
   "rev": 1,
   "was": [
-   19.3,
-   24.2
+   19.5,
+   24.4
+  ]
+ },
+ "glacier-loop": {
+  "print": "2k9lw4",
+  "stars": [
+   32.8,
+   2
+  ],
+  "rev": 1,
+  "was": [
+   22.3,
+   27.9
+  ]
+ },
+ "slip-road": {
+  "print": "1lby3eb",
+  "stars": [
+   32.7,
+   1
+  ],
+  "rev": 2,
+  "was": [
+   24,
+   30
   ]
  },
  "whiteout": {
-  "print": "103mv62",
+  "print": "11lrsvp",
   "stars": [
+   44.3,
+   1
+  ],
+  "rev": 2,
+  "was": [
    32.3,
    40.4
-  ],
-  "rev": 1,
-  "was": [
-   22.5,
-   28.1
   ]
  },
  "aurora": {
-  "print": "1jvcj08",
+  "print": "1b39g9j",
   "stars": [
+   46.1,
+   2
+  ],
+  "rev": 2,
+  "was": [
    36.2,
    45.3
-  ],
-  "rev": 1,
-  "was": [
-   30.6,
-   38.3
   ]
  },
  "powder-keg": {
-  "print": "1iuupww",
+  "print": "1437r3y",
   "stars": [
+   43.3,
+   2
+  ],
+  "rev": 2,
+  "was": [
    31.8,
    39.8
-  ],
-  "rev": 1,
-  "was": [
-   24.2,
-   30.3
   ]
  },
  "crevasse": {
-  "print": "j346qp",
+  "print": "rbtmpv",
   "stars": [
+   36,
+   3
+  ],
+  "rev": 2,
+  "was": [
    27.4,
    34.3
-  ],
-  "rev": 1,
-  "was": [
-   20.4,
-   25.5
   ]
  },
  "avalanche": {
-  "print": "1d3h763",
+  "print": "71i768",
   "stars": [
+   49.4,
+   3
+  ],
+  "rev": 2,
+  "was": [
    39.1,
    48.8
-  ],
-  "rev": 1,
-  "was": [
-   20.2,
-   25.3
   ]
  },
  "hot-start": {
-  "print": "2pc1ef",
+  "print": "fjnunq",
   "stars": [
-   18.8,
-   23.7
-  ],
-  "rev": 0
- },
- "caldera": {
-  "print": "1pa02s0",
-  "stars": [
-   24.2,
-   30.4
-  ],
-  "rev": 0
- },
- "magma-hop": {
-  "print": "1lfiqiu",
-  "stars": [
-   19.3,
-   24.2
+   29.5,
+   4
   ],
   "rev": 1,
   "was": [
-   15.4,
-   19.4
+   18.8,
+   23.7
+  ]
+ },
+ "caldera": {
+  "print": "1wpkyqn",
+  "stars": [
+   38,
+   4
+  ],
+  "rev": 1,
+  "was": [
+   24.2,
+   30.4
+  ]
+ },
+ "magma-hop": {
+  "print": "ssqxsb",
+  "stars": [
+   36,
+   3
+  ],
+  "rev": 2,
+  "was": [
+   19.3,
+   24.2
   ]
  },
  "the-chimney": {
-  "print": "qd7iw7",
+  "print": "1gs2bh2",
   "stars": [
-   28.5,
-   35.9
-  ],
-  "rev": 0
- },
- "fire-walk": {
-  "print": "epvu3n",
-  "stars": [
-   33.8,
-   42.5
+   38.7,
+   1
   ],
   "rev": 1,
   "was": [
-   20.1,
-   25.3
+   28.5,
+   35.9
+  ]
+ },
+ "fire-walk": {
+  "print": "q9ejqs",
+  "stars": [
+   50.7,
+   3
+  ],
+  "rev": 2,
+  "was": [
+   33.8,
+   42.5
   ]
  },
  "ash-loop": {
-  "print": "9p97rd",
+  "print": "ml7cqr",
   "stars": [
+   45.3,
+   4
+  ],
+  "rev": 2,
+  "was": [
    29.1,
    36.6
-  ],
-  "rev": 1,
-  "was": [
-   21.9,
-   27.5
   ]
  },
  "ember-steps": {
-  "print": "3tpv2s",
+  "print": "16grx2u",
   "stars": [
+   45.2,
+   3
+  ],
+  "rev": 2,
+  "was": [
    28.8,
    36.3
-  ],
-  "rev": 1,
-  "was": [
-   21.1,
-   26.5
   ]
  },
  "eruption": {
-  "print": "s16338",
+  "print": "jbxgh2",
   "stars": [
+   55.6,
+   3
+  ],
+  "rev": 2,
+  "was": [
    38.2,
    48.1
-  ],
-  "rev": 1,
-  "was": [
-   28.9,
-   36.3
   ]
  },
  "one-small-hop": {
   "print": "1oeg1kp",
   "stars": [
-   21.1,
-   26.7
+   22.1,
+   3
   ],
   "rev": 0
  },
  "double-loop": {
   "print": "91lqof",
   "stars": [
-   22.2,
-   28
+   23.4,
+   2
   ],
   "rev": 0
  },
  "crater-maker": {
-  "print": "14gh17s",
+  "print": "1i34a02",
   "stars": [
+   37.7,
+   6
+  ],
+  "rev": 2,
+  "was": [
    28.6,
    36.1
-  ],
-  "rev": 1,
-  "was": [
-   23.2,
-   29.2
   ]
  },
  "slow-float": {
-  "print": "xzzdi3",
+  "print": "1t5id7u",
   "stars": [
+   35.5,
+   8
+  ],
+  "rev": 2,
+  "was": [
    29.7,
    37.6
-  ],
-  "rev": 1,
-  "was": [
-   26.4,
-   33.4
   ]
  },
  "regolith": {
-  "print": "1tko6bd",
+  "print": "174lhu6",
   "stars": [
+   46.5,
+   7
+  ],
+  "rev": 2,
+  "was": [
    33.8,
    42.7
-  ],
-  "rev": 1,
-  "was": [
-   25.9,
-   32.8
   ]
  },
  "dark-side": {
   "print": "ix1sex",
   "stars": [
-   38.6,
-   48.8
+   40.9,
+   5
   ],
   "rev": 1,
   "was": [
@@ -490,8 +546,8 @@
  "escape-velocity": {
   "print": "td0lnl",
   "stars": [
-   37.1,
-   46.8
+   36.6,
+   9
   ],
   "rev": 1,
   "was": [
@@ -500,15 +556,15 @@
   ]
  },
  "riot-run": {
-  "print": "1garrk0",
+  "print": "89dkvb",
   "stars": [
+   56.6,
+   8
+  ],
+  "rev": 2,
+  "was": [
    46.9,
    59.3
-  ],
-  "rev": 1,
-  "was": [
-   44.9,
-   56.7
   ]
  }
 }
